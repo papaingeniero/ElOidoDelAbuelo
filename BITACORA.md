@@ -55,4 +55,9 @@ Se añadió un bloque `else` explícito para manejar el caso "Permisos ya conced
 - Si faltan permisos -> `requestPermissions` (flujo original).
 
 ### 🎓 Lecciones Aprendidas
-- **Flujos de Estado**: No asumas que el usuario siempre pasa por el "camino feliz" de la primera instalación. El estado persistente (permisos) debe ser manejado como un ciudadano de primera clase en la lógica de inicio.
+
+### ✅ Despliegue Exitoso v1.0-dev.4 | 19-Feb-2026
+- **Build**: `./gradlew assembleDebug` (Clean build).
+- **Install**: `adb install -r` (Update preserving data).
+- **Verificación**: La app inició correctamente y el servicio `OidoService` arrancó de inmediato sin requerir re-concesión de permisos (Fix validado).
+
