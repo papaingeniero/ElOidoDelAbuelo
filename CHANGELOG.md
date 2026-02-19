@@ -1,5 +1,11 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.2] - 19-Feb-2026
+### Changed
+- Actualización de Gradle Wrapper a 7.5 y AGP a 7.2.2 para compatibilidad con JDK 17.
+- Activado `android.useAndroidX=true` en `gradle.properties`.
+- Primera compilación y despliegue exitoso en dispositivo.
+
 ## [v1.0-dev.1] - 19-Feb-2026
 ### Added
 - Estructura inicial del proyecto (Gradle, Manifest, MainActivity).
