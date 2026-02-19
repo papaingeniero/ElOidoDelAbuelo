@@ -26,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkAndRequestPermissions() {
-        String[] permissions = new String[]{
+        String[] permissions = new String[] {
                 Manifest.permission.RECORD_AUDIO,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE,
                 Manifest.permission.READ_PHONE_STATE
@@ -40,10 +40,14 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (!listPermissionsNeeded.isEmpty()) {
-            ActivityCompat.requestPermissions(this, listPermissionsNeeded.toArray(new String[0]), PERMISSION_REQUEST_CODE);
+            ActivityCompat.requestPermissions(this, listPermissionsNeeded.toArray(new String[0]),
+                    PERMISSION_REQUEST_CODE);
+        } else {
+            // Si ya tenemos permisos, arrancamos directos
+            startOidoService();
         }
     }
-    
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -59,9 +63,10 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 allGranted = false;
             }
-            
+
             if (allGranted) {
-                // Toast.makeText(this, "Todos los permisos concedidos", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(this, "Todos los permisos concedidos",
+                // Toast.LENGTH_SHORT).show();
                 startOidoService();
             } else {
                 Toast.makeText(this, "Faltan permisos necesarios", Toast.LENGTH_LONG).show();

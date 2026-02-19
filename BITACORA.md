@@ -44,4 +44,15 @@ Implementación de una arquitectura de servicio persistente:
 
 ### 🎓 Lecciones Aprendidas
 - Es vital usar `android.R.drawable` para iconos rápidos en prototipado si `ic_launcher` no está generado en vectorial.
-- La importación automática de clases (`Intent`) no ocurre en ediciones manuales de texto; el compilador es implacable.
+- La
+## 🚀 Corrección Lógica de Inicio v1.0-dev.4 | 19-Feb-2026
+### 📜 El Problema
+Un bug lógico en `MainActivity` impedía que el servicio de escucha arrancara si los permisos ya habían sido concedidos previamente (e.g., al reiniciar la app). El bloque `checkAndRequestPermissions` solo iniciaba el servicio en el callback de `onRequestPermissionsResult`, ignorando el caso donde `listPermissionsNeeded` estaba vacío.
+
+### 🛠️ La Solución
+Se añadió un bloque `else` explícito para manejar el caso "Permisos ya concedidos":
+- Si no hay permisos faltantes -> `startOidoService()` inmediato.
+- Si faltan permisos -> `requestPermissions` (flujo original).
+
+### 🎓 Lecciones Aprendidas
+- **Flujos de Estado**: No asumas que el usuario siempre pasa por el "camino feliz" de la primera instalación. El estado persistente (permisos) debe ser manejado como un ciudadano de primera clase en la lógica de inicio.

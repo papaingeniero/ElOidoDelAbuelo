@@ -1,5 +1,9 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.4] - 19-Feb-2026
+### Fixed
+- Bug crítico en `MainActivity`: El servicio no iniciaba si los permisos ya estaban concedidos.
+
 ## [v1.0-dev.3] - 19-Feb-2026
 ### Added
 - Implementación de `Foreground Service` (OidoService) con notificación persistente.
