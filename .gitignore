@@ -32,3 +32,12 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# =========================================
+# Reglas de Google Antigravity
+# =========================================
+# Ignorar cachés e historiales locales del agente
+.agent/cache/
+.agent/history/
+.agent/state/
+.agent/conversations/
