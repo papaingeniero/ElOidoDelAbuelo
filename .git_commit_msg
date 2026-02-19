@@ -1,6 +1,0 @@
-v1.0-dev.4 Deployment: Successful Build & Validate
-
-### ✅ Despliegue Exitoso v1.0-dev.4 | 19-Feb-2026
-- **Build**: `./gradlew assembleDebug` (Clean build).
-- **Install**: `adb install -r` (Update preserving data).
-- **Verificación**: La app inició correctamente y el servicio `OidoService` arrancó de inmediato sin requerir re-concesión de permisos (Fix validado).

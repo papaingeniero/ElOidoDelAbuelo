@@ -61,3 +61,17 @@ Se añadió un bloque `else` explícito para manejar el caso "Permisos ya conced
 - **Install**: `adb install -r` (Update preserving data).
 - **Verificación**: La app inició correctamente y el servicio `OidoService` arrancó de inmediato sin requerir re-concesión de permisos (Fix validado).
 
+## 🚀 Fase 2: Motor de Grabación WAV Dinámico v1.0-dev.5 | 20-Feb-2026
+### 📜 El Problema
+Necesitábamos dotar al centinela de inteligencia para discernir verdaderos ruidos de falsos positivos, además de una forma de persistir el audio capturado con una cabecera WAV válida, todo ello pudiendo reaccionar en caliente a cambios de configuración.
+
+### 🛠️ La Solución
+1. **SharedPreferences Dinámicas**: Lectura cíclica de parámetros (`DETECTION_ENABLED`, `SHIELD_ENABLED`, `SPIKE_THRESHOLD`, etc.) directamente en el hilo de grabación sin bloquearlo.
+2. **Standby (Kill Switch)**: Si se desactiva la detección, el hilo duerme usando `Thread.sleep` (0% CPU).
+3. **Escudo Anti-Falsos Positivos**: Lógica de acumulación de picos (`REQUIRED_SPIKES`) en una ventana temporal (`SHIELD_WINDOW_MS`) para confirmar una alarma.
+4. **Perro Guardián (Retrigger)**: Extensión dinámica de la grabación continua si se detectan nuevos picos.
+5. **Motor WAV**: Volcado continuo a un `FileOutputStream` con cabecera de 44 bytes escrita al inicio y sobrescrita al final usando `RandomAccessFile` para ajustar el tamaño.
+
+### 🎓 Lecciones Aprendidas
+- La inyección del `Context` en `AudioSentinel` permite que el hilo hijo reaccione a cambios de preferencias hechos por la UI inmediatamente, formando la base para el frontend web futuro.
+- El uso de `RandomAccessFile` es indispensable para fijar el tamaño final del archivo `.wav` sin corromper el flujo crudo grabado inicialmente.

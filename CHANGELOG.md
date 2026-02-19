@@ -1,5 +1,13 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.5] - 20-Feb-2026
+### Added
+- Motor de grabación WAV con ajuste en tiempo real de tamaño en cabecera.
+- Lectura dinámica de preferencias en el hilo `AudioSentinel`.
+- Modo Standby (Kill Switch) para ahorro total de CPU de detección inactiva.
+- Escudo Anti-Falsos Positivos paramétrico.
+- Watchdog (Retrigger) para prolongación ininterrumpida de alarma.
+
 ## [v1.0-dev.4] - 19-Feb-2026
 ### Fixed
 - Bug crítico en `MainActivity`: El servicio no iniciaba si los permisos ya estaban concedidos.

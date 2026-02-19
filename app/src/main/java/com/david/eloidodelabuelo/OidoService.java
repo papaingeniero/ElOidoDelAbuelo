@@ -18,7 +18,7 @@ public class OidoService extends Service {
     private static final String TAG = "OidoService";
     private static final String CHANNEL_ID = "SentinelChannel";
     private static final int NOTIFICATION_ID = 1;
-    
+
     private AudioSentinel audioSentinel;
 
     @Override
@@ -27,8 +27,8 @@ public class OidoService extends Service {
         Log.d(TAG, "onCreate: Iniciando servicio");
         createNotificationChannel();
         startForeground(NOTIFICATION_ID, createNotification());
-        
-        audioSentinel = new AudioSentinel();
+
+        audioSentinel = new AudioSentinel(this);
         audioSentinel.start();
     }
 
@@ -58,10 +58,9 @@ public class OidoService extends Service {
             NotificationChannel serviceChannel = new NotificationChannel(
                     CHANNEL_ID,
                     "Canal Centinela El Oído del Abuelo",
-                    NotificationManager.IMPORTANCE_LOW 
-            );
+                    NotificationManager.IMPORTANCE_LOW);
             // IMPORTANCE_LOW: soundless, min visual intrusion
-            
+
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
                 manager.createNotificationChannel(serviceChannel);
