@@ -1,0 +1,16 @@
+v1.0-dev.3 feat: Motor de Escucha con Foreground Service
+
+
+## 🚀 Fase 2: Motor de Escucha (Foreground) | 19-Feb-2026
+### 📜 El Problema
+Android 10 encadena restricciones severas a las apps en segundo plano. Una simple Activity escuchando el micrófono sería destruida por MIUI en minutos.
+
+### 🛠️ La Solución
+Implementación de una arquitectura de servicio persistente:
+- **OidoService**: Elevado a `startForeground` con canal de notificación de baja prioridad (silencioso pero visible).
+- **AudioSentinel**: Hilo dedicado para el procesamiento de audio crudo (PCM), desacoplado de la UI.
+- **Robustez**: Manejo explícito de `AudioRecord.release()` para evitar fugas de memoria nativa.
+
+### 🎓 Lecciones Aprendidas
+- Es vital usar `android.R.drawable` para iconos rápidos en prototipado si `ic_launcher` no está generado en vectorial.
+- La importación automática de clases (`Intent`) no ocurre en ediciones manuales de texto; el compilador es implacable.

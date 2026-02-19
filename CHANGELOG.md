@@ -1,5 +1,11 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.3] - 19-Feb-2026
+### Added
+- Implementación de `Foreground Service` (OidoService) con notificación persistente.
+- Motor de escucha `AudioSentinel` en hilo secundario (AudioRecord 16kHz/16bit/Mono).
+- Inicio automático del servicio tras conceder permisos en MainActivity.
+
 ## [v1.0-dev.2] - 19-Feb-2026
 ### Changed
 - Actualización de Gradle Wrapper a 7.5 y AGP a 7.2.2 para compatibilidad con JDK 17.

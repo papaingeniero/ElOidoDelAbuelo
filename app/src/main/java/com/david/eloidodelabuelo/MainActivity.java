@@ -5,6 +5,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.widget.Toast;
@@ -60,10 +61,17 @@ public class MainActivity extends AppCompatActivity {
             }
             
             if (allGranted) {
-                Toast.makeText(this, "Todos los permisos concedidos", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(this, "Todos los permisos concedidos", Toast.LENGTH_SHORT).show();
+                startOidoService();
             } else {
                 Toast.makeText(this, "Faltan permisos necesarios", Toast.LENGTH_LONG).show();
             }
         }
+    }
+
+    private void startOidoService() {
+        Intent serviceIntent = new Intent(this, OidoService.class);
+        ContextCompat.startForegroundService(this, serviceIntent);
+        Toast.makeText(this, "Servicio de Escucha Iniciado", Toast.LENGTH_SHORT).show();
     }
 }

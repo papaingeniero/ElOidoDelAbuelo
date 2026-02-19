@@ -31,3 +31,17 @@ La compilación inicial falló debido a una incompatibilidad entre el JDK 17 del
 ### 🎓 Lecciones Aprendidas
 - **JDK 17 vs Gradle**: Las versiones antiguas de Gradle (6.x) no soportan clases Java 61 (JDK 17). Es mandatorio usar Gradle 7.3+ para entornos modernos.
 - **AndroidX**: Aunque AGP moderno suele implicarlo, la ausencia explícita de `gradle.properties` puede causar fallos de classpath en builds limpios.
+
+## 🚀 Fase 2: Motor de Escucha (Foreground) | 19-Feb-2026
+### 📜 El Problema
+Android 10 encadena restricciones severas a las apps en segundo plano. Una simple Activity escuchando el micrófono sería destruida por MIUI en minutos.
+
+### 🛠️ La Solución
+Implementación de una arquitectura de servicio persistente:
+- **OidoService**: Elevado a `startForeground` con canal de notificación de baja prioridad (silencioso pero visible).
+- **AudioSentinel**: Hilo dedicado para el procesamiento de audio crudo (PCM), desacoplado de la UI.
+- **Robustez**: Manejo explícito de `AudioRecord.release()` para evitar fugas de memoria nativa.
+
+### 🎓 Lecciones Aprendidas
+- Es vital usar `android.R.drawable` para iconos rápidos en prototipado si `ic_launcher` no está generado en vectorial.
+- La importación automática de clases (`Intent`) no ocurre en ediciones manuales de texto; el compilador es implacable.
