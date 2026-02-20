@@ -1,5 +1,10 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.14] - 20-Feb-2026
+### Changed
+- Refactorizado el protocolo interno de Inteligencia del Agente (`deploy_snapshot.md`).
+- Introducido un retraso preventivo (`sleep 2`) post-instalación ADB para frustrar la mitigación antispam (*Race Condition*) del `ActivityManager` de MIUI.
+
 ## [v1.0-dev.13] - 20-Feb-2026
 ### Added
 - Feature de Reproducción Exclusiva (Solo-Play) en el panel web Dashboard.

@@ -16,6 +16,7 @@ Este workflow describe los pasos críticos para desplegar una Snapshot de desarr
 # 3. Compilación y Despliegue
 - [ ] Ejecutar `./gradlew assembleDebug`.
 - [ ] Instalar APK: `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
+- [ ] Esperar a que el sistema asimile el cambio: `sleep 2`.
 - [ ] Lanzar app: `adb shell am start -n com.david.eloidodelabuelo/.MainActivity`.
 
 # 4. Documentación (Bitácora)

@@ -180,3 +180,14 @@ En el Centro de Mando Web, si el usuario abría múltiples alertas del historial
 
 ### 🎓 Lecciones Aprendidas
 - Para interceptar eventos de medios (`play`, `pause`) creados dinámicamente sin atar listeners a cada nodo individual, la delegación de eventos vía la fase de *capturing* (tercer argumento `true` en `addEventListener`) es el patrón más limpio y de menor consumo de memoria para Vanilla JS.
+
+## 🚀 Mantenimiento Estratégico: Blindaje de ADB (Race Conditions) v1.0-dev.14 | 20-Feb-2026
+### 📜 El Problema
+Al aplicar en cadena relámpago los comandos de `deploy_snapshot.md` (`build && install && am start`), la app no lograba lanzarse en el Xiaomi. El volcado forense `dumpsys` descubrió que MIUI 12 (Android 10) descartaba y bloqueaba peticiones de `am start` que se invocaban escasos milisegundos después de finalizar una instalación, ya que para el cerebro del dispositivo, el paquete aún se consideraba "bloqueado por re-registro".
+
+### 🛠️ La Solución
+1. **Doma de la Meta-Inteligencia**: Se alteró el propio "Libro de Reglas" (`.agent/workflows/deploy_snapshot.md`).
+2. **Ralentización Impuesta**: Añadido un escalón de enfriamiento (`sleep 2`) expresamente documentado entre la línea de `adb install` y `adb shell am start`. Ahora, el script general aguarda pacientemente a que se purguen los broadcasts remanentes (`com.david.eloidodelabuelo flg=0x4000010`) antes de presionar el botón de inicio.
+
+### 🎓 Lecciones Aprendidas
+- Las integraciones continuas locales y los encadenamientos binarios en Bash (`&&`) no tienen piedad. A diferencia de un humano que por la limitación física tardaría un segundo en tipear el siguiente comando ADB, los scripts compiten contra los mecanismos de seguridad de Android. Forzar delays mecánicos es indispensable en testing autónomo sobre móviles.
