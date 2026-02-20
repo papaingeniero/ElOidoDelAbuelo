@@ -256,7 +256,7 @@
 <body>
 
     <div class="dashboard">
-        <h1>Centro de Mando</h1>
+        <h1>El Oído del Abuelo <span id="appVersion" style="font-size: 0.8rem; color: var(--status-gray);"></span></h1>
         <button class="settings-btn" onclick="openSettings()">⚙️ Ajustes</button>
         <br>
         <div id="statusBadge" class="status-badge">Conectando...</div>
@@ -358,6 +358,11 @@
                     const detectionEnabled = data.DETECTION_ENABLED;
 
                     latestConfig = data; // Almacenamos para rellenar el modal
+
+                    if (data.version) {
+                        document.getElementById('appVersion').textContent = data.version;
+                        document.title = "El Oído del Abuelo - " + data.version;
+                    }
 
                     // Ajustar UI del threshold-marker
                     let currentSpikeThreshold = (data.SPIKE_THRESHOLD !== undefined) ? data.SPIKE_THRESHOLD : 10000;

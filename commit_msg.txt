@@ -1,13 +1,12 @@
-v1.0-dev.15 Hotfix: Streaming en Vacío durante Standby
+v1.0-dev.16 Mejora UX: Identidad y Versión en Frontend
 
-## 🚀 Hotfix v1.0-dev.15: Streaming en Vacío durante Standby | 20-Feb-2026
+## 🚀 Mejora UX v1.0-dev.16: Identidad y Versión en Frontend | 20-Feb-2026
 ### 📜 El Problema
-El usuario reportó que el botón "Escuchar en Vivo" no producía ningún sonido. El diagnóstico reveló que al estar el sistema en modo Standby (`DETECTION_ENABLED = false`), el hilo del centinela `AudioSentinel` entraba en un bucle ciego de `Thread.sleep(1000)` para ahorrar batería, dejando de abastecer al buffer de streaming (`liveListeners`).
+El usuario requería una forma visual y directa de confirmar qué constelación de código (versión) estaba ejecutando el servidor web integrado (NanoHTTPD) desde el navegador, para descartar falsos positivos de testing por cachés de Chrome o del SO.
 
 ### 🛠️ La Solución
-1. **Consciencia de Oyentes**: Se reubicó la comprobación `boolean hasListeners = !liveListeners.isEmpty();` al tope del bucle.
-2. **Letargo Condicional**: Se alteró la sentencia del Standby a `if (!detectionEnabled && !hasListeners)`. Ahora, si la detección está apagada pero hay alguien esuchando la radio, el móvil no duerme y continúa despachando bytes PCM.
-3. **Protección Forense**: Se blindó la lógica de disparo (Analizador de Picos y Escudo) exigiendo `detectionEnabled == true`. Esto garantiza que, aunque el micrófono despierte temporalmente por culpa de un oyente remoto, el ruido recogido no detone falsas alertas ni genere grabaciones `.wav` en Standby.
+1. **Inyección de BuildConfig**: El endpoint `/api/status` en `WebServer.java` fue modificado para despachar la constante en tiempo de compilación `BuildConfig.VERSION_NAME` dentro del JSON periódico.
+2. **Estampado Dinámico de DOM**: En `index.html`, la rutina `updateDashboard()` intercepta `data.version`, pinta el string junto al cabecero del H1 (con color atenuado) e inyecta la versión en el `document.title` (pestaña del navegador).
 
 ### 🎓 Lecciones Aprendidas
-- Emplazar *Kill-Switches* de ahorros de energía abruptos (como `Thread.sleep` en hilos infinitos) puede causar "Daños Colaterales" funcionales si el hilo tiene responsabilidades duales (Detección y Streaming). Modular el flag de letargo con estados adyacentes evita interrupciones de disponibilidad (Downtime).
+- Exponer metadatos de compilación a través de las APIs de telemetría viva (`/api/status`) es una estrategia elegante que evita tener que templatear HTML dinámicamente o añadir endpoints superfluos como `/api/version`.

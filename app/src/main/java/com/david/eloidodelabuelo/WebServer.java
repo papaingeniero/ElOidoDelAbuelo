@@ -40,6 +40,7 @@ public class WebServer extends NanoHTTPD {
                 JSONObject json = new JSONObject();
                 json.put("currentAmplitude", sentinel.getCurrentAmplitude());
                 json.put("isRecording", sentinel.isCurrentlyRecording());
+                json.put("version", BuildConfig.VERSION_NAME);
 
                 SharedPreferences prefs = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE);
                 boolean detectionEnabled = prefs.getBoolean("DETECTION_ENABLED", true);

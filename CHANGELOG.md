@@ -1,5 +1,9 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.16] - 20-Feb-2026
+### Added
+- Identidad visual dinámica en el Frontend: el título principal y la pestaña del navegador ahora muestran explícitamente "El Oído del Abuelo" y el número de versión activa (ej. v1.0-dev.16).
+
 ## [v1.0-dev.15] - 20-Feb-2026
 ### Fixed
 - Arreglado el problema del streaming en vacío (vacío de bytes) cuando se solicitaba Escuchar en Vivo y el terminal se encontraba en modo Standby automático.
