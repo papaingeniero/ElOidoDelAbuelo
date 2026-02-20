@@ -1,5 +1,10 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.12] - 20-Feb-2026
+### Fixed
+- Soporte total HTTP Byte-Range Requests (`206 Partial Content`) en el endpoint `/api/audio`.
+- Arreglada la incompatibilidad de reproducción multimedia en dispositivos iOS y Safari web.
+
 ## [v1.0-dev.11] - 20-Feb-2026
 ### Added
 - **Modo Walkie-Talkie**: Streaming de audio ilimitado y en crudo `.wav` nativo desde el Front-End directamente al motor microfónico.

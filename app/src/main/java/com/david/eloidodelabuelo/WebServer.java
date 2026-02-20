@@ -145,11 +145,54 @@ public class WebServer extends NanoHTTPD {
             }
 
             try {
-                FileInputStream fis = new FileInputStream(audioFile);
-                return newChunkedResponse(Response.Status.OK, "audio/wav", fis);
+                String range = session.getHeaders().get("range");
+                long fileLen = audioFile.length();
+                String mime = fileName.endsWith(".m4a") ? "audio/mp4" : "audio/wav";
+
+                if (range != null && range.startsWith("bytes=")) {
+                    range = range.substring("bytes=".length());
+                    int minus = range.indexOf('-');
+                    long start = 0;
+                    long end = fileLen - 1;
+                    if (minus > 0) {
+                        try {
+                            start = Long.parseLong(range.substring(0, minus));
+                            if (minus < range.length() - 1) {
+                                end = Long.parseLong(range.substring(minus + 1));
+                            }
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+
+                    if (start >= fileLen) {
+                        Response res = newFixedLengthResponse(Response.Status.RANGE_NOT_SATISFIABLE,
+                                NanoHTTPD.MIME_PLAINTEXT, "");
+                        res.addHeader("Content-Range", "bytes */" + fileLen);
+                        return res;
+                    }
+
+                    long dataLen = end - start + 1;
+                    if (dataLen < 0)
+                        dataLen = 0;
+
+                    FileInputStream fis = new FileInputStream(audioFile);
+                    fis.skip(start);
+
+                    Response res = newFixedLengthResponse(Response.Status.PARTIAL_CONTENT, mime, fis, dataLen);
+                    res.addHeader("Accept-Ranges", "bytes");
+                    res.addHeader("Content-Length", String.valueOf(dataLen));
+                    res.addHeader("Content-Range", "bytes " + start + "-" + end + "/" + fileLen);
+                    return res;
+                } else {
+                    FileInputStream fis = new FileInputStream(audioFile);
+                    Response res = newFixedLengthResponse(Response.Status.OK, mime, fis, fileLen);
+                    res.addHeader("Accept-Ranges", "bytes");
+                    res.addHeader("Content-Length", String.valueOf(fileLen));
+                    return res;
+                }
             } catch (Exception e) {
                 return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
-                        "Error reproduciendo audio");
+                        "Error reproduciendo audio: " + e.getMessage());
             }
         }
 

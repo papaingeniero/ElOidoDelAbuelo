@@ -156,3 +156,15 @@ Solo teníamos datos históricos o telemetría de amplitud, pero en un caso de a
 
 ### 🎓 Lecciones Aprendidas
 - Emplear la técnica del Header `0xFFFFFFFFL` sobre un `PipedOutputStream` es el pináculo de la piratería legal TCP para forzar HTML5 a reproducir streams PCM crudos sin intermediarios WebSocket ni librerías de terceros NodeJS/WebRTC. Una arquitectura 100% nativa.
+
+## 🚀 Hotfix v1.0-dev.12: Soporte de Reproducción en Safari (iOS) | 20-Feb-2026
+### 📜 El Problema
+Al reproducir los audios grabados (`.wav` o `.m4a`) desde la interfaz web usando un iPhone (Safari), el reproductor nativo HTML5 arrojaba un "Error" y se negaba a iniciar la reproducción. Safari es extremadamente estricto con los archivos multimedia y exige soporte de peticiones HTTP `Range` (byte-ranges) para permitir buscar (seek) y reproducir los audios.
+
+### 🛠️ La Solución
+1. **Soporte `Accept-Ranges: bytes`**: Se reescribió el endpoint `/api/audio` en `WebServer.java` abandonando el viejo `newChunkedResponse`.
+2. **Peticiones HTTP 206 Partial Content**: El endpoint ahora lee activamente el Header `Range` de la petición web. Calcula los offset (inicio y fin) y hace uso de `FileInputStream.skip()` para entregar el segmento exacto demandado por el navegador.
+3. **MIME dinámico**: El framework inyecta dinámicamente cabeceras de longitud (`Content-Length`, `Content-Range`) ajustadas al mime.
+
+### 🎓 Lecciones Aprendidas
+- Servir un estado HTTP `200 OK` con un stream genérico para audio en HTML5 funciona en Android o Escritorio, pero en el ecosistema Apple (Webkit) fracasa. Safari necesita confirmaciones `206 Partial Content` para habilitar los componentes nativos.
