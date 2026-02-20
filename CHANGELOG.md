@@ -1,5 +1,12 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.9] - 20-Feb-2026
+### Added
+- Panel UI de Configuración Bidireccional Flotante (Modal Ajustes).
+- Endpoint `/api/settings` (POST) en el WebServer `NanoHTTPD`.
+- Parseo de cuerpos HTTP Body (`"postData"`) para la lectura dinámica del Payload JSON entrante.
+- Inyección en caliente de calibraciones al `AudioSentinel` desde red local mediante ES6 Fetch API.
+
 ## [v1.0-dev.8] - 20-Feb-2026
 ### Added
 - Frontend Dashboard ("Centro de Mando") en HTML/CSS/JS puro en Modo Oscuro.

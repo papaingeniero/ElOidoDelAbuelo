@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -95,98 +96,281 @@
             bottom: 0;
             width: 2px;
             background-color: rgba(255, 255, 255, 0.3);
-            left: calc((10000 / 32767) * 100%); /* 10000 is default SPIKE_THRESHOLD */
+            left: calc((10000 / 32767) * 100%);
+            /* 10000 is default SPIKE_THRESHOLD */
             z-index: 10;
         }
-        
+
         .threshold-marker::after {
             content: "Umbral";
             position: absolute;
             top: -20px;
             left: -20px;
             font-size: 0.7rem;
-            color: rgba(255,255,255,0.5);
+            color: rgba(255, 255, 255, 0.5);
         }
 
+        .settings-btn {
+            background-color: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+
+        .settings-btn:hover {
+            opacity: 0.8;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--surface-color);
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            text-align: left;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .form-group input[type="number"],
+        .form-group input[type="range"] {
+            width: 100%;
+            box-sizing: border-box;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .form-group input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+
+        .btn-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 25px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-save {
+            background: var(--status-green);
+            color: #000;
+        }
+
+        .btn-close {
+            background: #555;
+            color: #fff;
+        }
     </style>
 </head>
+
 <body>
 
-<div class="dashboard">
-    <h1>Centro de Mando</h1>
-    <div id="statusBadge" class="status-badge">Conectando...</div>
+    <div class="dashboard">
+        <h1>Centro de Mando</h1>
+        <button class="settings-btn" onclick="openSettings()">⚙️ Ajustes</button>
+        <br>
+        <div id="statusBadge" class="status-badge">Conectando...</div>
 
-    <div class="instrument-panel">
-        <div class="label-row">
-            <span>Amplitud de Micrófono</span>
-            <span id="amplitudeValue">0</span>
-        </div>
-        <div class="meter-bg">
-            <div id="vumeter" class="meter-fill"></div>
-            <div class="threshold-marker"></div>
+        <div class="instrument-panel">
+            <div class="label-row">
+                <span>Amplitud de Micrófono</span>
+                <span id="amplitudeValue">0</span>
+            </div>
+            <div class="meter-bg">
+                <div id="vumeter" class="meter-fill"></div>
+                <div class="threshold-marker"></div>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    const MAX_AMPLITUDE = 32767;
-    const SPIKE_THRESHOLD = 10000;
-    
-    const vumeter = document.getElementById('vumeter');
-    const statusBadge = document.getElementById('statusBadge');
-    const amplitudeValue = document.getElementById('amplitudeValue');
+    <!-- Modal de Ajustes -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <h2>Ajustes del Centinela</h2>
+            <div class="form-group">
+                <label><input type="checkbox" id="inpDetection"> DETECTION_ENABLED (Standby)</label>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="inpShield"> SHIELD_ENABLED (Escudo)</label>
+            </div>
+            <div class="form-group">
+                <label>SPIKE_THRESHOLD: <span id="valSpike">10000</span></label>
+                <input type="range" id="inpSpike" min="0" max="32767" value="10000"
+                    oninput="document.getElementById('valSpike').innerText=this.value">
+            </div>
+            <div class="form-group">
+                <label>REQUIRED_SPIKES (Picos para Alarma)</label>
+                <input type="number" id="inpRequired" min="1" max="10">
+            </div>
+            <div class="form-group">
+                <label>SHIELD_WINDOW_MS (Ventana de Tolerancia MS)</label>
+                <input type="number" id="inpWindow" min="100" max="5000">
+            </div>
+            <div class="form-group">
+                <label>RECORD_DURATION_MS (Duración Grabación MS)</label>
+                <input type="number" id="inpDuration" min="1000" max="60000">
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-close" onclick="closeSettings()">Cancelar</button>
+                <button class="btn btn-save" onclick="saveSettings()">Guardar</button>
+            </div>
+        </div>
+    </div>
 
-    function updateDashboard() {
-        fetch('/api/status')
-            .then(response => {
-                if (!response.ok) throw new Error("Network response was not ok");
-                return response.json();
-            })
-            .then(data => {
-                const amp = data.currentAmplitude || 0;
-                const isRecording = data.isRecording;
-                const detectionEnabled = data.DETECTION_ENABLED;
+    <script>
+        const MAX_AMPLITUDE = 32767;
+        let latestConfig = {};
 
-                // Actualizar texto numérico
-                amplitudeValue.textContent = Math.round(amp);
+        const vumeter = document.getElementById('vumeter');
+        const statusBadge = document.getElementById('statusBadge');
+        const amplitudeValue = document.getElementById('amplitudeValue');
 
-                // Calcular porcentaje para ancho CSS
-                let percentage = (amp / MAX_AMPLITUDE) * 100;
-                if (percentage > 100) percentage = 100;
-                vumeter.style.width = percentage + '%';
+        function updateDashboard() {
+            fetch('/api/status')
+                .then(response => {
+                    if (!response.ok) throw new Error("Network response was not ok");
+                    return response.json();
+                })
+                .then(data => {
+                    const amp = data.currentAmplitude || 0;
+                    const isRecording = data.isRecording;
+                    const detectionEnabled = data.DETECTION_ENABLED;
 
-                // Lógica de colores y estados
-                if (!detectionEnabled) {
-                    statusBadge.textContent = "Standby";
-                    statusBadge.style.backgroundColor = "var(--status-gray)";
-                    vumeter.style.backgroundColor = "var(--status-gray)";
-                } else if (isRecording) {
-                    statusBadge.textContent = "Grabando Alarma";
-                    statusBadge.style.backgroundColor = "var(--status-red)";
-                    vumeter.style.backgroundColor = "var(--status-red)";
-                } else {
-                    statusBadge.textContent = "Escuchando";
-                    statusBadge.style.backgroundColor = "var(--status-green)";
-                    
-                    // Vúmetro dinámico en escucha
-                    if (amp > SPIKE_THRESHOLD) {
-                        vumeter.style.backgroundColor = "var(--status-yellow)";
+                    latestConfig = data; // Almacenamos para rellenar el modal
+
+                    // Ajustar UI del threshold-marker
+                    let currentSpikeThreshold = (data.SPIKE_THRESHOLD !== undefined) ? data.SPIKE_THRESHOLD : 10000;
+                    document.querySelector('.threshold-marker').style.left = `calc((${currentSpikeThreshold} / 32767) * 100%)`;
+
+                    // Actualizar texto numérico
+                    amplitudeValue.textContent = Math.round(amp);
+
+                    // Calcular porcentaje para ancho CSS
+                    let percentage = (amp / MAX_AMPLITUDE) * 100;
+                    if (percentage > 100) percentage = 100;
+                    vumeter.style.width = percentage + '%';
+
+                    // Lógica de colores y estados
+                    if (!detectionEnabled) {
+                        statusBadge.textContent = "Standby";
+                        statusBadge.style.backgroundColor = "var(--status-gray)";
+                        vumeter.style.backgroundColor = "var(--status-gray)";
+                    } else if (isRecording) {
+                        statusBadge.textContent = "Grabando Alarma";
+                        statusBadge.style.backgroundColor = "var(--status-red)";
+                        vumeter.style.backgroundColor = "var(--status-red)";
                     } else {
-                        vumeter.style.backgroundColor = "var(--status-green)";
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching status:', error);
-                statusBadge.textContent = "Sin Conexión";
-                statusBadge.style.backgroundColor = "var(--status-gray)";
-                vumeter.style.width = '0%';
-            });
-    }
+                        statusBadge.textContent = "Escuchando";
+                        statusBadge.style.backgroundColor = "var(--status-green)";
 
-    // Polling agresivo para sensación de tiempo real fluido
-    setInterval(updateDashboard, 200);
-</script>
+                        // Vúmetro dinámico en escucha
+                        if (amp > currentSpikeThreshold) {
+                            vumeter.style.backgroundColor = "var(--status-yellow)";
+                        } else {
+                            vumeter.style.backgroundColor = "var(--status-green)";
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching status:', error);
+                    statusBadge.textContent = "Sin Conexión";
+                    statusBadge.style.backgroundColor = "var(--status-gray)";
+                    vumeter.style.width = '0%';
+                });
+        }
+
+        function openSettings() {
+            document.getElementById('inpDetection').checked = latestConfig.DETECTION_ENABLED ?? true;
+            document.getElementById('inpShield').checked = latestConfig.SHIELD_ENABLED ?? true;
+            document.getElementById('inpSpike').value = latestConfig.SPIKE_THRESHOLD ?? 10000;
+            document.getElementById('valSpike').innerText = latestConfig.SPIKE_THRESHOLD ?? 10000;
+            document.getElementById('inpRequired').value = latestConfig.REQUIRED_SPIKES ?? 3;
+            document.getElementById('inpWindow').value = latestConfig.SHIELD_WINDOW_MS ?? 500;
+            document.getElementById('inpDuration').value = latestConfig.RECORD_DURATION_MS ?? 15000;
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function saveSettings() {
+            const payload = {
+                DETECTION_ENABLED: document.getElementById('inpDetection').checked,
+                SHIELD_ENABLED: document.getElementById('inpShield').checked,
+                SPIKE_THRESHOLD: parseInt(document.getElementById('inpSpike').value),
+                REQUIRED_SPIKES: parseInt(document.getElementById('inpRequired').value),
+                SHIELD_WINDOW_MS: parseInt(document.getElementById('inpWindow').value),
+                RECORD_DURATION_MS: parseInt(document.getElementById('inpDuration').value)
+            };
+
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        closeSettings();
+                    } else {
+                        alert('Error al guardar: ' + data.status);
+                    }
+                })
+                .catch(err => {
+                    alert('Error de red al guardar ajustes.');
+                    console.error(err);
+                });
+        }
+
+        // Polling agresivo para sensación de tiempo real fluido
+        setInterval(updateDashboard, 200);
+    </script>
 
 </body>
+
 </html>

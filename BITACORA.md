@@ -114,3 +114,18 @@ No podíamos incrustar páginas HTML estáticas y aburridas como *String constan
 ### 🎓 Lecciones Aprendidas
 - Emplear `InputStream` de Android Assets directo al `newChunkedResponse` de NanoHTTPD es la vía más limpia y eficiente (`0-copy` conceptual) para escupir Frontend complejo en aplicaciones IoT.
 - El polling a 200ms es perfectamente tolerado por NanoHTTPD en redes locales sin degradar la memoria de Android.
+
+## 🚀 Fase 3.3: Control Bidireccional y API POST v1.0-dev.9 | 20-Feb-2026
+### 📜 El Problema
+El panel web construido en la fase anterior era de "solo lectura". Si detectábamos que el entorno se mantenía ruidoso o queríamos "apagar" el Centinela temporalmente (Standby), debíamos usar la interfaz física del teléfono. Se requería una API Inversa (POST) para setear la inteligencia viva.
+
+### 🛠️ La Solución
+1. **Modal de Ajustes**: Inyección de un botón `⚙️ Ajustes` que despliega un Panel flotante oscuro en `index.html`. 
+2. **Hidratación de Estado**: Al abrir el modal, la UI se "hidrata" (rellena) de forma *Stateless* con las variables escaneadas del último `fetch` al GET `/api/status`, sin requerir una consulta extra.
+3. **Endpoint POST `/api/settings`**: Actualización de la función iteradora de URI en `WebServer.java`.
+4. **Parseo de Cuerpos JSON**: Para sortear el clásico comportamiento de `NanoHTTPD` en el manejo de peticiones de datos crudos (`application/json`), se instanció un `Map` para recolectar las salidas del método nativo `session.parseBody()`. NanoHTTPD arroja allí el RAW payload JSON bajo la key genérica `postData`.
+5. **Ajuste en Caliente**: Extraído el `postData`, construimos el `JSONObject` y reescribimos vía un `SharedPreferences.Editor` el esqueleto del `Context` principal del `AudioSentinel`, logrando control reactivo sin necesidad de matar el proceso maestro.
+
+### 🎓 Lecciones Aprendidas
+- El truco del mapa (`files.get("postData")`) es el estándar *de facto* más estable para obligar a un servidor primitivo como NanoHTTPD a tragar JSON arrays transparentes sin saturarse.
+- Usar un Endpoint unificado (`/api/status` devolviendo toda la configuración) simplifica masivamente la arquitectura JS reduciendo asincronías y estados cruzados en IoTs de bajos recursos (Xiaomi Redmi 9C).
