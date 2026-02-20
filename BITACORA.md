@@ -191,3 +191,15 @@ Al aplicar en cadena relámpago los comandos de `deploy_snapshot.md` (`build && 
 
 ### 🎓 Lecciones Aprendidas
 - Las integraciones continuas locales y los encadenamientos binarios en Bash (`&&`) no tienen piedad. A diferencia de un humano que por la limitación física tardaría un segundo en tipear el siguiente comando ADB, los scripts compiten contra los mecanismos de seguridad de Android. Forzar delays mecánicos es indispensable en testing autónomo sobre móviles.
+
+## 🚀 Hotfix v1.0-dev.15: Streaming en Vacío durante Standby | 20-Feb-2026
+### 📜 El Problema
+El usuario reportó que el botón "Escuchar en Vivo" no producía ningún sonido. El diagnóstico reveló que al estar el sistema en modo Standby (`DETECTION_ENABLED = false`), el hilo del centinela `AudioSentinel` entraba en un bucle ciego de `Thread.sleep(1000)` para ahorrar batería, dejando de abastecer al buffer de streaming (`liveListeners`).
+
+### 🛠️ La Solución
+1. **Consciencia de Oyentes**: Se reubicó la comprobación `boolean hasListeners = !liveListeners.isEmpty();` al tope del bucle.
+2. **Letargo Condicional**: Se alteró la sentencia del Standby a `if (!detectionEnabled && !hasListeners)`. Ahora, si la detección está apagada pero hay alguien esuchando la radio, el móvil no duerme y continúa despachando bytes PCM.
+3. **Protección Forense**: Se blindó la lógica de disparo (Analizador de Picos y Escudo) exigiendo `detectionEnabled == true`. Esto garantiza que, aunque el micrófono despierte temporalmente por culpa de un oyente remoto, el ruido recogido no detone falsas alertas ni genere grabaciones `.wav` en Standby.
+
+### 🎓 Lecciones Aprendidas
+- Emplazar *Kill-Switches* de ahorros de energía abruptos (como `Thread.sleep` en hilos infinitos) puede causar "Daños Colaterales" funcionales si el hilo tiene responsabilidades duales (Detección y Streaming). Modular el flag de letargo con estados adyacentes evita interrupciones de disponibilidad (Downtime).

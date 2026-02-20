@@ -1,5 +1,9 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.15] - 20-Feb-2026
+### Fixed
+- Arreglado el problema del streaming en vacío (vacío de bytes) cuando se solicitaba Escuchar en Vivo y el terminal se encontraba en modo Standby automático.
+
 ## [v1.0-dev.14] - 20-Feb-2026
 ### Changed
 - Refactorizado el protocolo interno de Inteligencia del Agente (`deploy_snapshot.md`).

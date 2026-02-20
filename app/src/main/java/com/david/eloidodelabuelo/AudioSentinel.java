@@ -134,8 +134,10 @@ public class AudioSentinel {
                 int shieldWindowMs = prefs.getInt(PREF_SHIELD_WINDOW_MS, 500);
                 int recordDurationMs = prefs.getInt(PREF_RECORD_DURATION_MS, 15000);
 
+                boolean hasListeners = !liveListeners.isEmpty();
+
                 // 2. Modo Standby (Kill Switch)
-                if (!detectionEnabled) {
+                if (!detectionEnabled && !hasListeners) {
                     if (isRecording) {
                         // Forzar cierre si se desactiva en medio de una grabación
                         closeWavFile(fos, currentWavFile, totalAudioLen);
@@ -160,7 +162,7 @@ public class AudioSentinel {
                     this.currentAmplitude = amplitude;
 
                     // 3. Lógica del Escudo Analizador de Picos
-                    if (amplitude > spikeThreshold) {
+                    if (detectionEnabled && amplitude > spikeThreshold) {
                         if (!shieldEnabled) {
                             // Sin escudo: disparo inmediato
                             triggerRecording(currentTime, recordDurationMs, currentWavFile, isRecording);
@@ -184,8 +186,9 @@ public class AudioSentinel {
                     }
 
                     // Función auxiliar para re-trigger implícita aquí para limpieza
-                    if (amplitude > spikeThreshold && (!shieldEnabled || spikeCount == 0)) { // spikeCount==0 implica
-                                                                                             // que acaba de disparar
+                    if (detectionEnabled && amplitude > spikeThreshold && (!shieldEnabled || spikeCount == 0)) { // spikeCount==0
+                                                                                                                 // implica
+                        // que acaba de disparar
                         if (!isRecording) {
                             isRecording = true;
                             isRecordingStatus = true;
@@ -214,7 +217,6 @@ public class AudioSentinel {
                     }
 
                     // 5. Preparar Buffer y Streaming en vivo (Walkie-Talkie)
-                    boolean hasListeners = !liveListeners.isEmpty();
                     if (isRecording || hasListeners) {
                         // Convertir short[] a byte[] asumiendo Little Endian
                         for (int i = 0; i < readResult; i++) {
