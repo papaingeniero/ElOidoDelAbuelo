@@ -325,6 +325,23 @@
         let latestConfig = {};
         let liveAudio = null;
 
+        // Reproducción exclusiva: Detener otros audios al reproducir uno nuevo
+        document.addEventListener('play', function (e) {
+            if (e.target.tagName === 'AUDIO') {
+                // Pausar cualquier otro audio del historial
+                document.querySelectorAll('audio').forEach(function (audioElement) {
+                    if (audioElement !== e.target) {
+                        audioElement.pause();
+                    }
+                });
+
+                // Apagar el stream en vivo si estaba sonando
+                if (liveAudio != null) {
+                    toggleLiveAudio();
+                }
+            }
+        }, true); // Usar fase de captura porque los eventos media no burbujean
+
         const vumeter = document.getElementById('vumeter');
         const statusBadge = document.getElementById('statusBadge');
         const amplitudeValue = document.getElementById('amplitudeValue');
@@ -473,6 +490,9 @@
         function toggleLiveAudio() {
             const btn = document.getElementById('btnLive');
             if (liveAudio == null) {
+                // Pausar cualquier audio del historial antes de iniciar el vivo
+                document.querySelectorAll('audio').forEach(a => a.pause());
+
                 liveAudio = new Audio('/api/stream');
                 liveAudio.play().catch(e => console.error("Auto-play error", e));
                 btn.textContent = "📻 Escuchar en Vivo (ON)";

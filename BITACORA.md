@@ -168,3 +168,15 @@ Al reproducir los audios grabados (`.wav` o `.m4a`) desde la interfaz web usando
 
 ### 🎓 Lecciones Aprendidas
 - Servir un estado HTTP `200 OK` con un stream genérico para audio en HTML5 funciona en Android o Escritorio, pero en el ecosistema Apple (Webkit) fracasa. Safari necesita confirmaciones `206 Partial Content` para habilitar los componentes nativos.
+
+## 🚀 Fase 3.4: Reproducción Exclusiva (Solo-Play) v1.0-dev.13 | 20-Feb-2026
+### 📜 El Problema
+En el Centro de Mando Web, si el usuario abría múltiples alertas del historial a la vez, o si le daba al botón "Escuchar en Vivo" sin detener la alerta previa, la API HTML5 colisionaba los audios generando una cacofonía incomprensible de múltiples orígenes simultáneos.
+
+### 🛠️ La Solución
+1. **Event Delegation en Fase de Captura**: Se inyectó en `index.html` un listener global `document.addEventListener('play', ..., true)`. Usamos *captura* porque los eventos de media (`play`, `pause`) no burbujean hacia arriba en el DOM de forma natural.
+2. **Silenciamiento DOM**: Cuando cualquier `<audio>` dispara el evento, el código itera sobre todos los elementos `<audio>` de la página invocando su método `.pause()`, excepto para aquel que originó el evento.
+3. **Cross-Silencing (Historial vs Live)**: Si el Objeto `Audio` global (`liveAudio`) está instanciado, se mata y resetea la UI a OFF. Simétricamente, al activar manualmente "Escuchar en Vivo", recorremos el DOM apagando de forma preemptiva cualquier alerta que estuviera sonando (con `a.pause()`).
+
+### 🎓 Lecciones Aprendidas
+- Para interceptar eventos de medios (`play`, `pause`) creados dinámicamente sin atar listeners a cada nodo individual, la delegación de eventos vía la fase de *capturing* (tercer argumento `true` en `addEventListener`) es el patrón más limpio y de menor consumo de memoria para Vanilla JS.

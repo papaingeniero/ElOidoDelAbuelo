@@ -1,5 +1,10 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.13] - 20-Feb-2026
+### Added
+- Feature de Reproducción Exclusiva (Solo-Play) en el panel web Dashboard.
+- Silenciamiento automático cruzado entre el streaming en vivo (`liveAudio`) y las alertas históricas.
+
 ## [v1.0-dev.12] - 20-Feb-2026
 ### Fixed
 - Soporte total HTTP Byte-Range Requests (`206 Partial Content`) en el endpoint `/api/audio`.
