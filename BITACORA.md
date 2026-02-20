@@ -90,3 +90,13 @@ Para gobernar el centinela desde otro dispositivo en la misma red y monitorizar 
 ### 🎓 Lecciones Aprendidas
 - La inicialización y apagado coordinado (`start`/`stop`) de hilos secundarios y servidores web dentro de un `Service` previene bloqueos de puerto (`BindException`) cuando Android intenta reiniciar el componente tras liberaciones de memoria por doze-mode.
 - El objeto estándar `JSONObject` de la API de Android agiliza la construcción de los payloads JSON sin necesidad de importar librerías pesadas como GSON para esta etapa temprana.
+
+## 🚀 Hotfix v1.0-dev.7: Permiso INTERNET | 20-Feb-2026
+### ❌ Intento Fallido (v1.0-dev.6)
+El despliegue en dispositivo físico falló en tiempo de ejecución. El logcat reveló: `java.net.SocketException: socket failed: EACCES (Permission denied)` en la línea de `fi.iki.elonen.NanoHTTPD.start()`.
+
+### 🛠️ La Solución
+Android impone una restricción férrea de seguridad: cualquier apertura de socket (incluso si es `localhost:8080`) requiere obligatoriamente el tag `<uses-permission android:name="android.permission.INTERNET" />` en el `AndroidManifest.xml`. Se inyectó esta línea y se relanzó la batería de despliegue.
+
+### 🎓 Lecciones Aprendidas
+- Nunca subestimar la burocracia de permisos de Android. Un servidor local (NanoHTTPD) exige permisos de internet globales, rompiendo la asunción de que las conexiones loopback están exentas.
