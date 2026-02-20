@@ -32,7 +32,23 @@ Este workflow describe los pasos críticos para desplegar una Snapshot de desarr
 - [ ] `git push origin main`.
 
 # 6. Verificación de 7 Puntos (Reporte Final)
-Generar reporte estructurado y **mostrarlo siempre explícitamente al final en el chat de la conversación**:
-1. Tabla de Verificación (Versión, Build, Install, Bitácora, Changelog, Commit/Push, Status).
-2. Resumen de Cambios.
-3. Reporte de Incidentes y Resoluciones (OBLIGATORIO).
+Generar reporte estructurado copiando **ESTA PLANTILLA LITERAlMENTE** y mostrarlo siempre al final en el chat de la conversación:
+
+## 🚀 Reporte de Despliegue vX.Y.Z-dev.N (Título Breve)
+| FASE | ESTADO | NOTAS |
+| :--- | :---: | :--- |
+| 🏷️ **Identidad** | ✅ | Versionado aumentado en `build.gradle` |
+| 🧹 **Purity** | ✅ | Git Status comprobado como limpio |
+| 🏗️ **Build** | ✅ | `assembleDebug` completado sin errores |
+| 📱 **Install** | ✅ | APK instalado via ADB y app ejecutada |
+| 📜 **Bitácora** | ✅ | Crónica técnica redactada |
+| 📝 **Changelog** | ✅ | Novedades registradas (`PREPEND`) |
+| 📦 **Cápsula** | ✅ | Commit y Push hacia `origin main` |
+
+### 🔍 Resumen de Cambios
+- (Punto 1)
+- (Punto 2)
+
+### ⚠️ Reporte de Incidentes (OBLIGATORIO)
+- **Problema descubierto**: ...
+- **Solución aplicada**: ...
