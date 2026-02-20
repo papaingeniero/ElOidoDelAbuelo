@@ -323,7 +323,6 @@
     <script>
         const MAX_AMPLITUDE = 32767;
         let latestConfig = {};
-        let liveAudio = null;
 
         // Reproducción exclusiva: Detener otros audios al reproducir uno nuevo
         document.addEventListener('play', function (e) {
@@ -492,22 +491,102 @@
                 });
         }
 
+        let liveAudio = null; // Mantenemos para compatibilidad de nombre, pero será nuestro AudioContext
+        let abortController = null;
+        let nextPlayTime = 0;
+
+        async function playLiveStream() {
+            try {
+                liveAudio = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                abortController = new AbortController();
+                nextPlayTime = liveAudio.currentTime;
+
+                const response = await fetch('/api/stream', { signal: abortController.signal });
+                const reader = response.body.getReader();
+
+                let isHeaderSkipped = false;
+                let bufferData = new Uint8Array(0);
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    // Acumular fragmentos en buffer
+                    const newBuffer = new Uint8Array(bufferData.length + value.length);
+                    newBuffer.set(bufferData);
+                    newBuffer.set(value, bufferData.length);
+                    bufferData = newBuffer;
+
+                    // Decapitar 44 bytes de cabecera solo en el primer trozo
+                    if (!isHeaderSkipped && bufferData.length >= 44) {
+                        bufferData = bufferData.slice(44);
+                        isHeaderSkipped = true;
+                    }
+
+                    // Asegurarnos de tener un número par de bytes (16-bit = 2 bytes)
+                    if (isHeaderSkipped && bufferData.length >= 2) {
+                        const bytesToProcess = bufferData.length - (bufferData.length % 2);
+                        const chunkBytes = bufferData.slice(0, bytesToProcess);
+                        bufferData = bufferData.slice(bytesToProcess);
+
+                        // Convertir PCM 16-bit Little Endian a Float32 (Web Audio API estandar)
+                        const samples = new Float32Array(chunkBytes.length / 2);
+                        const dataView = new DataView(chunkBytes.buffer);
+                        for (let i = 0; i < samples.length; i++) {
+                            const int16 = dataView.getInt16(i * 2, true);
+                            samples[i] = int16 / 32768.0; // Normalizar a [-1.0, 1.0]
+                        }
+
+                        // Crear AudioBuffer e inyectar
+                        const audioBuffer = liveAudio.createBuffer(1, samples.length, 16000);
+                        audioBuffer.getChannelData(0).set(samples);
+
+                        const source = liveAudio.createBufferSource();
+                        source.buffer = audioBuffer;
+                        source.connect(liveAudio.destination);
+
+                        // Si el tiempo de reproducción previsto se quedó atrás (latencia / CPU)
+                        if (nextPlayTime < liveAudio.currentTime) {
+                            nextPlayTime = liveAudio.currentTime;
+                        }
+
+                        source.start(nextPlayTime);
+                        nextPlayTime += audioBuffer.duration;
+                    }
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error("Error en streaming:", err);
+                    stopLiveStream();
+                }
+            }
+        }
+
+        function stopLiveStream() {
+            if (abortController) {
+                abortController.abort();
+                abortController = null;
+            }
+            if (liveAudio) {
+                liveAudio.close();
+                liveAudio = null;
+            }
+            const btn = document.getElementById('btnLive');
+            btn.textContent = "📻 Escuchar en Vivo (OFF)";
+            btn.style.backgroundColor = "var(--status-gray)";
+        }
+
         function toggleLiveAudio() {
             const btn = document.getElementById('btnLive');
             if (liveAudio == null) {
-                // Pausar cualquier audio del historial antes de iniciar el vivo
+                // Pausar cualquier audio del historial
                 document.querySelectorAll('audio').forEach(a => a.pause());
 
-                liveAudio = new Audio('/api/stream');
-                liveAudio.play().catch(e => console.error("Auto-play error", e));
+                playLiveStream();
                 btn.textContent = "📻 Escuchar en Vivo (ON)";
                 btn.style.backgroundColor = "var(--status-green)";
             } else {
-                liveAudio.pause();
-                liveAudio.src = '';
-                liveAudio = null;
-                btn.textContent = "📻 Escuchar en Vivo (OFF)";
-                btn.style.backgroundColor = "var(--status-gray)";
+                stopLiveStream();
             }
         }
 

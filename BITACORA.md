@@ -225,3 +225,16 @@ El streaming "Escuchar en Vivo" producía bloqueos silenciosos en Safari (iPhone
 
 ### 🎓 Lecciones Aprendidas
 - **Safari / CoreAudio es implacable**: Mientras que Blink (Chrome) es tolerante frente a metadatos corruptos (trata de ingerir la persistencia PCM cueste lo que cueste, pagando el precio en buffering), el motor de WebKit rechaza preventivamente cualquier cabecera geométrica `RIFF` que no cuadre a la perfección para evitar deadlocks de decodificación.
+
+## 🧠 Upgrade Arquitectónico v1.0-dev.18: Web Audio API Streamer | 20-Feb-2026
+### 📜 El Problema
+Tras pulir las cabeceras WAV en la v17, Safari de iOS seguía negándose a reproducir el "Audio en Vivo", mientras Chrome lo reproducía con un indeseable lag o buffering inicial. La investigación reveló que el engine WebKit de Apple rechaza estricta y activamente cualquier streaming de Longitud Infinita (HTTP Chunked / sin Content-Length) inyectado directo a una etiqueta nativa `<audio>`.
+
+### 🛠️ La Solución
+1. **Destrucción de la Etiqueta HTML5 Nativa**: La UI web ya no delega el streaming al reproductor encapsulado de los navegadores (`new Audio('/api/stream')`).
+2. **Inyección de Web Audio API (Vanilla JS)**: Se ha escrito una rutina en `index.html` que usa un `fetch()` asíncrono y la clase `ReadableStream` para atrapar cada pedazo (chunk) de bytes puro conforme salen del servidor NanoHTTPD.
+3. **Conversión Aritmética Dinámica**: Javascript intercepta el array de Little-Endian 16-Bit PCM, decapitamos (ignoramos) los primeros 44 bytes para destruir el cabecero falso del WAV, y mapeamos matemáticamente cada short int a un `Float32Array` normalizado entre -1.0 y 1.0. 
+4. **Reproducción Programática Continua**: Se inyectan colas consecutivas al `AudioContext` de la tarjeta gráfica del navegador (gapless playback schedule).
+
+### 🎓 Lecciones Aprendidas
+- Nunca confíes en el estándar `<audio>` multiplataforma si sirves streaming infinito en HTTP genérico sin formatos paquetizados complejos (como HLS/M3U8). Escribir el descodificador en la capa de Javascript `AudioContext` no solo garantiza compatibilidad con las políticas paranoicas de iOS, sino que **elimina permanentemente el retraso de buffering** en cualquier navegador de escritorio como Chrome.
