@@ -253,3 +253,11 @@ El usuario solicitó erradicar el diseño morado básico ("Material Design Defau
 
 ### 🎓 Lecciones Aprendidas
 - Aislar el diseño en variables `:root` globales (CSS Custom Properties) ha permitido refactorizar toda la personalidad de la app en menos de 5 minutos, garantizando a largo plazo un mantenimiento de Frontend rapidísimo.
+
+## 🐛 Hotfix v1.0-dev.20: Desconexión JSON de Frontend | 20-Feb-2026
+### 📜 El Problema
+Al inyectar el diseño de "El Ojo del Abuelo" en la V19, el bloque iterativo de JavaScript (`files.forEach`) en `loadHistory()` asumió la existencia de variables (`f.lastModified`, `f.maxAmplitude`) que el Microservicio NanoHTTPD **nunca** enviaba, provocando que el renderizado de fechas crasheara mostrando "Invalid Date" y enmascarando el orden real descendente.
+
+### 🛠️ La Solución
+- Limpieza Javascript: Se ha re-esamblado el parseo numérico a `new Date(f.timestamp)` y formateado puro para el FileSize.
+- El algoritmo `Arrays.sort()` en Java (Backend) que usa `Long.compare(f2.lastModified(), f1.lastModified())` estaba y sigue estando matemáticamente perfecto para devolver los archivos más nuevos primero; el error era solamente del visualizador.

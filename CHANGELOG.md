@@ -1,5 +1,10 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.20] - 20-Feb-2026
+### Fixed
+- Hotfix visual: Las tarjetas del historial de grabaciones mostraban `Invalid Date` y un tamaño nulo debido a un desajuste entre el payload JSON del backend (`timestamp`) y el parser del Fronend (`lastModified`).
+- Al arreglar `Invalid Date`, las tarjetas vuelven a mostrar patentemente su ordenamiento cronológico descendente real (más recientes primero).
+
 ## [v1.0-dev.19] - 20-Feb-2026
 ### Changed
 - Refactorización total del *Design System* web para imitar genéticamente la estética "Cyber-Dark" técnica del proyecto hermano "El Ojo del Abuelo".

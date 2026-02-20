@@ -524,17 +524,20 @@
                         const card = document.createElement('div');
                         card.className = 'history-card';
 
-                        // Determinamos el color del borde por la severidad del pico (Estética Ojo del Abuelo)
-                        let borderColor = 'var(--status-green)';
-                        if (f.maxAmplitude > 25000) borderColor = 'var(--status-red)';
-                        else if (f.maxAmplitude > 15000) borderColor = 'var(--status-yellow)';
+                        // Todo es rojo carmesí base ya que WebServer no envía maxAmplitude
+                        card.style.borderLeftColor = 'var(--status-red)';
 
-                        card.style.borderLeftColor = borderColor;
+                        const dateObj = new Date(f.timestamp);
+                        const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString();
+
+                        // Formatear tamaño a KB o MB
+                        const sizeKB = f.size / 1024;
+                        const sizeStr = sizeKB > 1024 ? (sizeKB / 1024).toFixed(2) + ' MB' : sizeKB.toFixed(1) + ' KB';
 
                         card.innerHTML = `
                             <div class="history-card-header">
-                                <span class="history-date">${new Date(f.lastModified).toLocaleString()}</span>
-                                <span class="history-size">🔊 Pico: ${f.maxAmplitude} | 📁 ${(f.size / 1024).toFixed(1)} KB</span>
+                                <span class="history-date">🚨 ${dateStr}</span>
+                                <span class="history-size">📁 ${sizeStr}</span>
                             </div>
                             <audio controls preload="none">
                                 <source src="/api/audio?file=${encodeURIComponent(f.name)}" type="audio/wav">

@@ -1,10 +1,8 @@
-v1.0-dev.19 Upgrade Estético: The "El Ojo" Design System
+v1.0-dev.20 Hotfix Visual: Invalid Date & Unordered Cards
 
 ### 📜 El Problema
-El usuario solicitó erradicar el diseño morado básico ("Material Design Default") argumentando que parecía "una web feminista de Podemos". Propuso explícitamente adoptar e igualar el Look & Feel y la paleta de colores del proyecto hermano "El Ojo del Abuelo" (Cyber-Sec, Dark UI).
+Al inyectar el diseño de "El Ojo del Abuelo" en la V19, el bloque iterativo de JavaScript (`files.forEach`) en `loadHistory()` asumió la existencia de variables (`f.lastModified`, `f.maxAmplitude`) que el Microservicio NanoHTTPD nunca enviaba, provocando que el renderizado de fechas crasheara mostrando "Invalid Date" y enmascarando el orden real descendente.
 
 ### 🛠️ La Solución
-1. Extracción Genética: Se clonó e inspeccionó dinámicamente el código inyectado en red (NanoHttpServer.java) del repositorio del proyecto "El Ojo".
-2. Migración de CSS: En index.html de "El Oído", se reescribieron las CSS variables raíz: Fondos (#121212, #1f1f1f). Botón "Live" reconfigurado al icónico rojo vivo (#d32f2f) con la animación `@keyframes pulse` transplantada directamente.
-3. Rediseño de Componentes: Las tarjetas planas del historial pasaron a ser redondeadas, sin gradiente y reactivas al hover/active, integrando colores de severidad (verde, rojo, amarillo) dinámicamente.
-4. Android Native: El colors.xml del launcher Android también se oscureció (PrimaryDark #000000) para no desentonar.
+Limpieza Javascript: Se ha re-esamblado el parseo numérico a `new Date(f.timestamp)` y formateado puro para el FileSize.
+El algoritmo Arrays.sort() en Java (Backend) que usa `Long.compare(f2.lastModified(), f1.lastModified())` estaba y sigue estando matemáticamente perfecto para devolver los archivos más nuevos primero; el error era solamente visual.
