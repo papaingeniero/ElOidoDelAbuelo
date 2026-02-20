@@ -1,5 +1,11 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.8] - 20-Feb-2026
+### Added
+- Frontend Dashboard ("Centro de Mando") en HTML/CSS/JS puro en Modo Oscuro.
+- Vúmetro dinámico y "Badge de Estado" vía AJAX / Fetch API (Polling a 200ms).
+- Servidor `NanoHTTPD` expide Frontend mediante streaming local (Assets `newChunkedResponse`).
+
 ## [v1.0-dev.7] - 20-Feb-2026
 ### Fixed
 - Hotfix CRÍTICO: `SocketException: EACCES` en Android 10 al iniciar NanoHTTPD. Añadido `<uses-permission android:name="android.permission.INTERNET"/>` al Manifest.

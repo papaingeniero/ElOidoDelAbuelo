@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro de Mando - Oído del Abuelo</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --primary-color: #bb86fc;
+            --status-green: #03dac6;
+            --status-yellow: #ffb300;
+            --status-red: #cf6679;
+            --status-gray: #757575;
+            --max-amplitude: 32767;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .dashboard {
+            background-color: var(--surface-color);
+            border-radius: 12px;
+            padding: 30px;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            letter-spacing: 1px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+            background-color: var(--status-gray);
+            color: #fff;
+        }
+
+        .instrument-panel {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .meter-bg {
+            width: 100%;
+            height: 30px;
+            background-color: #333;
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .meter-fill {
+            height: 100%;
+            width: 0%;
+            background-color: var(--status-green);
+            transition: width 0.1s linear, background-color 0.2s ease;
+        }
+
+        .threshold-marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: rgba(255, 255, 255, 0.3);
+            left: calc((10000 / 32767) * 100%); /* 10000 is default SPIKE_THRESHOLD */
+            z-index: 10;
+        }
+        
+        .threshold-marker::after {
+            content: "Umbral";
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.5);
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <h1>Centro de Mando</h1>
+    <div id="statusBadge" class="status-badge">Conectando...</div>
+
+    <div class="instrument-panel">
+        <div class="label-row">
+            <span>Amplitud de Micrófono</span>
+            <span id="amplitudeValue">0</span>
+        </div>
+        <div class="meter-bg">
+            <div id="vumeter" class="meter-fill"></div>
+            <div class="threshold-marker"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const MAX_AMPLITUDE = 32767;
+    const SPIKE_THRESHOLD = 10000;
+    
+    const vumeter = document.getElementById('vumeter');
+    const statusBadge = document.getElementById('statusBadge');
+    const amplitudeValue = document.getElementById('amplitudeValue');
+
+    function updateDashboard() {
+        fetch('/api/status')
+            .then(response => {
+                if (!response.ok) throw new Error("Network response was not ok");
+                return response.json();
+            })
+            .then(data => {
+                const amp = data.currentAmplitude || 0;
+                const isRecording = data.isRecording;
+                const detectionEnabled = data.DETECTION_ENABLED;
+
+                // Actualizar texto numérico
+                amplitudeValue.textContent = Math.round(amp);
+
+                // Calcular porcentaje para ancho CSS
+                let percentage = (amp / MAX_AMPLITUDE) * 100;
+                if (percentage > 100) percentage = 100;
+                vumeter.style.width = percentage + '%';
+
+                // Lógica de colores y estados
+                if (!detectionEnabled) {
+                    statusBadge.textContent = "Standby";
+                    statusBadge.style.backgroundColor = "var(--status-gray)";
+                    vumeter.style.backgroundColor = "var(--status-gray)";
+                } else if (isRecording) {
+                    statusBadge.textContent = "Grabando Alarma";
+                    statusBadge.style.backgroundColor = "var(--status-red)";
+                    vumeter.style.backgroundColor = "var(--status-red)";
+                } else {
+                    statusBadge.textContent = "Escuchando";
+                    statusBadge.style.backgroundColor = "var(--status-green)";
+                    
+                    // Vúmetro dinámico en escucha
+                    if (amp > SPIKE_THRESHOLD) {
+                        vumeter.style.backgroundColor = "var(--status-yellow)";
+                    } else {
+                        vumeter.style.backgroundColor = "var(--status-green)";
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching status:', error);
+                statusBadge.textContent = "Sin Conexión";
+                statusBadge.style.backgroundColor = "var(--status-gray)";
+                vumeter.style.width = '0%';
+            });
+    }
+
+    // Polling agresivo para sensación de tiempo real fluido
+    setInterval(updateDashboard, 200);
+</script>
+
+</body>
+</html>

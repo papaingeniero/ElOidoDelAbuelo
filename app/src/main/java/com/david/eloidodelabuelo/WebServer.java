@@ -6,6 +6,9 @@ import android.content.SharedPreferences;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.InputStream;
+import java.io.IOException;
+
 import fi.iki.elonen.NanoHTTPD;
 
 public class WebServer extends NanoHTTPD {
@@ -41,8 +44,13 @@ public class WebServer extends NanoHTTPD {
         }
 
         if ("/".equals(uri)) {
-            String html = "<h1>El Oído del Abuelo - Servidor Activo</h1>";
-            return newFixedLengthResponse(Response.Status.OK, NanoHTTPD.MIME_HTML, html);
+            try {
+                InputStream is = context.getAssets().open("web/index.html");
+                return newChunkedResponse(Response.Status.OK, "text/html", is);
+            } catch (IOException e) {
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
+                        "No se pudo cargar el Dashboard: " + e.getMessage());
+            }
         }
 
         return newFixedLengthResponse(Response.Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "404 Not Found");

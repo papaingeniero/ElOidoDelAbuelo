@@ -100,3 +100,17 @@ Android impone una restricción férrea de seguridad: cualquier apertura de sock
 
 ### 🎓 Lecciones Aprendidas
 - Nunca subestimar la burocracia de permisos de Android. Un servidor local (NanoHTTPD) exige permisos de internet globales, rompiendo la asunción de que las conexiones loopback están exentas.
+
+## 🚀 Fase 3.2: Frontend Dashboard y Vúmetro AJAX v1.0-dev.8 | 20-Feb-2026
+### 📜 El Problema
+No podíamos incrustar páginas HTML estáticas y aburridas como *String constants* en Java; era sucio, poco mantenible e impedía separar la lógica backend de la UI. 
+
+### 🛠️ La Solución
+1. **Directorio Assets**: Se ha construido la arquitectura de Frontend dentro de `app/src/main/assets/web/`.
+2. **Vanilla JS & UI Muteada**: `index.html` sirve un Dashboard en "Modo Oscuro" usando Variables de CSS puras (`--bg-color`, `--status-green`, etc.).
+3. **Vúmetro en Tiempo Real**: Un polling agresivo de JS cada 200ms `fetch('/api/status')` altera dinámicamente el ancho (`width`) y color de background del vúmetro.
+4. **Respuesta Chunked en NanoHTTPD**: El viejo endpoint raíz `/` de `WebServer.java` ahora lee dinámicamente `.getAssets().open("web/index.html")` y envía el HTML con un `newChunkedResponse` sin saturar la RAM.
+
+### 🎓 Lecciones Aprendidas
+- Emplear `InputStream` de Android Assets directo al `newChunkedResponse` de NanoHTTPD es la vía más limpia y eficiente (`0-copy` conceptual) para escupir Frontend complejo en aplicaciones IoT.
+- El polling a 200ms es perfectamente tolerado por NanoHTTPD en redes locales sin degradar la memoria de Android.
