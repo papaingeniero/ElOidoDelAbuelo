@@ -11,7 +11,12 @@ import android.util.Log;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -38,6 +43,15 @@ public class AudioSentinel {
 
     private volatile double currentAmplitude = 0;
     private volatile boolean isRecordingStatus = false;
+    private final CopyOnWriteArrayList<OutputStream> liveListeners = new CopyOnWriteArrayList<>();
+
+    public void addLiveListener(OutputStream os) {
+        liveListeners.add(os);
+    }
+
+    public void removeLiveListener(OutputStream os) {
+        liveListeners.remove(os);
+    }
 
     public double getCurrentAmplitude() {
         return currentAmplitude;
@@ -199,14 +213,28 @@ public class AudioSentinel {
                         }
                     }
 
-                    // 5. Volcado a WAV
-                    if (isRecording) {
+                    // 5. Preparar Buffer y Streaming en vivo (Walkie-Talkie)
+                    boolean hasListeners = !liveListeners.isEmpty();
+                    if (isRecording || hasListeners) {
                         // Convertir short[] a byte[] asumiendo Little Endian
                         for (int i = 0; i < readResult; i++) {
                             byteBuffer[i * 2] = (byte) (buffer[i] & 0x00FF);
                             byteBuffer[i * 2 + 1] = (byte) ((buffer[i] & 0xFF00) >> 8);
                         }
 
+                        if (hasListeners) {
+                            for (OutputStream os : liveListeners) {
+                                try {
+                                    os.write(byteBuffer, 0, readResult * 2);
+                                } catch (IOException e) {
+                                    liveListeners.remove(os); // El oyente cerró la conexión HTTP
+                                }
+                            }
+                        }
+                    }
+
+                    // 6. Volcado a WAV de Alerta Histórica
+                    if (isRecording) {
                         try {
                             if (fos != null) {
                                 fos.write(byteBuffer, 0, readResult * 2);

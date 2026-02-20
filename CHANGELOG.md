@@ -1,5 +1,10 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.11] - 20-Feb-2026
+### Added
+- **Modo Walkie-Talkie**: Streaming de audio ilimitado y en crudo `.wav` nativo desde el Front-End directamente al motor microfónico.
+- Endpoints `PipedInputStream` concurrentes en NanoHTTPD que soportan transmisiones vivas con cabecera WAV de tamaño desconocido (`0xFFFFFFFF`).
+
 ## [v1.0-dev.10] - 20-Feb-2026
 ### Added
 - Sección en el UI "Historial de Alertas" con streaming en vivo AJAX de las últimas detecciones de sonido.

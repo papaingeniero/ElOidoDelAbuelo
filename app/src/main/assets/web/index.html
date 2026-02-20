@@ -262,6 +262,9 @@
         <div id="statusBadge" class="status-badge">Conectando...</div>
 
         <div class="instrument-panel">
+            <button id="btnLive" class="settings-btn"
+                style="background-color: var(--status-gray); display: block; width: 100%; margin-top: 10px; margin-bottom: 30px; text-align: center; font-size: 1.1rem; padding: 15px;"
+                onclick="toggleLiveAudio()">📻 Escuchar en Vivo (OFF)</button>
             <div class="label-row">
                 <span>Amplitud de Micrófono</span>
                 <span id="amplitudeValue">0</span>
@@ -320,6 +323,7 @@
     <script>
         const MAX_AMPLITUDE = 32767;
         let latestConfig = {};
+        let liveAudio = null;
 
         const vumeter = document.getElementById('vumeter');
         const statusBadge = document.getElementById('statusBadge');
@@ -464,6 +468,22 @@
                     console.error("Error cargando historial:", err);
                     container.innerHTML = '<p style="text-align: center; color: var(--status-red); font-size: 0.9rem;">Error de conexión.</p>';
                 });
+        }
+
+        function toggleLiveAudio() {
+            const btn = document.getElementById('btnLive');
+            if (liveAudio == null) {
+                liveAudio = new Audio('/api/stream');
+                liveAudio.play().catch(e => console.error("Auto-play error", e));
+                btn.textContent = "📻 Escuchar en Vivo (ON)";
+                btn.style.backgroundColor = "var(--status-green)";
+            } else {
+                liveAudio.pause();
+                liveAudio.src = '';
+                liveAudio = null;
+                btn.textContent = "📻 Escuchar en Vivo (OFF)";
+                btn.style.backgroundColor = "var(--status-gray)";
+            }
         }
 
         // Polling agresivo para sensación de tiempo real fluido

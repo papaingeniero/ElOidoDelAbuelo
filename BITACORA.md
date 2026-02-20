@@ -143,3 +143,16 @@ De nada sirve detectar un problema si no podemos evaluar las pruebas de inmediat
 ### 🎓 Lecciones Aprendidas
 - Emplazar el tag `<audio controls preload="none">` protege la salud y la memoria de servidores ligeros emulados permitiendo listar infinitas pistas consumiendo cero bandwidth inicial de red.
 - Enviar el objeto crudo `FileInputStream` a NanoHTTPD es la verdadera panacea Zero-Copy inter-procesos para Android embebido TCP.
+
+## 🚀 Fase 5: Modo Walkie-Talkie (Streaming de Audio Real-Time) v1.0-dev.11 | 20-Feb-2026
+### 📜 El Problema
+Solo teníamos datos históricos o telemetría de amplitud, pero en un caso de alarma, es vital escuchar el entorno en ese preciso microsegundo antes de que se grabe, de forma continua e ilimitada. Los audios HTML5 asumen que siempre conocen el final del archivo.
+
+### 🛠️ La Solución
+1. **AudioSentinel como Difusor Concurrent**: Añadimos una `CopyOnWriteArrayList<OutputStream>` que registra y desvincula iterativamente descriptores HTTP abiertos. Cada vuelta del bucle de captura empuja bytes en caliente a todo array list vivo.
+2. **Endpoint `/api/stream` y el Espejismo WAV**: Se instanció la dupla gloriosa de Java `PipedInputStream` y `PipedOutputStream`.
+3. **El Engaño a Safari/Chrome**: Escribimos *a mano* los 44 bytes sagrados del Header WAV. En el tamaño absoluto de los chunks (`SubChunk2Size` y `ChunkSize`) inyectamos el valor hexadecimal tope de un entero sin signo de 32 bits: `0xFFFFFFFF`.
+4. **Respuesta Transaccional**: Esto convence al reproductor del Frontend de que acaba de descargar un archivo que dura teóricamente el equivalente a meses ininterrumpidos. Se engancha por ChunkedResponse y engulle los bytes *Little Endian* del Sentinel en directo bajo una latencia ridícula de milisegundos.
+
+### 🎓 Lecciones Aprendidas
+- Emplear la técnica del Header `0xFFFFFFFFL` sobre un `PipedOutputStream` es el pináculo de la piratería legal TCP para forzar HTML5 a reproducir streams PCM crudos sin intermediarios WebSocket ni librerías de terceros NodeJS/WebRTC. Una arquitectura 100% nativa.
