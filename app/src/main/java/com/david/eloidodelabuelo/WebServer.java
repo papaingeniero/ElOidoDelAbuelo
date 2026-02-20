@@ -3,11 +3,18 @@ package com.david.eloidodelabuelo;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import android.os.Environment;
+
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -86,6 +93,63 @@ public class WebServer extends NanoHTTPD {
             } catch (Exception e) {
                 return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
                         "Error parsing POST: " + e.getMessage());
+            }
+        }
+
+        if ("/api/recordings".equals(uri)) {
+            try {
+                File dir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
+                File[] files = dir != null ? dir.listFiles((dir1, name) -> name.endsWith(".wav")) : new File[0];
+
+                if (files == null)
+                    files = new File[0];
+
+                Arrays.sort(files, new Comparator<File>() {
+                    @Override
+                    public int compare(File f1, File f2) {
+                        return Long.compare(f2.lastModified(), f1.lastModified());
+                    }
+                });
+
+                JSONArray jsonArray = new JSONArray();
+                for (File file : files) {
+                    JSONObject obj = new JSONObject();
+                    obj.put("name", file.getName());
+                    obj.put("size", file.length());
+                    obj.put("timestamp", file.lastModified());
+                    jsonArray.put(obj);
+                }
+
+                return newFixedLengthResponse(Response.Status.OK, "application/json", jsonArray.toString());
+            } catch (Exception e) {
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
+                        "Error al leer historial");
+            }
+        }
+
+        if ("/api/audio".equals(uri)) {
+            Map<String, String> parms = session.getParms();
+            String fileName = parms.get("file");
+
+            if (fileName == null || fileName.contains("/") || fileName.contains("..")) {
+                return newFixedLengthResponse(Response.Status.FORBIDDEN, NanoHTTPD.MIME_PLAINTEXT,
+                        "Acceso denegado o archivo inválido");
+            }
+
+            File dir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
+            File audioFile = new File(dir, fileName);
+
+            if (!audioFile.exists()) {
+                return newFixedLengthResponse(Response.Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT,
+                        "Archivo no encontrado");
+            }
+
+            try {
+                FileInputStream fis = new FileInputStream(audioFile);
+                return newChunkedResponse(Response.Status.OK, "audio/wav", fis);
+            } catch (Exception e) {
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
+                        "Error reproduciendo audio");
             }
         }
 

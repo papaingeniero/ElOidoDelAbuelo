@@ -1,5 +1,12 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.10] - 20-Feb-2026
+### Added
+- Sección en el UI "Historial de Alertas" con streaming en vivo AJAX de las últimas detecciones de sonido.
+- Reproductor nativo `<audio controls>` inyectado dinámicamente con optimización `preload="none"`.
+- Endpoint Backend GET `/api/recordings` que retorna la lista del directorio y JSON metadata forense (peso, timestamp).
+- Endpoint Backend GET `/api/audio` con enrutador para Streaming puro (`newChunkedResponse(FileInputStream)`).
+
 ## [v1.0-dev.9] - 20-Feb-2026
 ### Added
 - Panel UI de Configuración Bidireccional Flotante (Modal Ajustes).

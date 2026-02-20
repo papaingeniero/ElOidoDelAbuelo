@@ -129,3 +129,17 @@ El panel web construido en la fase anterior era de "solo lectura". Si detectába
 ### 🎓 Lecciones Aprendidas
 - El truco del mapa (`files.get("postData")`) es el estándar *de facto* más estable para obligar a un servidor primitivo como NanoHTTPD a tragar JSON arrays transparentes sin saturarse.
 - Usar un Endpoint unificado (`/api/status` devolviendo toda la configuración) simplifica masivamente la arquitectura JS reduciendo asincronías y estados cruzados en IoTs de bajos recursos (Xiaomi Redmi 9C).
+
+## 🚀 Fase 4: Historial Forense y Streaming de Audio v1.0-dev.10 | 20-Feb-2026
+### 📜 El Problema
+De nada sirve detectar un problema si no podemos evaluar las pruebas de inmediato. Las grabaciones de audio en crudo `.wav` quedaban aisladas en la memoria local del Redmi 9C forzando al operador a extraerlas manualmente por cable o administrador de archivos de Android. Tarea tediosa en despliegue.
+
+### 🛠️ La Solución
+1. **Endpoint REST API (`/api/recordings`)**: Se ordenó a `WebServer.java` leer `DIRECTORY_MUSIC`. Un filtro anónimo depura iteraciones listando solo archivos `.wav` y los ordena cronológicamente (más recientes primero). La metadata calculada es devuelta en un JSONArray.
+2. **Audio Streaming Engine (`/api/audio`)**: Implementación del endpoint dinámico que acepta el `queryParam` string `file`. Se protege la integridad del sistema anulando cualquier intento de *Path Traversal* (`../` o `/`). Se canaliza el byteflow de disco puro hacia la red mediante `newChunkedResponse` alimentado por un crudo `FileInputStream`.
+3. **Frontend AJAX**: Se acopló la capa de control *Historial de Alertas* al `index.html`. Una función pura JS `loadHistory` maqueta iterativamente bloques `div` y les incrusta etiquetas HTML5 `<audio controls preload="none">`.
+4. **Protección de Red Core**: Forzar el uso indiscriminado de `preload="none"` es la diferencia entre un dashboard funcional y estampar la RAM del NanoHTTPD contra el suelo. Impide que 10-20 audios pesados carguen su byterate anticipado sobre el Thread UDP principal del servidor web al mismo tiempo en el *refresh*.
+
+### 🎓 Lecciones Aprendidas
+- Emplazar el tag `<audio controls preload="none">` protege la salud y la memoria de servidores ligeros emulados permitiendo listar infinitas pistas consumiendo cero bandwidth inicial de red.
+- Enviar el objeto crudo `FileInputStream` a NanoHTTPD es la verdadera panacea Zero-Copy inter-procesos para Android embebido TCP.
