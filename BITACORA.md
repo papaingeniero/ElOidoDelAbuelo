@@ -75,3 +75,18 @@ Necesitábamos dotar al centinela de inteligencia para discernir verdaderos ruid
 ### 🎓 Lecciones Aprendidas
 - La inyección del `Context` en `AudioSentinel` permite que el hilo hijo reaccione a cambios de preferencias hechos por la UI inmediatamente, formando la base para el frontend web futuro.
 - El uso de `RandomAccessFile` es indispensable para fijar el tamaño final del archivo `.wav` sin corromper el flujo crudo grabado inicialmente.
+
+## 🚀 Fase 3: Panel Web y Telemetría v1.0-dev.6 | 20-Feb-2026
+### 📜 El Problema
+Para gobernar el centinela desde otro dispositivo en la misma red y monitorizar sus detecciones en tiempo real (sin necesidad de mirar el móvil físico), necesitamos exponer su estado interno vía red.
+
+### 🛠️ La Solución
+1. **Telemetría en AudioSentinel**: Añadimos variables volátiles (`currentAmplitude`, `isRecordingStatus`) para ser leídas de forma *thread-safe* desde fuera.
+2. **WebServer**: Implementación ligera usando `NanoHTTPD` en el puerto 8080.
+3. **Endpoint API**: La ruta `/api/status` devuelve un JSON estructurado con la amplitud de ruido en tiempo real, estado de grabación y estado de `DETECTION_ENABLED`.
+4. **Endpoint UI**: La ruta raíz `/` escupe por ahora un HTML temporal en crudo.
+5. **Integración**: `OidoService` inicializa el servidor junto con el centinela, encriptando el ciclo de vida de ambos en `onCreate()` y `onDestroy()`.
+
+### 🎓 Lecciones Aprendidas
+- La inicialización y apagado coordinado (`start`/`stop`) de hilos secundarios y servidores web dentro de un `Service` previene bloqueos de puerto (`BindException`) cuando Android intenta reiniciar el componente tras liberaciones de memoria por doze-mode.
+- El objeto estándar `JSONObject` de la API de Android agiliza la construcción de los payloads JSON sin necesidad de importar librerías pesadas como GSON para esta etapa temprana.

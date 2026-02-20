@@ -10,6 +10,8 @@ import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
+import java.io.IOException;
+
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
@@ -20,6 +22,7 @@ public class OidoService extends Service {
     private static final int NOTIFICATION_ID = 1;
 
     private AudioSentinel audioSentinel;
+    private WebServer webServer;
 
     @Override
     public void onCreate() {
@@ -30,6 +33,14 @@ public class OidoService extends Service {
 
         audioSentinel = new AudioSentinel(this);
         audioSentinel.start();
+
+        webServer = new WebServer(this, audioSentinel);
+        try {
+            webServer.start();
+            Log.d(TAG, "WebServer iniciado en el puerto 8080");
+        } catch (IOException e) {
+            Log.e(TAG, "Error iniciando WebServer", e);
+        }
     }
 
     @Override
@@ -42,6 +53,9 @@ public class OidoService extends Service {
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "onDestroy: Deteniendo servicio");
+        if (webServer != null) {
+            webServer.stop();
+        }
         if (audioSentinel != null) {
             audioSentinel.stop();
         }

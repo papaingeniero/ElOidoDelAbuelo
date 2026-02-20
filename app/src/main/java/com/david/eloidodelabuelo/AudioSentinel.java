@@ -36,6 +36,17 @@ public class AudioSentinel {
     private AudioRecord audioRecord;
     private Context context;
 
+    private volatile double currentAmplitude = 0;
+    private volatile boolean isRecordingStatus = false;
+
+    public double getCurrentAmplitude() {
+        return currentAmplitude;
+    }
+
+    public boolean isCurrentlyRecording() {
+        return isRecordingStatus;
+    }
+
     public AudioSentinel(Context context) {
         this.context = context.getApplicationContext();
     }
@@ -115,6 +126,7 @@ public class AudioSentinel {
                         // Forzar cierre si se desactiva en medio de una grabación
                         closeWavFile(fos, currentWavFile, totalAudioLen);
                         isRecording = false;
+                        isRecordingStatus = false;
                         fos = null;
                         currentWavFile = null;
                     }
@@ -131,6 +143,7 @@ public class AudioSentinel {
                 if (readResult > 0) {
                     long currentTime = System.currentTimeMillis();
                     double amplitude = calculateAmplitude(buffer, readResult);
+                    this.currentAmplitude = amplitude;
 
                     // 3. Lógica del Escudo Analizador de Picos
                     if (amplitude > spikeThreshold) {
@@ -161,6 +174,7 @@ public class AudioSentinel {
                                                                                              // que acaba de disparar
                         if (!isRecording) {
                             isRecording = true;
+                            isRecordingStatus = true;
                             totalAudioLen = 0;
                             recordingEndTime = currentTime + recordDurationMs;
 
@@ -201,6 +215,7 @@ public class AudioSentinel {
                         } catch (IOException e) {
                             Log.e(TAG, "Error escribiendo en WAV", e);
                             isRecording = false; // Abortar
+                            isRecordingStatus = false;
                         }
 
                         // Verificar si el tiempo de grabación expiró
@@ -208,6 +223,7 @@ public class AudioSentinel {
                             Log.d(TAG, "Fin de grabación por tiempo.");
                             closeWavFile(fos, currentWavFile, totalAudioLen);
                             isRecording = false;
+                            isRecordingStatus = false;
                             fos = null;
                             currentWavFile = null;
                         }
@@ -221,6 +237,7 @@ public class AudioSentinel {
             // Cierre seguro al salir del bucle si estaba grabando
             if (isRecording) {
                 closeWavFile(fos, currentWavFile, totalAudioLen);
+                isRecordingStatus = false;
             }
 
         } catch (Exception e) {

@@ -1,5 +1,12 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.6] - 20-Feb-2026
+### Added
+- Clase `WebServer` (`NanoHTTPD`) escuchando en el puerto local 8080.
+- Endpoint `/api/status` con telemetría en vivo vía un JSON Object.
+- Variables volátiles en `AudioSentinel` conectadas a endpoints de lectura thread-safe.
+- Integración del ciclo de inicio y apagado del servidor sobre `OidoService`.
+
 ## [v1.0-dev.5] - 20-Feb-2026
 ### Added
 - Motor de grabación WAV con ajuste en tiempo real de tamaño en cabecera.
