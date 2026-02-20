@@ -1,5 +1,11 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.19] - 20-Feb-2026
+### Changed
+- Refactorización total del *Design System* web para imitar genéticamente la estética "Cyber-Dark" técnica del proyecto hermano "El Ojo del Abuelo".
+- Reescritos los colores nativos de la aplicación (`colors.xml`) del violeta predeterminado por el Deep Black.
+- Transplante directo de la animación rojeante (`pulse`) para el indicador de escucha en vivo activa.
+
 ## [v1.0-dev.18] - 20-Feb-2026
 ### Changed
 - El reproductor nativo `<audio>` del panel web de "Escuchar en Vivo" ha sido erradicado en favor de un motor algorítmico VanillaJS basado en **Web Audio API**.

@@ -238,3 +238,18 @@ Tras pulir las cabeceras WAV en la v17, Safari de iOS seguía negándose a repro
 
 ### 🎓 Lecciones Aprendidas
 - Nunca confíes en el estándar `<audio>` multiplataforma si sirves streaming infinito en HTTP genérico sin formatos paquetizados complejos (como HLS/M3U8). Escribir el descodificador en la capa de Javascript `AudioContext` no solo garantiza compatibilidad con las políticas paranoicas de iOS, sino que **elimina permanentemente el retraso de buffering** en cualquier navegador de escritorio como Chrome.
+
+## 🎨 Upgrade Estético v1.0-dev.19: The "El Ojo" Design System | 20-Feb-2026
+### 📜 El Problema
+El usuario solicitó erradicar el diseño morado básico ("Material Design Default") argumentando que parecía "una web feminista de Podemos". Propuso explícitamente adoptar e igualar el *Look & Feel* y la paleta de colores del proyecto hermano "El Ojo del Abuelo" (Cyber-Sec, Dark UI).
+
+### 🛠️ La Solución
+1. **Extracción Genética**: Se clonó e inspeccionó dinámicamente el código inyectado en red (`NanoHttpServer.java`) del repositorio del proyecto "El Ojo".
+2. **Migración de CSS**: En `index.html` de "El Oído", se reescribieron las CSS variables raíz: 
+   - Fondos: `#121212`, `#1f1f1f`.
+   - Elementos Activos: Botón "Live" reconfigurado al icónico rojo vivo (`#d32f2f`) con la animación `@keyframes pulse` transplantada directamente.
+3. **Rediseño de Componentes**: Las tarjetas planas del historial de grabaciones pasaron a ser redondeadas, sin gradiente y reactivas al hover/active, integrando colores de severidad (verde, rojo, amarillo) dinámicamente mediante JS.
+4. **Android Native**: El `colors.xml` del launcher Android también se oscureció (PrimaryDark `#000000`) para no desentonar con el portal web.
+
+### 🎓 Lecciones Aprendidas
+- Aislar el diseño en variables `:root` globales (CSS Custom Properties) ha permitido refactorizar toda la personalidad de la app en menos de 5 minutos, garantizando a largo plazo un mantenimiento de Frontend rapidísimo.

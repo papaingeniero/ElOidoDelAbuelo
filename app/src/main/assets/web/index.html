@@ -8,13 +8,17 @@
     <style>
         :root {
             --bg-color: #121212;
-            --surface-color: #1e1e1e;
-            --text-color: #e0e0e0;
-            --primary-color: #bb86fc;
+            --surface-color: #1f1f1f;
+            --text-color: #ffffff;
+            --text-muted: #888888;
+            --primary-color: #d32f2f;
+            --primary-dark: #9a0007;
             --status-green: #03dac6;
             --status-yellow: #ffb300;
-            --status-red: #cf6679;
+            --status-red: #d32f2f;
             --status-gray: #757575;
+            --item-bg: #2c2c2c;
+            --item-active: #3d3d3d;
             --max-amplitude: 32767;
         }
 
@@ -112,7 +116,7 @@
 
         .settings-btn {
             background-color: var(--primary-color);
-            color: #000;
+            color: #fff;
             border: none;
             padding: 8px 16px;
             border-radius: 8px;
@@ -125,6 +129,31 @@
 
         .settings-btn:hover {
             opacity: 0.8;
+            background-color: var(--primary-dark);
+        }
+
+        /* LIVE BUTTON PULSE ANIMATION (El Ojo Style) */
+        .live-btn-active {
+            background-color: var(--status-red) !important;
+            color: white !important;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.7);
+            }
+
+            70% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(211, 47, 47, 0);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(211, 47, 47, 0);
+            }
         }
 
         .modal {
@@ -141,18 +170,20 @@
         }
 
         .modal-content {
-            background: var(--surface-color);
-            padding: 20px;
+            background: #222222;
+            padding: 25px;
             border-radius: 12px;
-            width: 90%;
+            width: 85%;
             max-width: 400px;
-            text-align: left;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            max-height: 85vh;
+            overflow-y: auto;
         }
 
         .modal-content h2 {
             margin-top: 0;
-            color: var(--primary-color);
+            color: var(--status-green);
         }
 
         .form-group {
@@ -196,13 +227,16 @@
         }
 
         .btn-save {
-            background: var(--status-green);
-            color: #000;
+            background: #2e7d32;
+            color: white;
+            flex: 1;
+            margin-right: 10px;
         }
 
         .btn-close {
-            background: #555;
-            color: #fff;
+            background: #c62828;
+            color: white;
+            flex: 1;
         }
 
         .history-panel {
@@ -217,13 +251,20 @@
         }
 
         .history-card {
-            background-color: #2c2c2c;
-            border-radius: 8px;
+            background-color: var(--item-bg);
+            border-radius: 12px;
             padding: 15px;
             margin-bottom: 15px;
             display: flex;
             flex-direction: column;
-            border-left: 4px solid var(--status-red);
+            border-left: 4px solid var(--status-gray);
+            /* Cambiará dinámicamente */
+            transition: transform 0.1s, background-color 0.2s;
+        }
+
+        .history-card:active {
+            transform: scale(0.98);
+            background-color: var(--item-active);
         }
 
         .history-card-header {
@@ -385,12 +426,12 @@
                         statusBadge.style.backgroundColor = "var(--status-red)";
                         vumeter.style.backgroundColor = "var(--status-red)";
                     } else {
-                        statusBadge.textContent = "Escuchando";
-                        statusBadge.style.backgroundColor = "var(--status-green)";
+                        statusBadge.textContent = "Vigilando";
+                        statusBadge.style.backgroundColor = "var(--primary-dark)";
 
                         // Vúmetro dinámico en escucha
                         if (amp > currentSpikeThreshold) {
-                            vumeter.style.backgroundColor = "var(--status-yellow)";
+                            vumeter.style.backgroundColor = "var(--status-red)";
                         } else {
                             vumeter.style.backgroundColor = "var(--status-green)";
                         }
@@ -438,13 +479,25 @@
                 .then(data => {
                     if (data.status === 'ok') {
                         closeSettings();
+                        updateDashboard();
                     } else {
-                        alert('Error al guardar: ' + data.status);
+                        alert("Error guardando: " + data.message);
                     }
                 })
-                .catch(err => {
-                    alert('Error de red al guardar ajustes.');
-                    console.error(err);
+                .catch(err => alert("Error de red al guardar"));
+        }
+
+        function deleteRecordings() {
+            if (!confirm("⚠️ ¿Pulsar el Botón del Pánico? Se borrará TODO el historial permanentemente.")) return;
+
+            fetch('/api/recordings', { method: 'DELETE' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        loadHistory();
+                    } else {
+                        alert("Error borrando: " + data.message);
+                    }
                 });
         }
 
@@ -457,37 +510,44 @@
         }
 
         function loadHistory() {
-            const container = document.getElementById('historyContainer');
-            container.innerHTML = '<p style="text-align: center; color: #888; font-size: 0.9rem;">Cargando historial...</p>';
-
             fetch('/api/recordings')
-                .then(res => res.json())
-                .then(data => {
-                    container.innerHTML = '';
-                    if (data.length === 0) {
-                        container.innerHTML = '<p style="text-align: center; color: #888; font-size: 0.9rem;">No hay alertas registradas todavía.</p>';
+                .then(r => r.json())
+                .then(files => {
+                    const list = document.getElementById('historyContainer');
+                    list.innerHTML = '';
+                    if (files.length === 0) {
+                        list.innerHTML = '<div style="text-align:center; color:#888;">No hay grabaciones todavía.</div>';
                         return;
                     }
 
-                    data.forEach(item => {
-                        const dateObj = new Date(item.timestamp);
-                        const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString();
-
+                    files.forEach(f => {
                         const card = document.createElement('div');
                         card.className = 'history-card';
+
+                        // Determinamos el color del borde por la severidad del pico (Estética Ojo del Abuelo)
+                        let borderColor = 'var(--status-green)';
+                        if (f.maxAmplitude > 25000) borderColor = 'var(--status-red)';
+                        else if (f.maxAmplitude > 15000) borderColor = 'var(--status-yellow)';
+
+                        card.style.borderLeftColor = borderColor;
+
                         card.innerHTML = `
                             <div class="history-card-header">
-                                <span class="history-date">🚨 Alerta: ${dateStr}</span>
-                                <span class="history-size">${formatBytes(item.size)}</span>
+                                <span class="history-date">${new Date(f.lastModified).toLocaleString()}</span>
+                                <span class="history-size">🔊 Pico: ${f.maxAmplitude} | 📁 ${(f.size / 1024).toFixed(1)} KB</span>
                             </div>
-                            <audio controls src="/api/audio?file=${encodeURIComponent(item.name)}" preload="none"></audio>
+                            <audio controls preload="none">
+                                <source src="/api/audio?file=${encodeURIComponent(f.name)}" type="audio/wav">
+                                Tu navegador no soporta la etiqueta de audio.
+                            </audio>
                         `;
-                        container.appendChild(card);
+                        list.appendChild(card);
                     });
                 })
                 .catch(err => {
                     console.error("Error cargando historial:", err);
-                    container.innerHTML = '<p style="text-align: center; color: var(--status-red); font-size: 0.9rem;">Error de conexión.</p>';
+                    const list = document.getElementById('historyContainer');
+                    list.innerHTML = '<p style="text-align: center; color: var(--status-red); font-size: 0.9rem;">Error de conexión.</p>';
                 });
         }
 
@@ -573,7 +633,7 @@
             }
             const btn = document.getElementById('btnLive');
             btn.textContent = "📻 Escuchar en Vivo (OFF)";
-            btn.style.backgroundColor = "var(--status-gray)";
+            btn.classList.remove('live-btn-active');
         }
 
         function toggleLiveAudio() {
@@ -584,7 +644,7 @@
 
                 playLiveStream();
                 btn.textContent = "📻 Escuchar en Vivo (ON)";
-                btn.style.backgroundColor = "var(--status-green)";
+                btn.classList.add('live-btn-active');
             } else {
                 stopLiveStream();
             }
