@@ -1,0 +1,12 @@
+v1.0-dev.17 Fix Estructural: Streaming WAV Estricto (Safari/iOS)
+
+## 🎶 Fix Estructural v1.0-dev.17: Streaming WAV Estricto (Safari/iOS) | 20-Feb-2026
+### 📜 El Problema
+El streaming "Escuchar en Vivo" producía bloqueos silenciosos en Safari (iPhone), quedando la etiqueta `<audio>` atascada indefinidamente, mientras que en Chrome (Mac) funcionaba pero acumulando un fuerte retardo de buffering.
+
+### 🛠️ La Solución
+1. **Reconstrucción Matemática de Cabeceras WAV**: El código Java (`WebServer` y `AudioSentinel`) estaba emitiendo un torrente con `BlockAlign = 4`, que es inválido para frecuencias de 16-bit Mono. Se ha corregido la firma inyectando la fórmula estricta: `channels * 16 / 8 = 2` y `ByteRate = 32000`.
+2. **Purgado de MIME HTTP**: Se forzó en el servidor la cabecera `audio/wav` explícita en lugar de texto plano o mime experimental, junto con los directivos `keep-alive` y `no-cache`.
+
+### 🎓 Lecciones Aprendidas
+- **Safari / CoreAudio es implacable**: Mientras que Blink (Chrome) es tolerante frente a metadatos corruptos (trata de ingerir la persistencia PCM cueste lo que cueste, pagando el precio en buffering), el motor de WebKit rechaza preventivamente cualquier cabecera geométrica `RIFF` que no cuadre a la perfección para evitar deadlocks de decodificación.

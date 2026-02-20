@@ -207,8 +207,8 @@ public class WebServer extends NanoHTTPD {
                 long totalDataLen = 0xFFFFFFFFL; // inf
                 long totalAudioLen = 0xFFFFFFFFL; // inf
                 long longSampleRate = 16000;
-                long byteRate = 16000 * 2;
                 byte channels = 1;
+                long byteRate = 16000 * channels * 2; // SampleRate * NumChannels * BitsPerSample/8
 
                 header[0] = 'R';
                 header[1] = 'I';
@@ -242,7 +242,7 @@ public class WebServer extends NanoHTTPD {
                 header[29] = (byte) ((byteRate >> 8) & 0xff);
                 header[30] = (byte) ((byteRate >> 16) & 0xff);
                 header[31] = (byte) ((byteRate >> 24) & 0xff);
-                header[32] = (byte) (2 * 16 / 8);
+                header[32] = (byte) (channels * 16 / 8); // Block Align = NumChannels * BitsPerSample/8
                 header[33] = 0;
                 header[34] = 16;
                 header[35] = 0;
@@ -259,7 +259,10 @@ public class WebServer extends NanoHTTPD {
 
                 sentinel.addLiveListener(pipedOutputStream);
 
-                return newChunkedResponse(Response.Status.OK, "audio/wav", pipedInputStream);
+                Response r = newChunkedResponse(Response.Status.OK, "audio/wav", pipedInputStream);
+                r.addHeader("Connection", "keep-alive");
+                r.addHeader("Cache-Control", "no-cache");
+                return r;
             } catch (Exception e) {
                 return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
                         "Error de streaming");

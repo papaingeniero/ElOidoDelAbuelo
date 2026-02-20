@@ -1,5 +1,10 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.17] - 20-Feb-2026
+### Fixed
+- Arreglado un bug crítico de insonoridad en Safari / iPhone ("Escuchar en Vivo" no emitía sonido) reconstruyendo analíticamente los parámetros Block Align y Byte Rate del encabezado PCM (`.wav`).
+- Minimizado el retardo (buffering lag) de "Escuchar en Vivo" en Chrome gracias a la firma MIME `audio/wav` prístina.
+
 ## [v1.0-dev.16] - 20-Feb-2026
 ### Added
 - Identidad visual dinámica en el Frontend: el título principal y la pestaña del navegador ahora muestran explícitamente "El Oído del Abuelo" y el número de versión activa (ej. v1.0-dev.16).
