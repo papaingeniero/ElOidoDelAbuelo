@@ -8,8 +8,8 @@ android {
         applicationId "com.david.eloidodelabuelo"
         minSdk 29
         targetSdk 29
-        versionCode 29
-        versionName "v1.0-dev.29"
+        versionCode 30
+        versionName "v1.0-dev.30"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

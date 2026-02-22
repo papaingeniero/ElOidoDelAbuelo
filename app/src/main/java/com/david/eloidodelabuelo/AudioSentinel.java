@@ -217,15 +217,13 @@ public class AudioSentinel {
                             fos = null;
                         }
                     }
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                    continue;
+                    // Ya NO hacemos Thread.sleep(1000) ni 'continue' porque provoca Buffer Overflow
+                    // en Xiaomi
+                    // Dejamos que 'audioRecord.read()' bloquee de forma nativa esperando el buffer,
+                    // drenándolo en silencio.
                 }
 
-                // Leer audio
+                // Leer audio (Esto bloqueará el hilo eficientemente y evita el Overflow)
                 int readResult = audioRecord.read(buffer, 0, buffer.length);
                 if (readResult > 0) {
                     long currentTime = System.currentTimeMillis();
@@ -323,6 +321,7 @@ public class AudioSentinel {
                                 format.setInteger(MediaFormat.KEY_AAC_PROFILE,
                                         MediaCodecInfo.CodecProfileLevel.AACObjectLC);
                                 format.setInteger(MediaFormat.KEY_BIT_RATE, 32000);
+                                format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, bufferSize * 2);
                                 codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC);
                                 codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
                                 codec.start();
@@ -352,34 +351,41 @@ public class AudioSentinel {
                             // Ordeñar el MediaCodec (Out) y empaquetar en ADTS
                             int outputBufferIndex = codec.dequeueOutputBuffer(bufferInfo, 10000);
                             while (outputBufferIndex >= 0) {
-                                int outBitsSize = bufferInfo.size;
-                                int outPacketSize = outBitsSize + 7; // ADTS header es de 7 bytes
-                                ByteBuffer outputBuffer = codec.getOutputBuffer(outputBufferIndex);
-
-                                outputBuffer.position(bufferInfo.offset);
-                                outputBuffer.limit(bufferInfo.offset + outBitsSize);
-
-                                byte[] outData = new byte[outPacketSize];
-                                addADTStoPacket(outData, outPacketSize); // Inyectar cabecera ADTS
-                                outputBuffer.get(outData, 7, outBitsSize);
-                                outputBuffer.clear();
-
-                                // A Disco
-                                if (isRecording && fos != null) {
-                                    try {
-                                        fos.write(outData);
-                                    } catch (IOException e) {
-                                    }
+                                // Ignorar CSD (Codec Specific Data) porque ADTS es autodescriptivo
+                                if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
+                                    bufferInfo.size = 0;
                                 }
 
-                                // A Red
-                                if (hasListeners) {
-                                    for (OutputStream os : liveListeners) {
+                                if (bufferInfo.size > 0) {
+                                    int outBitsSize = bufferInfo.size;
+                                    int outPacketSize = outBitsSize + 7; // ADTS header es de 7 bytes
+                                    ByteBuffer outputBuffer = codec.getOutputBuffer(outputBufferIndex);
+
+                                    outputBuffer.position(bufferInfo.offset);
+                                    outputBuffer.limit(bufferInfo.offset + outBitsSize);
+
+                                    byte[] outData = new byte[outPacketSize];
+                                    addADTStoPacket(outData, outPacketSize); // Inyectar cabecera ADTS
+                                    outputBuffer.get(outData, 7, outBitsSize);
+                                    outputBuffer.clear();
+
+                                    // A Disco
+                                    if (isRecording && fos != null) {
                                         try {
-                                            os.write(outData);
-                                            os.flush();
+                                            fos.write(outData);
                                         } catch (IOException e) {
-                                            liveListeners.remove(os);
+                                        }
+                                    }
+
+                                    // A Red
+                                    if (hasListeners) {
+                                        for (OutputStream os : liveListeners) {
+                                            try {
+                                                os.write(outData);
+                                                os.flush();
+                                            } catch (IOException e) {
+                                                liveListeners.remove(os);
+                                            }
                                         }
                                     }
                                 }
@@ -396,6 +402,12 @@ public class AudioSentinel {
                         }
                         codec = null;
                         Log.d(TAG, "Codec Fantasma detenido.");
+                    }
+                } else {
+                    Log.e(TAG, "AudioRecord fallback in loop. readResult=" + readResult);
+                    try {
+                        Thread.sleep(50);
+                    } catch (Exception e) {
                     }
                 }
             }
@@ -436,7 +448,7 @@ public class AudioSentinel {
         int chanCfg = 1; // Mono
 
         packet[0] = (byte) 0xFF;
-        packet[1] = (byte) 0xF9;
+        packet[1] = (byte) 0xF1; // 0xF1 es MPEG-4 AAC. 0xF9 sería MPEG-2. Chrome/Safari requieren exactitud
         packet[2] = (byte) (((profile - 1) << 6) + (freqIdx << 2) + (chanCfg >> 2));
         packet[3] = (byte) (((chanCfg & 3) << 6) + (packetLen >> 11));
         packet[4] = (byte) ((packetLen & 0x7FF) >> 3);

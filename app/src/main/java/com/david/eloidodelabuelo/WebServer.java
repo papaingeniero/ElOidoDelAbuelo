@@ -289,6 +289,7 @@ public class WebServer extends NanoHTTPD {
             java.io.PipedOutputStream pipedOutputStream = new java.io.PipedOutputStream();
             try {
                 pipedInputStream.connect(pipedOutputStream);
+                sentinel.addLiveListener(pipedOutputStream);
                 // No necesitamos escribir cabeceras simuladas WAV, el AAC-ADTS es
                 // auto-descriptivo
                 Response r = newChunkedResponse(Response.Status.OK, "audio/aac", pipedInputStream);

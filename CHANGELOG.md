@@ -1,5 +1,11 @@
-## [v1.0-dev.29] - 2026-02-22
+## [v1.0-dev.30] - 2026-02-22
 ### Fixed
+- **Audio Nativo WebAudio Restaurado:** Solucionado el bug que causaba un reproductor estancado (`currentTime: 0`) en navegadores cliente.
+- **Microphone Buffer Overflow:** Eliminado el bloque `Thread.sleep` en el estado de reposo absoluto. Ahora el hilo drenador (`audioRecord.read()`) bloquea con consumo latente nulo evadiendo el desbordamiento de caché del Hardware MIUI.
+- **Codec Fantasma y PipedOutputStream:** Restaurada la conexión arteria HTTP-Centinela (`addLiveListener`) y aplicada la configuración obligatoria `KEY_MAX_INPUT_SIZE` al códec dinámico en vivo.
+- **MPEG-4 AAC Compatibility:** Transformada la cabecera manual ADTS inyectada desde `0xF9` (MPEG-2) a `0xF1` (MPEG-4) y descartados los metadatos iniciales CSD, garantizando que el Strict Mode Decoding de iOS Safari y Chrome inicie instantáneamente.
+
+## [v1.0-dev.29] - 2026-02-22
 - **Bugfix Crítico:** Desactivación forzada por Reflexión Java (`encodeAsGzip = false`) en `NanoHTTPD 2.3.1` para impedir que el servidor comprima en `.gz` el stream AAC infinito, lo cual causaba el error `ERR_CONNECTION_REFUSED`, la asfixia del panel de control web y la caída del ADB.
 - **Estabilización de UI:** Confirmado flujo de datos constante para sensores (`/api/status`) y audio (`/api/stream`) a cero latencia y sin bloqueos en el navegador cliente.
 
