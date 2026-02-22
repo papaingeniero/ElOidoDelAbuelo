@@ -347,7 +347,13 @@
         <div class="modal-content">
             <h2>Ajustes del Centinela</h2>
             <div class="form-group">
-                <label><input type="checkbox" id="inpDetection"> DETECTION_ENABLED (Standby)</label>
+                <label>Modo de Grabación</label>
+                <select id="inpRecordingMode"
+                    style="width: 100%; padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px;">
+                    <option value="0">0 - Reposo Absoluto (Micrófono IDLE)</option>
+                    <option value="1">1 - Escudo de Detección (Recomendado)</option>
+                    <option value="2">2 - Grabación Continua (Sin análisis)</option>
+                </select>
             </div>
             <div class="form-group">
                 <label><input type="checkbox" id="inpShield"> SHIELD_ENABLED (Escudo)</label>
@@ -396,7 +402,7 @@
                 });
 
                 // Apagar el stream en vivo si estaba sonando
-                if (liveAudio != null) {
+                if (liveAudioElement != null) {
                     toggleLiveAudio();
                 }
             }
@@ -415,7 +421,7 @@
                 .then(data => {
                     const amp = data.currentAmplitude || 0;
                     const isRecording = data.isRecording;
-                    const detectionEnabled = data.DETECTION_ENABLED;
+                    const recordingMode = data.recordingMode !== undefined ? data.recordingMode : 1;
 
                     latestConfig = data; // Almacenamos para rellenar el modal
 
@@ -469,10 +475,14 @@
                     vumeter.style.width = percentage + '%';
 
                     // Lógica de colores y estados
-                    if (!detectionEnabled) {
-                        statusBadge.textContent = "Standby";
+                    if (recordingMode === 0) {
+                        statusBadge.textContent = "Reposo Absoluto";
                         statusBadge.style.backgroundColor = "var(--status-gray)";
                         vumeter.style.backgroundColor = "var(--status-gray)";
+                    } else if (recordingMode === 2) {
+                        statusBadge.textContent = "Grabación Continua";
+                        statusBadge.style.backgroundColor = "var(--status-red)";
+                        vumeter.style.backgroundColor = "var(--status-red)";
                     } else if (isRecording) {
                         statusBadge.textContent = "Grabando Alarma";
                         statusBadge.style.backgroundColor = "var(--status-red)";
@@ -498,7 +508,7 @@
         }
 
         function openSettings() {
-            document.getElementById('inpDetection').checked = latestConfig.DETECTION_ENABLED ?? true;
+            document.getElementById('inpRecordingMode').value = latestConfig.recordingMode ?? 1;
             document.getElementById('inpShield').checked = latestConfig.SHIELD_ENABLED ?? true;
             document.getElementById('inpSpike').value = latestConfig.SPIKE_THRESHOLD ?? 10000;
             document.getElementById('valSpike').innerText = latestConfig.SPIKE_THRESHOLD ?? 10000;
@@ -514,7 +524,7 @@
 
         function saveSettings() {
             const payload = {
-                DETECTION_ENABLED: document.getElementById('inpDetection').checked,
+                recordingMode: parseInt(document.getElementById('inpRecordingMode').value),
                 SHIELD_ENABLED: document.getElementById('inpShield').checked,
                 SPIKE_THRESHOLD: parseInt(document.getElementById('inpSpike').value),
                 REQUIRED_SPIKES: parseInt(document.getElementById('inpRequired').value),
@@ -606,85 +616,36 @@
                 });
         }
 
-        let liveAudio = null; // Mantenemos para compatibilidad de nombre, pero será nuestro AudioContext
-        let abortController = null;
-        let nextPlayTime = 0;
+        let liveAudioElement = null;
 
-        async function playLiveStream() {
-            try {
-                liveAudio = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-                abortController = new AbortController();
-                nextPlayTime = liveAudio.currentTime;
+        function playLiveStream() {
+            if (liveAudioElement) return;
 
-                const response = await fetch('/api/stream', { signal: abortController.signal });
-                const reader = response.body.getReader();
+            // Native HTML5 Audio Element for ADTS AAC Stream
+            liveAudioElement = new Audio('/api/stream?' + new Date().getTime());
+            liveAudioElement.crossOrigin = "anonymous";
+            liveAudioElement.autoplay = true;
+            // Previene el almacenamiento en cache agresivo del AAC infínito
+            liveAudioElement.preload = "none";
 
-                let isHeaderSkipped = false;
-                let bufferData = new Uint8Array(0);
+            liveAudioElement.addEventListener('error', function (e) {
+                console.error("Error en streaming AAC nativo", e);
+                stopLiveStream();
+            });
 
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    // Acumular fragmentos en buffer
-                    const newBuffer = new Uint8Array(bufferData.length + value.length);
-                    newBuffer.set(bufferData);
-                    newBuffer.set(value, bufferData.length);
-                    bufferData = newBuffer;
-
-                    // Decapitar 44 bytes de cabecera solo en el primer trozo
-                    if (!isHeaderSkipped && bufferData.length >= 44) {
-                        bufferData = bufferData.slice(44);
-                        isHeaderSkipped = true;
-                    }
-
-                    // Asegurarnos de tener un número par de bytes (16-bit = 2 bytes)
-                    if (isHeaderSkipped && bufferData.length >= 2) {
-                        const bytesToProcess = bufferData.length - (bufferData.length % 2);
-                        const chunkBytes = bufferData.slice(0, bytesToProcess);
-                        bufferData = bufferData.slice(bytesToProcess);
-
-                        // Convertir PCM 16-bit Little Endian a Float32 (Web Audio API estandar)
-                        const samples = new Float32Array(chunkBytes.length / 2);
-                        const dataView = new DataView(chunkBytes.buffer);
-                        for (let i = 0; i < samples.length; i++) {
-                            const int16 = dataView.getInt16(i * 2, true);
-                            samples[i] = int16 / 32768.0; // Normalizar a [-1.0, 1.0]
-                        }
-
-                        // Crear AudioBuffer e inyectar
-                        const audioBuffer = liveAudio.createBuffer(1, samples.length, 16000);
-                        audioBuffer.getChannelData(0).set(samples);
-
-                        const source = liveAudio.createBufferSource();
-                        source.buffer = audioBuffer;
-                        source.connect(liveAudio.destination);
-
-                        // Si el tiempo de reproducción previsto se quedó atrás (latencia / CPU)
-                        if (nextPlayTime < liveAudio.currentTime) {
-                            nextPlayTime = liveAudio.currentTime;
-                        }
-
-                        source.start(nextPlayTime);
-                        nextPlayTime += audioBuffer.duration;
-                    }
-                }
-            } catch (err) {
-                if (err.name !== 'AbortError') {
-                    console.error("Error en streaming:", err);
-                    stopLiveStream();
-                }
-            }
+            liveAudioElement.play().catch(e => {
+                console.error("Autoplay bloqueado:", e);
+                alert("El navegador bloqueó la reproducción automática. Interactúe con la página.");
+                stopLiveStream();
+            });
         }
 
         function stopLiveStream() {
-            if (abortController) {
-                abortController.abort();
-                abortController = null;
-            }
-            if (liveAudio) {
-                liveAudio.close();
-                liveAudio = null;
+            if (liveAudioElement) {
+                liveAudioElement.pause();
+                liveAudioElement.src = "";
+                liveAudioElement.load();
+                liveAudioElement = null;
             }
             const btn = document.getElementById('btnLive');
             btn.textContent = "📻 Escuchar en Vivo (OFF)";
@@ -693,9 +654,11 @@
 
         function toggleLiveAudio() {
             const btn = document.getElementById('btnLive');
-            if (liveAudio == null) {
+            if (!liveAudioElement) {
                 // Pausar cualquier audio del historial
-                document.querySelectorAll('audio').forEach(a => a.pause());
+                document.querySelectorAll('audio').forEach(a => {
+                    if (a !== liveAudioElement) a.pause();
+                });
 
                 playLiveStream();
                 btn.textContent = "📻 Escuchar en Vivo (ON)";

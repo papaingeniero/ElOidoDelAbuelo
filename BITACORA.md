@@ -338,3 +338,31 @@ Se ha implementado una terminal de destrucción segura controlada desde el Dashb
 338: 
 339: ### 🎓 Lecciones Aprendidas
 340: - En sistemas embebidos/Android 10, es preferible procesar datos en ráfagas (Batch processing) que en flujo continuo mínimo, ya que permite que los estados de bajo consumo del núcleo (C-States) se activen de forma efectiva.
+
+## 🚀 v1.0-dev.28 (2026-02-22) - El Salto del Oído: AAC Universal y Modo Tri-Estado
+
+### 📜 El Problema
+El uso de archivos WAV en crudo (16kHz, 16bit, Mono) generaba tasas de datos inaceptablemente grandes (32KB/s) que colapsaban el ancho de banda del websocket remoto y devoraban el almacenamiento local y la batería durante las operaciones prolongadas. Además, la lógica bi-estado (Stanby vs Recording) no era suficiente para cubrir todo el espectro táctico que un vigilante remoto requiere (ej: escuchar pero no grabar permanentemente si estamos en directo).
+
+### 🛠️ La Solución
+Se ha pivotado la arquitectura del core de audio de `AudioSentinel` desde un simple dump de buffers WAV hacia una codificación en tiempo real acelerada por hardware (MediaCodec de Qualcomm).
+
+1.  **Motor AAC Universal**: Todo el audio (tanto el grabado a disco, como el enviado por red en vivo) pasa por `MediaCodec` (MIMETYPE_AUDIO_AAC, AACObjectLC) para lograr tasas de compresión de alta eficiencia sin sacrificar la inteligibilidad de la voz.
+2.  **Streaming Nativo (ADTS)**: Abandonamos los wrappers de cabecera pre-calculada WAV infinita para el streaming web. En su lugar, empaquetamos manualmente los frames binarios del `MediaCodec` añadiendo una cabecera de 7 bytes *Audio Data Transport Stream* (ADTS) por frame.
+    *   *Ventaja Bruta*: El Frontend (`index.html`) ahora puede tratar el stream de 1 bit como un simple tag `<audio autoplay src="/api/stream">` nativo soportado por Chrome y Safari móvil sin tener que levantar el *Web Audio API Context* con decodificación `Float32` por software (Ahorro de batería y latencia cero para el cliente final).
+3.  **Matriz Tri-Estado (Modos de Vigilancia)**:
+    *   `[0]` **Reposo Absoluto**: El Micrófono descansa por completo (Máximo ahorro de energía de MIUI).
+    *   `[1]` **Escudo de Detección**: Se evalúan picos por software, si sobrepasa el umbral (SPIKE), se levanta el Codec para grabar el tramo.
+    *   `[2]` **Grabación Continua**: Se puentea la lógica de evaluación y se alimenta al MediaCodec en bucle ciego infinito para una monitorización permanente (dashcam auditiva).
+4.  **Phantom Codec para Streaming**: Si el usuario entra a escuchar en vivo desde el Dashboard pero el móvil está en Modos 0 o 1 (sin grabar a disco en ese instante), `AudioSentinel` es capaz de arrancar un codec "fantasma" que devora batería *exclusivamente* mientras haya oyentes conectados, apagándolo automáticamente cuando el Frontend cierra la conexión (por TCP pipe rotura).
+
+### 🎓 Lecciones Aprendidas
+1.  **Indentaciones Asesinas**: Migrar grandes bloques lógicos monolíticos (`AudioSentinel.runSentinel()`) con dependencias ramificadas generó errores de compilación por falta de actualización del cache al leer las Settings en bucle. Es imperativo limpiar completamente la *baseline* de las variables antiguas (`detectionEnabled` vs `recordingMode`) antes de soltar la lógica nueva en crudo sobre el buffer viejo.
+2.  **Web Audio API overkill**: Muchas veces intentamos reinventar la rueda por JavaScript para decodificar audios en crudo (PCM -> Float32Array). Si el origen inyecta envoltorios estándares como ADTS + AAC, un tag html5 estático de 1 línea puede hacerlo mejor, gastando un décimo de energía de renderización en Chrome.
+
+### ❌ Intento Fallido (v1.0-dev.28): Colapso por Compresión (GZIP)
+Durante la validación en vivo de la transmisión ADTS nativa mediante Chrome, el servidor HTTP (NanoHTTPD) sufrió un Kernel Panic de su Pool de Hilos asíncronos induciendo la caída de la Telemetría (Error de Red en el Backend) y de la interfaz ADB al colapsar el Xiaomi.
+*   **Motivo**: NanoHTTPD detecta automáticamente las peticiones de los navegadores comerciales (`Accept-Encoding: gzip`) y envuelve de forma ciega todo el tráfico bajo un `GZIPOutputStream`.
+*   **Problema Anatómico**: Al envolver un *Stream Infinito* y tratar de comprimirlo al vuelo en formato `.gz`, destrozaba las tramas vitales de inicio ADTS; y lo que es peor, no lograba finalizar la cabecera comprimida, por lo que el navegador se colgaba intentando descodificar, asfixiando todos los Data Sockets de la API.
+*   **Solución Quirúrgica (v1.0-dev.29)**: La instrucción estándar `r.setGzipEncoding(false)` fue ignorada por la versión 2.3.1. Se aplicó una **Inyección por Reflexión Java** (`reflect.Field`) en el Endpoint `/api/stream` de `WebServer.java` para vulnerar el acceso privado de la clase `Response` y forzar `encodeAsGzip = false`. Esto destrabó el cuello de botella dejando salir libremente el torrente *MPEG-A AAC*, sin asfixiar la Telemetría de la Interfaz Web.
+*   **Lecciones Aprendidas 🎓**: Nunca confíes en la magia automática de las librerías Web en sistemas embebidos. Si un Stream es infinito, la compresión *Lossless* en capa 7 (HTTP) es un veneno letal. Reflexión en Java es un bisturí peligroso, pero ideal para desarmar librerías testarudas.

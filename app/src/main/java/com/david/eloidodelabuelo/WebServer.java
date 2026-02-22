@@ -89,8 +89,8 @@ public class WebServer extends NanoHTTPD {
                 json.put("tempCelsius", cachedTempCelsiusFull / 10.0f);
 
                 SharedPreferences prefs = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE);
-                boolean detectionEnabled = prefs.getBoolean("DETECTION_ENABLED", true);
-                json.put("DETECTION_ENABLED", detectionEnabled);
+                int recordingMode = prefs.getInt("RECORDING_MODE", 1);
+                json.put("recordingMode", recordingMode);
                 json.put("SHIELD_ENABLED", prefs.getBoolean("SHIELD_ENABLED", true));
                 json.put("SPIKE_THRESHOLD", prefs.getInt("SPIKE_THRESHOLD", 10000));
                 json.put("REQUIRED_SPIKES", prefs.getInt("REQUIRED_SPIKES", 3));
@@ -118,8 +118,12 @@ public class WebServer extends NanoHTTPD {
                     SharedPreferences.Editor editor = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE)
                             .edit();
 
-                    if (json.has("DETECTION_ENABLED"))
-                        editor.putBoolean("DETECTION_ENABLED", json.getBoolean("DETECTION_ENABLED"));
+                    if (json.has("recordingMode")) {
+                        int mode = json.getInt("recordingMode");
+                        if (mode >= 0 && mode <= 2) {
+                            editor.putInt("RECORDING_MODE", mode);
+                        }
+                    }
                     if (json.has("SHIELD_ENABLED"))
                         editor.putBoolean("SHIELD_ENABLED", json.getBoolean("SHIELD_ENABLED"));
                     if (json.has("SPIKE_THRESHOLD"))
@@ -150,7 +154,9 @@ public class WebServer extends NanoHTTPD {
             if (Method.DELETE.equals(session.getMethod())) {
                 try {
                     File dir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
-                    File[] files = dir != null ? dir.listFiles((dir1, name) -> name.endsWith(".wav")) : new File[0];
+                    File[] files = dir != null ? dir.listFiles(
+                            (dir1, name) -> name.endsWith(".wav") || name.endsWith(".m4a") || name.endsWith(".aac"))
+                            : new File[0];
                     int deletedCount = 0;
                     if (files != null) {
                         for (File file : files) {
@@ -171,7 +177,10 @@ public class WebServer extends NanoHTTPD {
 
             try {
                 File dir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
-                File[] files = dir != null ? dir.listFiles((dir1, name) -> name.endsWith(".wav")) : new File[0];
+                File[] files = dir != null
+                        ? dir.listFiles(
+                                (dir1, name) -> name.endsWith(".wav") || name.endsWith(".m4a") || name.endsWith(".aac"))
+                        : new File[0];
 
                 if (files == null)
                     files = new File[0];
@@ -221,7 +230,11 @@ public class WebServer extends NanoHTTPD {
             try {
                 String range = session.getHeaders().get("range");
                 long fileLen = audioFile.length();
-                String mime = fileName.endsWith(".m4a") ? "audio/mp4" : "audio/wav";
+                String mime = "audio/wav";
+                if (fileName.endsWith(".m4a"))
+                    mime = "audio/mp4";
+                else if (fileName.endsWith(".aac"))
+                    mime = "audio/aac";
 
                 if (range != null && range.startsWith("bytes=")) {
                     range = range.substring("bytes=".length());
@@ -271,74 +284,34 @@ public class WebServer extends NanoHTTPD {
         }
 
         if ("/api/stream".equals(uri)) {
+            // Streaming en Vivo ADTS-AAC Directo (V28)
+            java.io.PipedInputStream pipedInputStream = new java.io.PipedInputStream(16384);
+            java.io.PipedOutputStream pipedOutputStream = new java.io.PipedOutputStream();
             try {
-                java.io.PipedInputStream pipedInputStream = new java.io.PipedInputStream(8192);
-                java.io.PipedOutputStream pipedOutputStream = new java.io.PipedOutputStream(pipedInputStream);
-
-                // Escribir cabecera WAV de longitud infinita (0xFFFFFFFF)
-                byte[] header = new byte[44];
-                long totalDataLen = 0xFFFFFFFFL; // inf
-                long totalAudioLen = 0xFFFFFFFFL; // inf
-                long longSampleRate = 16000;
-                byte channels = 1;
-                long byteRate = 16000 * channels * 2; // SampleRate * NumChannels * BitsPerSample/8
-
-                header[0] = 'R';
-                header[1] = 'I';
-                header[2] = 'F';
-                header[3] = 'F';
-                header[4] = (byte) (totalDataLen & 0xff);
-                header[5] = (byte) ((totalDataLen >> 8) & 0xff);
-                header[6] = (byte) ((totalDataLen >> 16) & 0xff);
-                header[7] = (byte) ((totalDataLen >> 24) & 0xff);
-                header[8] = 'W';
-                header[9] = 'A';
-                header[10] = 'V';
-                header[11] = 'E';
-                header[12] = 'f';
-                header[13] = 'm';
-                header[14] = 't';
-                header[15] = ' ';
-                header[16] = 16;
-                header[17] = 0;
-                header[18] = 0;
-                header[19] = 0;
-                header[20] = 1;
-                header[21] = 0;
-                header[22] = channels;
-                header[23] = 0;
-                header[24] = (byte) (longSampleRate & 0xff);
-                header[25] = (byte) ((longSampleRate >> 8) & 0xff);
-                header[26] = (byte) ((longSampleRate >> 16) & 0xff);
-                header[27] = (byte) ((longSampleRate >> 24) & 0xff);
-                header[28] = (byte) (byteRate & 0xff);
-                header[29] = (byte) ((byteRate >> 8) & 0xff);
-                header[30] = (byte) ((byteRate >> 16) & 0xff);
-                header[31] = (byte) ((byteRate >> 24) & 0xff);
-                header[32] = (byte) (channels * 16 / 8); // Block Align = NumChannels * BitsPerSample/8
-                header[33] = 0;
-                header[34] = 16;
-                header[35] = 0;
-                header[36] = 'd';
-                header[37] = 'a';
-                header[38] = 't';
-                header[39] = 'a';
-                header[40] = (byte) (totalAudioLen & 0xff);
-                header[41] = (byte) ((totalAudioLen >> 8) & 0xff);
-                header[42] = (byte) ((totalAudioLen >> 16) & 0xff);
-                header[43] = (byte) ((totalAudioLen >> 24) & 0xff);
-
-                pipedOutputStream.write(header, 0, 44);
-
-                sentinel.addLiveListener(pipedOutputStream);
-
-                Response r = newChunkedResponse(Response.Status.OK, "audio/wav", pipedInputStream);
+                pipedInputStream.connect(pipedOutputStream);
+                // No necesitamos escribir cabeceras simuladas WAV, el AAC-ADTS es
+                // auto-descriptivo
+                Response r = newChunkedResponse(Response.Status.OK, "audio/aac", pipedInputStream);
                 r.addHeader("Connection", "keep-alive");
-                r.addHeader("Cache-Control", "no-cache");
+                r.addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+                r.addHeader("Access-Control-Allow-Origin", "*");
+
+                // Muerte absoluta al GZIP mediante Reflexión (Bypass NanoHTTPD 2.3.1 interno)
+                try {
+                    java.lang.reflect.Field encodeAsGzipField = r.getClass().getDeclaredField("encodeAsGzip");
+                    encodeAsGzipField.setAccessible(true);
+                    encodeAsGzipField.setBoolean(r, false);
+                } catch (Exception e) {
+                    Log.e("WebServer", "Imposible anular GZIP por reflexión", e);
+                }
+
                 return r;
+            } catch (java.io.IOException e) {
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
+                        "Error interno");
             } catch (Exception e) {
                 return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
-                        "Error de streaming");
+                        "Error de streaming AAC");
             }
         }
 

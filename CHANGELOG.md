@@ -1,3 +1,15 @@
+## [v1.0-dev.29] - 2026-02-22
+### Fixed
+- **Bugfix Crítico:** Desactivación forzada por Reflexión Java (`encodeAsGzip = false`) en `NanoHTTPD 2.3.1` para impedir que el servidor comprima en `.gz` el stream AAC infinito, lo cual causaba el error `ERR_CONNECTION_REFUSED`, la asfixia del panel de control web y la caída del ADB.
+- **Estabilización de UI:** Confirmado flujo de datos constante para sensores (`/api/status`) y audio (`/api/stream`) a cero latencia y sin bloqueos en el navegador cliente.
+
+## [v1.0-dev.28] - 2026-02-22
+### Changed
+- Reescritura absoluta del núcleo de audio: El Oído ahora graba en `.m4a` a través de codificación hardware nativa (AAC) ahorrando ~90% del espacio local y ancho de banda de red en vivo vs WAV.
+- `AudioSentinel.java` implementa un stream de contenedores **ADTS** *Custom*.
+- `WebServer.java` adaptado para barrer y servir `.m4a` en el historial o devolver un `audio/aac` vivo, deshaciéndose de la cabecera WAV legacy.
+- **Frontend** `index.html`: WebAudio API desterrada. El streaming ADTS se procesa a nivel nativo por un simple `new Audio()` para latencia plana y bajo uso de RAM en Chrome y Safari.
+- Nuevo Selector Táctico de Modo: (Reposo Absoluto, Detección por Picos y Vigilancia Continua).
 # Changelog: El Oído del Abuelo
 
 ## [v1.0-dev.27] - 22-Feb-2026
