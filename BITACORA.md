@@ -281,3 +281,16 @@ Al completar el salto arquitectónico de la v21, descubrimos que los iPhones, Ma
   - `Cache-Control: no-store, no-cache, must-revalidate, max-age=0`
   - `Pragma: no-cache`
 Esto fuerza permanentemente una conexión real Full-Duplex entre el Frontend del celular del Abuelo y nuestro ordenador local, ignorando archivos "muertos" que pueda guardar Safari o Chrome.
+
+## 🚀 Feature v1.0-dev.23: Autostart Ignición (Boot Receiver) | 22-Feb-2026
+### 📜 El Problema
+Al despojar a la App de toda interfaz visual (Headless), el usuario aún se veía obligado a pulsar el icono de **El Oído del Abuelo** cada vez que el Redmi 9C se reiniciaba por accidente o apagón. Un sistema de alarma profesional debe restaurarse solo y retomar la vigilancia sin intervención humana (CCTV-Concept).
+
+### 🛠️ La Solución
+1. En `AndroidManifest.xml` añadimos `<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>` para que Android nos autorice a escuchar su corazón.
+2. Hemos registrado el `<receiver>` `BootReceiver` anclado al evento `BOOT_COMPLETED`.
+3. Hemos creado `BootReceiver.java`, una clase asíncrona que despierta a `OidoService` exigiéndole reanudar el Micrófono y encender NanoHTTPD en cuanto el usuario teclea el PIN de su móvil al encender.
+
+### ⚠️ Lección del Día (La Dictadura MIUI)
+El Framework original de Google permite este Autoarranque, pero los teléfonos Xiaomi (MIUI) implementan un firewall de batería que **bloquea físicamente los Receptores de Arranque**. 
+- **Acción Manual Necesaria**: Para que el código inyectado en la V23 triunfe, es obligatorio ir a (Ajustes -> Aplicaciones -> El Oído del Abuelo) y encender el botón nativo de **"Inicio Automático"**. Si no se presiona ese botón gráfico en el sistema del Xiaomi, este parche no servirá de nada.

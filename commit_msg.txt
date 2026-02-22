@@ -1,8 +1,9 @@
-v1.0-dev.22 HotFix: Ceguera de Caché y Bug XML
+v1.0-dev.23 Feature: Autostart Ignición (Boot Receiver)
 
 ### 📜 El Problema
-Al compilar la v21 se descubrió que el SDK no detectaba el cierre del `styles.xml`, frustrando el binario final (por ende al abuelo se le instaló realmente la V20 antigua sin Headless ni parches). A su vez, el navegador web de control seguía enrocado en la V20 debido al almacenamiento hiper-agresivo de caché de Apple iOS/Mac y Chrome para evitar pedir los Javascript y HTML al Xiaomi de nuevo.
+Al despojar a la App de toda interfaz visual (Headless), el usuario aún se veía obligado a pulsar el icono de **El Oído del Abuelo** cada vez que el Redmi 9C se reiniciaba por accidente o apagón. Un sistema de alarma profesional debe restaurarse solo y retomar la vigilancia sin intervención humana (CCTV-Concept).
 
 ### 🛠️ La Solución
-Se reparó la lógica XML de AppTheme en `styles.xml`.
-Se procedió a anestesiar las vías de Cache del frontend inyectando cabeceras puras `Cache-Control: no-cache, no-store, must-revalidate` y `Pragma: no-cache` a todos los endpoints en el `WebServer.java`. Se forzó la instalación con SDK físico. El navegador desde ahora servirá al instante lo que dicte el sensor.
+- En `AndroidManifest.xml` añadimos `<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>` para que Android nos autorice a escuchar su arranque.
+- Registramos el `<receiver>` BootReceiver anclado al evento `BOOT_COMPLETED`.
+- Creamos `BootReceiver.java`, clase asíncrona que despierta a OidoService exigiéndole reanudar Micrófono y Servidor en cuanto el sistema carga.
