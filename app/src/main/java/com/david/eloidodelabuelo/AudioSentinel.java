@@ -40,6 +40,41 @@ public class AudioSentinel {
     private Thread sentinelThread;
     private AudioRecord audioRecord;
     private Context context;
+    private SharedPreferences prefs;
+
+    // Variables de configuración cacheadas en RAM (Eco-Mode V27)
+    private volatile boolean detectionEnabledCached = true;
+    private volatile boolean shieldEnabledCached = true;
+    private volatile int spikeThresholdCached = 10000;
+    private volatile int requiredSpikesCached = 3;
+    private volatile int shieldWindowMsCached = 500;
+    private volatile int recordDurationMsCached = 15000;
+
+    private final SharedPreferences.OnSharedPreferenceChangeListener prefListener = (sharedPreferences, key) -> {
+        if (key == null)
+            return;
+        switch (key) {
+            case PREF_DETECTION_ENABLED:
+                detectionEnabledCached = sharedPreferences.getBoolean(PREF_DETECTION_ENABLED, true);
+                break;
+            case PREF_SHIELD_ENABLED:
+                shieldEnabledCached = sharedPreferences.getBoolean(PREF_SHIELD_ENABLED, true);
+                break;
+            case PREF_SPIKE_THRESHOLD:
+                spikeThresholdCached = sharedPreferences.getInt(PREF_SPIKE_THRESHOLD, 10000);
+                break;
+            case PREF_REQUIRED_SPIKES:
+                requiredSpikesCached = sharedPreferences.getInt(PREF_REQUIRED_SPIKES, 3);
+                break;
+            case PREF_SHIELD_WINDOW_MS:
+                shieldWindowMsCached = sharedPreferences.getInt(PREF_SHIELD_WINDOW_MS, 500);
+                break;
+            case PREF_RECORD_DURATION_MS:
+                recordDurationMsCached = sharedPreferences.getInt(PREF_RECORD_DURATION_MS, 15000);
+                break;
+        }
+        Log.d(TAG, "Preferencia actualizada en RAM: " + key);
+    };
 
     private volatile double currentAmplitude = 0;
     private volatile boolean isRecordingStatus = false;
@@ -63,6 +98,18 @@ public class AudioSentinel {
 
     public AudioSentinel(Context context) {
         this.context = context.getApplicationContext();
+        this.prefs = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE);
+
+        // Inicializar cache inicial
+        detectionEnabledCached = prefs.getBoolean(PREF_DETECTION_ENABLED, true);
+        shieldEnabledCached = prefs.getBoolean(PREF_SHIELD_ENABLED, true);
+        spikeThresholdCached = prefs.getInt(PREF_SPIKE_THRESHOLD, 10000);
+        requiredSpikesCached = prefs.getInt(PREF_REQUIRED_SPIKES, 3);
+        shieldWindowMsCached = prefs.getInt(PREF_SHIELD_WINDOW_MS, 500);
+        recordDurationMsCached = prefs.getInt(PREF_RECORD_DURATION_MS, 15000);
+
+        // Registrar listener para evitar lecturas de disco futuras
+        this.prefs.registerOnSharedPreferenceChangeListener(prefListener);
     }
 
     public void start() {
@@ -89,11 +136,14 @@ public class AudioSentinel {
     private void runSentinel() {
         android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_AUDIO);
 
-        int bufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT);
-        if (bufferSize == AudioRecord.ERROR || bufferSize == AudioRecord.ERROR_BAD_VALUE) {
+        int minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT);
+        if (minBufferSize == AudioRecord.ERROR || minBufferSize == AudioRecord.ERROR_BAD_VALUE) {
             Log.e(TAG, "Buffer size error");
             return;
         }
+
+        // CUADRUPLICAR el buffer (Eco-Mode V27) para reducir wake-ups de CPU
+        int bufferSize = minBufferSize * 4;
 
         SharedPreferences prefs = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE);
 
@@ -126,13 +176,14 @@ public class AudioSentinel {
             byte[] byteBuffer = new byte[bufferSize]; // Para escritura WAV
 
             while (isRunning) {
-                // 1. Lectura Dinámica de Preferencias
-                boolean detectionEnabled = prefs.getBoolean(PREF_DETECTION_ENABLED, true);
-                boolean shieldEnabled = prefs.getBoolean(PREF_SHIELD_ENABLED, true);
-                int spikeThreshold = prefs.getInt(PREF_SPIKE_THRESHOLD, 10000);
-                int requiredSpikes = prefs.getInt(PREF_REQUIRED_SPIKES, 3);
-                int shieldWindowMs = prefs.getInt(PREF_SHIELD_WINDOW_MS, 500);
-                int recordDurationMs = prefs.getInt(PREF_RECORD_DURATION_MS, 15000);
+                // 1. Lectura de Preferencias desde RAM (Eco-Mode V27)
+                // NO consultamos SharedPreferences.getXXX en cada ciclo
+                boolean detectionEnabled = detectionEnabledCached;
+                boolean shieldEnabled = shieldEnabledCached;
+                int spikeThreshold = spikeThresholdCached;
+                int requiredSpikes = requiredSpikesCached;
+                int shieldWindowMs = shieldWindowMsCached;
+                int recordDurationMs = recordDurationMsCached;
 
                 boolean hasListeners = !liveListeners.isEmpty();
 

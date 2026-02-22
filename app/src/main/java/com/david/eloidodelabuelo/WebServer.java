@@ -21,12 +21,49 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.HashMap;
 
+import android.util.Log;
+
 import fi.iki.elonen.NanoHTTPD;
 
 public class WebServer extends NanoHTTPD {
 
     private final Context context;
     private final AudioSentinel sentinel;
+
+    // Cache de telemetría (Eco-Mode V27)
+    private long lastHardwarePollTime = 0;
+    private static final long POLL_INTERVAL_MS = 60000; // 1 minuto
+    private float cachedBatteryPct = -1;
+    private boolean cachedIsCharging = false;
+    private int cachedTempCelsiusFull = 0; // Guardado en décimas de grado (int)
+
+    private void refreshHardwareTelemetry() {
+        long now = System.currentTimeMillis();
+        if (now - lastHardwarePollTime < POLL_INTERVAL_MS && lastHardwarePollTime != 0) {
+            return; // Usar cache
+        }
+
+        try {
+            IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+            Intent batteryStatus = context.registerReceiver(null, ifilter);
+            if (batteryStatus != null) {
+                int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                int temp = batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
+                int plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
+
+                cachedIsCharging = plugged == BatteryManager.BATTERY_PLUGGED_AC ||
+                        plugged == BatteryManager.BATTERY_PLUGGED_USB ||
+                        plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS;
+                cachedBatteryPct = scale > 0 ? (level * 100 / (float) scale) : -1;
+                cachedTempCelsiusFull = temp;
+                lastHardwarePollTime = now;
+                Log.d("WebServer", "Telemetría hardware refrescada: " + cachedBatteryPct + "%");
+            }
+        } catch (Exception e) {
+            Log.e("WebServer", "Error refrescando telemetría", e);
+        }
+    }
 
     public WebServer(Context context, AudioSentinel sentinel) {
         super(8080);
@@ -45,28 +82,11 @@ public class WebServer extends NanoHTTPD {
                 json.put("isRecording", sentinel.isCurrentlyRecording());
                 json.put("version", BuildConfig.VERSION_NAME);
 
-                try {
-                    IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-                    Intent batteryStatus = context.registerReceiver(null, ifilter);
-                    if (batteryStatus != null) {
-                        int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-                        int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-                        int temp = batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
-                        int plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-
-                        boolean isCharging = plugged == BatteryManager.BATTERY_PLUGGED_AC ||
-                                plugged == BatteryManager.BATTERY_PLUGGED_USB ||
-                                plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS;
-                        float batteryPct = scale > 0 ? (level * 100 / (float) scale) : -1;
-                        float tempCelsius = temp / 10.0f;
-
-                        json.put("batteryPct", Math.round(batteryPct));
-                        json.put("tempCelsius", tempCelsius);
-                        json.put("isCharging", isCharging);
-                    }
-                } catch (Exception ex) {
-                    // Ignorar errores de batería para no tumbar la respuesta
-                }
+                // Telemetría con Cache (Eco-Mode V27)
+                refreshHardwareTelemetry();
+                json.put("batteryPct", Math.round(cachedBatteryPct));
+                json.put("isCharging", cachedIsCharging);
+                json.put("tempCelsius", cachedTempCelsiusFull / 10.0f);
 
                 SharedPreferences prefs = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE);
                 boolean detectionEnabled = prefs.getBoolean("DETECTION_ENABLED", true);

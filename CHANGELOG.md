@@ -1,5 +1,11 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.27] - 22-Feb-2026
+### Added
+- **Eco-Mode**: Optimización del motor de audio mediante buffering extendido (4x) para reducir despertares de CPU.
+- **Cache de Preferencias**: Implementación de listener asíncrono para evitar lecturas de disco XML en el bucle de audio.
+- **Proxy Telemetría**: Refresco de datos de hardware (batería/temperatura) limitado a 1 vez por minuto.
+
 ## [v1.0-dev.26] - 2026-02-22
 ### Añadido
 - **Botón del Pánico**: Endpoint `DELETE /api/recordings` en el servidor Java para borrado masivo de grabaciones.

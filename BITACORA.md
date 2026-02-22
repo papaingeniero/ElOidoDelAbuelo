@@ -325,3 +325,16 @@ Se ha implementado una terminal de destrucción segura controlada desde el Dashb
 
 ### 🎓 Lecciones Aprendidas
 - La segregación de métodos HTTP (`GET` para listar, `DELETE` para purgar) en una misma URI es una práctica de diseño de APIs (REST) que simplifica enormemente la legibilidad del código del servidor `NanoHTTPD`, permitiendo que un mismo bloque condicional maneje lógicas opuestas de forma elegante.
+328: 
+329: ## 🍃 Feature v1.0-dev.27: Optimización Energética (Eco-Mode) | 22-Feb-2026
+330: ### 📜 El Problema
+331: El monitoreo constante de audio es una de las tareas más costosas para un SoC móvil. En versiones anteriores, el motor de audio despertaba a la CPU con demasiada frecuencia debido a buffers pequeños y realizaba lecturas de disco compulsivas (SharedPreferences) en cada ciclo del bucle, disparando el consumo de batería innecesariamente en reposo.
+332: 
+333: ### 🛠️ La Solución
+334: Se ha realizado una cirugía de bajo consumo en el núcleo de la aplicación:
+335: 1. **Buffering Táctico**: Se ha cuadruplicado el tamaño del buffer de `AudioRecord`. Al procesar ráfagas de audio más grandes, la CPU puede "dormir" más tiempo entre ciclos, reduciendo drásticamente los Wake-ups del procesador.
+336: 2. **Cache RAM de Preferencias**: Se ha implementado un `OnSharedPreferenceChangeListener`. El hilo de audio ya no consulta el disco; ahora lee constantes volátiles en RAM que se actualizan solo cuando el usuario cambia algo en el Dashboard. Esto elimina miles de accesos a archivos XML por minuto.
+337: 3. **Proxy de Telemetría**: El servidor web ya no interroga al hardware de batería en cada petición GET. Se ha implementado una caché con refresco de 60 segundos, minimizando el impacto de tener el Dashboard web abierto.
+338: 
+339: ### 🎓 Lecciones Aprendidas
+340: - En sistemas embebidos/Android 10, es preferible procesar datos en ráfagas (Batch processing) que en flujo continuo mínimo, ya que permite que los estados de bajo consumo del núcleo (C-States) se activen de forma efectiva.
