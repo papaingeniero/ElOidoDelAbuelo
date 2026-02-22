@@ -1,5 +1,10 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.22] - 22-Feb-2026
+### Fixed
+- Hotfix Anti-Caché: El navegador web persistía en cargar versiones HTML y JSON (como "v20") de sesiones anteriores a pesar de las actualizaciones nativas.
+- Implementadas cabeceras HTTP `Cache-Control: no-cache, no-store` y `Pragma: no-cache` en todos los endpoints GET (`/`, `/api/status`, `/api/recordings`) desde `WebServer.java` para obligar al navegador a siempre pedir los archivos frescos al Microservicio.
+
 ## [v1.0-dev.21] - 22-Feb-2026
 ### Changed
 - Refactorización arquitectónica a aplicación "Headless".

@@ -51,7 +51,10 @@ public class WebServer extends NanoHTTPD {
                 json.put("SHIELD_WINDOW_MS", prefs.getInt("SHIELD_WINDOW_MS", 500));
                 json.put("RECORD_DURATION_MS", prefs.getInt("RECORD_DURATION_MS", 15000));
 
-                return newFixedLengthResponse(Response.Status.OK, "application/json", json.toString());
+                Response r = newFixedLengthResponse(Response.Status.OK, "application/json", json.toString());
+                r.addHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+                r.addHeader("Pragma", "no-cache");
+                return r;
             } catch (JSONException e) {
                 return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
                         "Error generando JSON");
@@ -120,8 +123,10 @@ public class WebServer extends NanoHTTPD {
                     obj.put("timestamp", file.lastModified());
                     jsonArray.put(obj);
                 }
-
-                return newFixedLengthResponse(Response.Status.OK, "application/json", jsonArray.toString());
+                Response r = newFixedLengthResponse(Response.Status.OK, "application/json", jsonArray.toString());
+                r.addHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+                r.addHeader("Pragma", "no-cache");
+                return r;
             } catch (Exception e) {
                 return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
                         "Error al leer historial");
@@ -272,7 +277,10 @@ public class WebServer extends NanoHTTPD {
         if ("/".equals(uri)) {
             try {
                 InputStream is = context.getAssets().open("web/index.html");
-                return newChunkedResponse(Response.Status.OK, "text/html", is);
+                Response r = newChunkedResponse(Response.Status.OK, "text/html", is);
+                r.addHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+                r.addHeader("Pragma", "no-cache");
+                return r;
             } catch (IOException e) {
                 return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
                         "No se pudo cargar el Dashboard: " + e.getMessage());

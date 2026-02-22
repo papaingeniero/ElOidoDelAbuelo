@@ -271,3 +271,13 @@ Dado que la interacción al 100% con El Oído del Abuelo ocurre de forma remota 
 2. Se inyectó este tema de invisibilidad al `<activity>` en el `AndroidManifest.xml`.
 3. Se extirpó el dibujado de vistas (`setContentView`) del método `onCreate` de `MainActivity.java`.
 4. Se conectó una directiva de autodestrucción (`finish()`) tras lanzar con éxito el `OidoService`, permitiendo que la ventana muera al milisegundo mientras el micrófono y el servidor NanoHTTPD se independizan y viven en el Service.
+
+## 🐛 Hotfix v1.0-dev.22: Ceguera de Caché Web | 22-Feb-2026
+### 📜 El Problema
+Al completar el salto arquitectónico de la v21, descubrimos que los iPhones, MacBooks y otros clientes HTTP ignoraban la nueva aplicación servida en el puerto 8080. El navegador se empeñaba en mostrar "v20" desde el disco local. Esto ocurría porque `NanoHTTPD` entrega sus paquetes limpios, sin cabeceras directivas que inhiban el agresivo almacenamiento en caché de los navegadores modernos para peticiones `GET`.
+
+### 🛠️ La Solución
+- Inyectar en cada Endpoint GET clave en `WebServer.java` (`/`, `/api/status`, `/api/recordings`) las directivas:
+  - `Cache-Control: no-store, no-cache, must-revalidate, max-age=0`
+  - `Pragma: no-cache`
+Esto fuerza permanentemente una conexión real Full-Duplex entre el Frontend del celular del Abuelo y nuestro ordenador local, ignorando archivos "muertos" que pueda guardar Safari o Chrome.

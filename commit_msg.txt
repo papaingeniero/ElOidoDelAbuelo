@@ -1,10 +1,8 @@
-v1.0-dev.21 Arquitectura Headless: Interfaz Invisible
+v1.0-dev.22 HotFix: Ceguera de Caché y Bug XML
 
 ### 📜 El Problema
-Dado que la interacción al 100% con El Oído del Abuelo ocurre de forma remota vía Dashboard Web, la actividad principal en el teléfono gastaba pantalla, batería, y resultaba anti-estética al abrir una vista vacía solo para mantener vivo el Foreground Service. Había que convertir la app en un demonio en segundo plano (Daemon).
+Al compilar la v21 se descubrió que el SDK no detectaba el cierre del `styles.xml`, frustrando el binario final (por ende al abuelo se le instaló realmente la V20 antigua sin Headless ni parches). A su vez, el navegador web de control seguía enrocado en la V20 debido al almacenamiento hiper-agresivo de caché de Apple iOS/Mac y Chrome para evitar pedir los Javascript y HTML al Xiaomi de nuevo.
 
 ### 🛠️ La Solución
-1. En `styles.xml` se configuró un tema `Theme.Headless` (`android:windowBackground="@android:color/transparent"`).
-2. Se inyectó este tema de invisibilidad al `<activity>` en el `AndroidManifest.xml`.
-3. Se extirpó el dibujado de vistas (`setContentView`) del método `onCreate` de `MainActivity.java`.
-4. Se conectó una directiva de autodestrucción (`finish()`) tras lanzar con éxito el `OidoService`, permitiendo que la ventana muera al milisegundo mientras el micrófono y el servidor NanoHTTPD se independizan y viven en el Service.
+Se reparó la lógica XML de AppTheme en `styles.xml`.
+Se procedió a anestesiar las vías de Cache del frontend inyectando cabeceras puras `Cache-Control: no-cache, no-store, must-revalidate` y `Pragma: no-cache` a todos los endpoints en el `WebServer.java`. Se forzó la instalación con SDK físico. El navegador desde ahora servirá al instante lo que dicte el sensor.
