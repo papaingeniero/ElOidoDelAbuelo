@@ -312,3 +312,16 @@ Se ha conectado el motor asíncrono `NanoHTTPD` directamente a la arteria del Ha
 1. **Core Java**: `WebServer.java` envía un request pasivo (Null Intent Listener) por cada refresco GET de `/api/status`, extrayendo instantáneamente el % de Carga (`EXTRA_LEVEL`), el Switch de Enchufe Físico (`EXTRA_PLUGGED`) y la Temperatura Core en décimas de grado Celsius (`EXTRA_TEMPERATURE`).
 2. **UI Web**: En `index.html` se ha empotrado bajo el título web un *Toolbar Telemetría* de estética Glassmorphism, inyectado nativamente en el ciclo AJAX de `updateDashboard()`.
 3. **UX (Semáforo Biométrico)**: El frontend lee esos metadatos e interpola visualmente la salud termal y eléctrica. Verde radiante si carga. Avisos cálidos escalonados (Orange 35°C, Rojo Peligro > 40°C) y metamorfosis iconográfica entre la Pila llena y Vacía.
+
+## 🗑️ Feature v1.0-dev.26: Purga Forense de Grabaciones (Botón del Pánico) | 22-Feb-2026
+### 📜 El Problema
+En un sistema de vigilancia autónomo y "Headless", el almacenamiento del Xiaomi Redmi 9C es un recurso finito que puede saturarse rápidamente con falsos positivos o grabaciones de larga duración (vía `RECORD_DURATION_MS`). Hasta ahora, la única forma de liberar espacio era mediante comandos manuales ADB o borrado físico, lo cual rompe la experiencia de administración remota "Zero-Touch".
+
+### 🛠️ La Solución
+Se ha implementado una terminal de destrucción segura controlada desde el Dashboard:
+1. **Backend (Java)**: Se ha dotado a `WebServer.java` de la capacidad de recibir el método HTTP `DELETE` en la ruta `/api/recordings`. El código realiza un barrido atómico de la carpeta `DIRECTORY_MUSIC`, filtrando solo archivos `.wav` y eliminándolos uno a uno, devolviendo un reporte JSON con el conteo de bajas (`deleted_count`).
+2. **Frontend (HTML/JS)**: Se ha añadido una "ZONA DE PELIGRO" resaltada en rojo carmesí dentro del modal de Ajustes. El botón "🗑️ Purgar Todo el Historial" dispara un `confirm()` preventivo en el navegador antes de ejecutar la purga asíncrona vía `fetch`.
+3. **UX (Auto-Refresh)**: Tras la ejecución exitosa, la lista de grabaciones se vacía instantáneamente en el Dashboard sin necesidad de refrescar la página.
+
+### 🎓 Lecciones Aprendidas
+- La segregación de métodos HTTP (`GET` para listar, `DELETE` para purgar) en una misma URI es una práctica de diseño de APIs (REST) que simplifica enormemente la legibilidad del código del servidor `NanoHTTPD`, permitiendo que un mismo bloque condicional maneje lógicas opuestas de forma elegante.

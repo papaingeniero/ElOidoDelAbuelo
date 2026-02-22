@@ -369,6 +369,11 @@
                 <label>RECORD_DURATION_MS (Duración Grabación MS)</label>
                 <input type="number" id="inpDuration" min="1000" max="60000">
             </div>
+            <div class="form-group" style="margin-top: 20px; border-top: 1px solid #444; padding-top: 20px;">
+                <label style="color: var(--status-red); font-weight: bold;">⚠️ ZONA DE PELIGRO</label>
+                <button class="btn" style="background: var(--status-red); color: white; width: 100%; margin-top: 10px;"
+                    onclick="deleteRecordings()">🗑️ Purgar Todo el Historial</button>
+            </div>
             <div class="btn-row">
                 <button class="btn btn-close" onclick="closeSettings()">Cancelar</button>
                 <button class="btn btn-save" onclick="saveSettings()">Guardar</button>

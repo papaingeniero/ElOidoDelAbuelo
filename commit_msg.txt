@@ -1,9 +1,0 @@
-v1.0-dev.25 Feature: Telemetría de Hardware en Tiempo Real
-
-### 📜 El Problema
-Al construir un Sensor Domótico IoT en "Modo Fantasma", el desconocimiento del estado físico del hardware (Nivel de batería, voltaje, temperatura del SoC) es un riesgo ciego. El Xiaomi Redmi 9C podría apagarse o fundirse sin avisar.
-
-### 🛠️ La Solución
-- Conexión del motor NanoHTTPD al intent BatteryManager (`ACTION_BATTERY_CHANGED`) enviando null intents en `/api/status`.
-- Extracción de la Batería, Estado de Enchufe AC y Grados Celsius térmicos reales de la placa.
-- Despliegue de una "Toolbar Telemetría" Glassmorphism en el HTML que refleja dinámicamente el estado mediante código semáforo inteligente en Javascript.

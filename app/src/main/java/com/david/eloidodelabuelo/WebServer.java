@@ -127,6 +127,28 @@ public class WebServer extends NanoHTTPD {
         }
 
         if ("/api/recordings".equals(uri)) {
+            if (Method.DELETE.equals(session.getMethod())) {
+                try {
+                    File dir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
+                    File[] files = dir != null ? dir.listFiles((dir1, name) -> name.endsWith(".wav")) : new File[0];
+                    int deletedCount = 0;
+                    if (files != null) {
+                        for (File file : files) {
+                            if (file.delete()) {
+                                deletedCount++;
+                            }
+                        }
+                    }
+                    JSONObject responseJson = new JSONObject();
+                    responseJson.put("status", "ok");
+                    responseJson.put("deleted_count", deletedCount);
+                    return newFixedLengthResponse(Response.Status.OK, "application/json", responseJson.toString());
+                } catch (Exception e) {
+                    return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
+                            "Error durante la purga: " + e.getMessage());
+                }
+            }
+
             try {
                 File dir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
                 File[] files = dir != null ? dir.listFiles((dir1, name) -> name.endsWith(".wav")) : new File[0];
