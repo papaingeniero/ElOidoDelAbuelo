@@ -1,8 +1,11 @@
 package com.david.eloidodelabuelo;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 
+import android.os.BatteryManager;
 import android.os.Environment;
 
 import org.json.JSONArray;
@@ -41,6 +44,29 @@ public class WebServer extends NanoHTTPD {
                 json.put("currentAmplitude", sentinel.getCurrentAmplitude());
                 json.put("isRecording", sentinel.isCurrentlyRecording());
                 json.put("version", BuildConfig.VERSION_NAME);
+
+                try {
+                    IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                    Intent batteryStatus = context.registerReceiver(null, ifilter);
+                    if (batteryStatus != null) {
+                        int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                        int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                        int temp = batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
+                        int plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
+
+                        boolean isCharging = plugged == BatteryManager.BATTERY_PLUGGED_AC ||
+                                plugged == BatteryManager.BATTERY_PLUGGED_USB ||
+                                plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS;
+                        float batteryPct = scale > 0 ? (level * 100 / (float) scale) : -1;
+                        float tempCelsius = temp / 10.0f;
+
+                        json.put("batteryPct", Math.round(batteryPct));
+                        json.put("tempCelsius", tempCelsius);
+                        json.put("isCharging", isCharging);
+                    }
+                } catch (Exception ex) {
+                    // Ignorar errores de batería para no tumbar la respuesta
+                }
 
                 SharedPreferences prefs = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE);
                 boolean detectionEnabled = prefs.getBoolean("DETECTION_ENABLED", true);

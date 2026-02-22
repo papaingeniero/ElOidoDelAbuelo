@@ -302,3 +302,13 @@ Manteniendo la filosofía de diseñar un **Microservicio IoT Puro**, carece de s
 ### 🛠️ La Solución
 He intervenido el ADN principal en `AndroidManifest.xml`. He localizado el Intent-Filter del Componente `MainActivity` y ejecutado un borrado quirúrgico de la directiva `<category android:name="android.intent.category.LAUNCHER" />`. Se ha reemplazado por la directiva vacía `DEFAULT`. 
 A partir de este instante estricto, **El Oído del Abuelo** ha dejado de tener representación gráfica local y Android prohíbe dibujarlo en los menús para el usuario casual del hardware. El único medio de control restante es mediante ADB por cable/Wifi o la web externa vía puerto 8080.
+
+## 🔋 Feature v1.0-dev.25: Telemetría de Hardware en Tiempo Real | 22-Feb-2026
+### 📜 El Problema
+Al construir un "Sensor Domótico" ininterrumpido (IoT) que está operando en formato "Modo Fantasma" e ilocalizable en la capa visual, el desconocimiento del estado físico del hardware (Nivel de batería, voltaje transitorio, picos de temperatura del SoC) es un riesgo ciego. El Xiaomi Redmi 9C podría recalentarse procesando audio o estar desenchufado y el administrador remoto no se enteraría hasta que la línea cayera catastróficamente.
+
+### 🛠️ La Solución
+Se ha conectado el motor asíncrono `NanoHTTPD` directamente a la arteria del Hardware de Android (`BatteryManager`).
+1. **Core Java**: `WebServer.java` envía un request pasivo (Null Intent Listener) por cada refresco GET de `/api/status`, extrayendo instantáneamente el % de Carga (`EXTRA_LEVEL`), el Switch de Enchufe Físico (`EXTRA_PLUGGED`) y la Temperatura Core en décimas de grado Celsius (`EXTRA_TEMPERATURE`).
+2. **UI Web**: En `index.html` se ha empotrado bajo el título web un *Toolbar Telemetría* de estética Glassmorphism, inyectado nativamente en el ciclo AJAX de `updateDashboard()`.
+3. **UX (Semáforo Biométrico)**: El frontend lee esos metadatos e interpola visualmente la salud termal y eléctrica. Verde radiante si carga. Avisos cálidos escalonados (Orange 35°C, Rojo Peligro > 40°C) y metamorfosis iconográfica entre la Pila llena y Vacía.

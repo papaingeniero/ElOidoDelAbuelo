@@ -299,6 +299,21 @@
     <div class="dashboard">
         <h1>El Oído del Abuelo <span id="appVersion" style="font-size: 0.8rem; color: var(--status-gray);"></span></h1>
         <button class="settings-btn" onclick="openSettings()">⚙️ Ajustes</button>
+
+        <!-- HARDWARE TELEMETRY TOOLBAR -->
+        <div id="telemetryToolbar"
+            style="display: flex; justify-content: center; align-items: center; gap: 15px; margin: 5px auto 15px auto; background: rgba(255, 255, 255, 0.05); padding: 8px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(4px); font-size: 0.85rem; font-weight: bold; width: fit-content; transition: all 0.3s;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <span id="batteryIcon" style="transition: color 0.3s; font-size: 1.1rem;">🔋</span>
+                <span id="batteryText" style="transition: color 0.3s; color: #fff;">--%</span>
+            </div>
+            <div style="width: 1px; height: 15px; background: rgba(255,255,255,0.2);"></div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <span id="tempIcon" style="transition: color 0.3s; font-size: 1.1rem;">🌡️</span>
+                <span id="tempText" style="transition: color 0.3s; color: #fff;">--°C</span>
+            </div>
+        </div>
+
         <br>
         <div id="statusBadge" class="status-badge">Conectando...</div>
 
@@ -402,6 +417,38 @@
                     if (data.version) {
                         document.getElementById('appVersion').textContent = data.version;
                         document.title = "El Oído del Abuelo - " + data.version;
+                    }
+
+                    // Hardware Telemetry
+                    if (data.batteryPct !== undefined && data.tempCelsius !== undefined) {
+                        const batText = document.getElementById('batteryText');
+                        const batIcon = document.getElementById('batteryIcon');
+                        const tempText = document.getElementById('tempText');
+                        const tempIcon = document.getElementById('tempIcon');
+
+                        batText.textContent = data.batteryPct + "%" + (data.isCharging ? " (AC)" : "");
+                        if (data.isCharging) {
+                            batText.style.color = "var(--status-green)";
+                            batIcon.textContent = "⚡";
+                        } else if (data.batteryPct <= 20) {
+                            batText.style.color = "var(--status-red)";
+                            batIcon.textContent = "🪫";
+                        } else {
+                            batText.style.color = "#fff";
+                            batIcon.textContent = "🔋";
+                        }
+
+                        tempText.textContent = data.tempCelsius.toFixed(1) + "°C";
+                        if (data.tempCelsius > 40) {
+                            tempText.style.color = "var(--status-red)";
+                            tempIcon.style.color = "var(--status-red)";
+                        } else if (data.tempCelsius > 35) {
+                            tempText.style.color = "orange";
+                            tempIcon.style.color = "orange";
+                        } else {
+                            tempText.style.color = "#fff";
+                            tempIcon.style.color = "inherit";
+                        }
                     }
 
                     // Ajustar UI del threshold-marker
