@@ -20,7 +20,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        // Headless: No cargamos setContentView(R.layout.activity_main);
 
         checkAndRequestPermissions();
     }
@@ -65,11 +65,10 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (allGranted) {
-                // Toast.makeText(this, "Todos los permisos concedidos",
-                // Toast.LENGTH_SHORT).show();
                 startOidoService();
             } else {
                 Toast.makeText(this, "Faltan permisos necesarios", Toast.LENGTH_LONG).show();
+                finish(); // Destruir ventana fantasma si rechaza
             }
         }
     }
@@ -78,5 +77,6 @@ public class MainActivity extends AppCompatActivity {
         Intent serviceIntent = new Intent(this, OidoService.class);
         ContextCompat.startForegroundService(this, serviceIntent);
         Toast.makeText(this, "Servicio de Escucha Iniciado", Toast.LENGTH_SHORT).show();
+        finish(); // Autodestrucción Headless tras lanzar el servicio
     }
 }

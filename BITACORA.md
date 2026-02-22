@@ -261,3 +261,13 @@ Al inyectar el diseño de "El Ojo del Abuelo" en la V19, el bloque iterativo de 
 ### 🛠️ La Solución
 - Limpieza Javascript: Se ha re-esamblado el parseo numérico a `new Date(f.timestamp)` y formateado puro para el FileSize.
 - El algoritmo `Arrays.sort()` en Java (Backend) que usa `Long.compare(f2.lastModified(), f1.lastModified())` estaba y sigue estando matemáticamente perfecto para devolver los archivos más nuevos primero; el error era solamente del visualizador.
+
+## 👻 Arquitectura Headless v1.0-dev.21: Interfaz Invisible | 22-Feb-2026
+### 📜 El Problema
+Dado que la interacción al 100% con El Oído del Abuelo ocurre de forma remota vía Dashboard Web, la actividad principal en el teléfono gastaba pantalla, batería, y resultaba anti-estética al abrir una vista vacía solo para mantener vivo el Foreground Service. Había que convertir la app en un demonio en segundo plano (Daemon).
+
+### 🛠️ La Solución
+1. En `styles.xml` se configuró un tema `Theme.Headless` (`android:windowBackground="@android:color/transparent"`).
+2. Se inyectó este tema de invisibilidad al `<activity>` en el `AndroidManifest.xml`.
+3. Se extirpó el dibujado de vistas (`setContentView`) del método `onCreate` de `MainActivity.java`.
+4. Se conectó una directiva de autodestrucción (`finish()`) tras lanzar con éxito el `OidoService`, permitiendo que la ventana muera al milisegundo mientras el micrófono y el servidor NanoHTTPD se independizan y viven en el Service.
