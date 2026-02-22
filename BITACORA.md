@@ -294,3 +294,11 @@ Al despojar a la App de toda interfaz visual (Headless), el usuario aún se veí
 ### ⚠️ Lección del Día (La Dictadura MIUI)
 El Framework original de Google permite este Autoarranque, pero los teléfonos Xiaomi (MIUI) implementan un firewall de batería que **bloquea físicamente los Receptores de Arranque**. 
 - **Acción Manual Necesaria**: Para que el código inyectado en la V23 triunfe, es obligatorio ir a (Ajustes -> Aplicaciones -> El Oído del Abuelo) y encender el botón nativo de **"Inicio Automático"**. Si no se presiona ese botón gráfico en el sistema del Xiaomi, este parche no servirá de nada.
+
+## 👻 Feature v1.0-dev.24: Modo Fantasma (Decapitación del Launcher) | 22-Feb-2026
+### 📜 El Problema
+Manteniendo la filosofía de diseñar un **Microservicio IoT Puro**, carece de sentido que una aplicación que se enciende sola al arrancar el terminal, y cuya interfaz entera vive servida por IP remota 8080 (Headless), ensucie el cajón de aplicaciones del Sistema Operativo con un ícono interactivo irrelevante.
+
+### 🛠️ La Solución
+He intervenido el ADN principal en `AndroidManifest.xml`. He localizado el Intent-Filter del Componente `MainActivity` y ejecutado un borrado quirúrgico de la directiva `<category android:name="android.intent.category.LAUNCHER" />`. Se ha reemplazado por la directiva vacía `DEFAULT`. 
+A partir de este instante estricto, **El Oído del Abuelo** ha dejado de tener representación gráfica local y Android prohíbe dibujarlo en los menús para el usuario casual del hardware. El único medio de control restante es mediante ADB por cable/Wifi o la web externa vía puerto 8080.

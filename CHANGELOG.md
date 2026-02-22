@@ -1,5 +1,9 @@
 # Changelog: El Oído del Abuelo
 
+## [v1.0-dev.24] - 22-Feb-2026
+### Changed
+- **Modo Fantasma Acoplado**: Supresión del tag genético `LAUNCHER` en el `AndroidManifest.xml`. La aplicación se vuelve invisible en Android perdiendo su icono gráfico nativo, rematando el modelo *Zero-Touch*. 
+
 ## [v1.0-dev.23] - 22-Feb-2026
 ### Added
 - **Autostart al Arranque**: Implementado `BootReceiver` para escuchar incondicionalmente el evento del SO `BOOT_COMPLETED`.

@@ -1,9 +1,9 @@
-v1.0-dev.23 Feature: Autostart Ignición (Boot Receiver)
+v1.0-dev.24 Feature: Modo Fantasma (Decapitación del Launcher)
 
 ### 📜 El Problema
-Al despojar a la App de toda interfaz visual (Headless), el usuario aún se veía obligado a pulsar el icono de **El Oído del Abuelo** cada vez que el Redmi 9C se reiniciaba por accidente o apagón. Un sistema de alarma profesional debe restaurarse solo y retomar la vigilancia sin intervención humana (CCTV-Concept).
+Manteniendo la filosofía de diseñar un Microservicio IoT Puro, carece de sentido que una aplicación que se enciende sola al arrancar el terminal, y cuya interfaz entera vive servida por IP remota 8080 (Headless), ensucie el cajón de aplicaciones del Sistema Operativo con un ícono interactivo irrelevante.
 
 ### 🛠️ La Solución
-- En `AndroidManifest.xml` añadimos `<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>` para que Android nos autorice a escuchar su arranque.
-- Registramos el `<receiver>` BootReceiver anclado al evento `BOOT_COMPLETED`.
-- Creamos `BootReceiver.java`, clase asíncrona que despierta a OidoService exigiéndole reanudar Micrófono y Servidor en cuanto el sistema carga.
+- He localizado el Intent-Filter del Componente MainActivity.
+- Ejecutado un borrado de la directiva `<category android:name="android.intent.category.LAUNCHER" />`. 
+- El Oído del Abuelo ha dejado de tener representación gráfica local y Android prohíbe dibujarlo en los menús para el usuario casual del hardware. El único medio de control restante es mediante ADB por cable o la web externa vía puerto 8080.
