@@ -373,3 +373,18 @@ Tras habilitar la inyección del flujo AAC desnudándolo del GZIP, el navegador 
 2.  **Cabeceras Erróneas (MPEG-2 vs MPEG-4)**: Confiábamos en una Inyección ADTS con formato `0xF9` (perfil MPEG-2). Pero, en rigor, nuestro códec forjaba buffers en **MPEG-4** (`0xF1`). Safari, siendo draconiano, expulsaba directamente la mezcla de datos al ver la asimetría de diccionarios. Se rectificó cambiando el byte base a `0xF1`.
 3.  **El Veneno CSD y la Muerte Arterial**: Cada vez que el códec hardware se iniciaba arranca escupiendo un flag `BUFFER_FLAG_CODEC_CONFIG` (CSD) de 2 bits ajeno al audio. Al envolver ese escombro con una cabecera ADTS completa, el primer paquete entregado al navegador estaba flagrantemente corrupto. Chromium lo bloqueaba por seguridad aduciendo a un stream insalubre. Se añadió lógica filtradora para ignorar los flags CSD, pues AAC-ADTS es auto-descriptivo frame a frame.
 4. **Desconexión Arterial PipedOutputStream**: Por un efecto secundario de mis reestructuraciones pasadas en `WebServer.java` (durante la purga de GZIP), la línea clave `sentinel.addLiveListener(pipedOutputStream);` había sido borrada accidentalmente. El servidor web abría la conexión al visitante pero el Sentinel jamás se enteraba ni encendía su *Phantom Codec*. Fue restaurada y fortificada inyectando `KEY_MAX_INPUT_SIZE` al formateador de compresión en vuelo.
+
+## 🚀 Rediseño de UI y Ajustes de Scroll en Modal v1.0-dev.31 | 23-Feb-2026
+### 📜 El Problema
+El panel de control "Modos de Grabación" ("Reposo Absoluto", "Vigilancia", "Continuo") era ambiguo y rígido. Además, al abrir la nueva ventana modal de "Ajustes del Centinela", se solapaba con las barras de navegación de los navegadores móviles (Safari/Chrome) y presentaba el infame bug de "Scroll Bleeding" sumado a botones inaccesibles por culpa del `100vh`.
+
+### 🛠️ La Solución
+1. **Rediseño Táctico de Interfaz**: Se reemplazó el Select de modos por un Gran Botón Maestro ("⏺️ GRABAR AHORA") en el dashboard.
+2. **Interruptores Reactivos**: La activación del micrófono ("Vigilancia Activa") y el "Filtro Anti-Falsas Alarmas" se movieron al Modal de Ajustes convertidos en Toggle Switches (estilo iOS).
+3. **Cronómetro en Vivo**: El Backend Java ahora emite el `recordingStartTimestamp`, permitiendo al Frontend JS inyectar un contador en tiempo real sobre el botón de grabación continua.
+4. **Erradicación del Scroll Bleeding**: Se inyectó dinámicamente en Javascript una clase `.modal-open` con `overflow: hidden;` al `<body>` al invocar el modal, petrificando el fondo temporalmente.
+5. **Evasión de Barras Nativas (75vh)**: Se suplantaron los offsets matemáticos por un acotado `max-height: 75vh` en el Modal, combinado con paddings sobredimensionados abajo (`60px`) y arriba, además de un botón de Cierre `&times;` incrustado mediante `flexbox` en la cabecera.
+
+### 🎓 Lecciones Aprendidas
+- El parámetro absoluto `100vh` en CSS Web Móvil es defectuoso por diseño (ignora las barras de UI inferiores y superiores del navegador dinámico). Sustituirlo por porcentajes relativos blindados (`75vh`) elimina los estancamientos de scroll en las capas flotantes de las Single Page Applications IoT.
+- Anclar listeners de CSS classes dinámicas al bloque `body` es el anti-patrón de scroll nativo más liviano y fiable para modales *Full-Screen*.

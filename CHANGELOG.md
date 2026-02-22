@@ -1,3 +1,13 @@
+## [v1.0-dev.31] - 2026-02-23
+### Changed
+- Reemplazo del Selector Desplegable de Modos por un Botón Maestro ("⏺️ GRABAR AHORA") en el Dashboard.
+- Incorporación de Cronómetro Activo inyectado sincrónicamente desde el backend vía JS.
+- Refactorización de Modos (0, 1, 2) a Variables Booleanas atómicas (`micEnabled`, `shieldEnabled`, `forceRecord`).
+### Fixed
+- Solucionado solapamiento y recortes visuales del Modal de Configuración en navegadores limitando el alto a `75vh`.
+- Inmovilización del bloque *Body* para eliminar el efecto "Scroll-Bleeding" detrás del modal de ajustes.
+- Inyección de Botón transversal 'X' en la cabecera de parámetros.
+
 ## [v1.0-dev.30] - 2026-02-22
 ### Fixed
 - **Audio Nativo WebAudio Restaurado:** Solucionado el bug que causaba un reproductor estancado (`currentTime: 0`) en navegadores cliente.

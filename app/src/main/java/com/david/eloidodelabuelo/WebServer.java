@@ -89,9 +89,11 @@ public class WebServer extends NanoHTTPD {
                 json.put("tempCelsius", cachedTempCelsiusFull / 10.0f);
 
                 SharedPreferences prefs = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE);
-                int recordingMode = prefs.getInt("RECORDING_MODE", 1);
-                json.put("recordingMode", recordingMode);
-                json.put("SHIELD_ENABLED", prefs.getBoolean("SHIELD_ENABLED", true));
+                json.put("micEnabled", prefs.getBoolean("MIC_ENABLED", true));
+                json.put("shieldEnabled", prefs.getBoolean("SHIELD_ENABLED", true));
+                json.put("forceRecord", prefs.getBoolean("FORCE_RECORD", false));
+                json.put("recordingStartTimestamp", sentinel.getRecordingStartTimestamp());
+
                 json.put("SPIKE_THRESHOLD", prefs.getInt("SPIKE_THRESHOLD", 10000));
                 json.put("REQUIRED_SPIKES", prefs.getInt("REQUIRED_SPIKES", 3));
                 json.put("SHIELD_WINDOW_MS", prefs.getInt("SHIELD_WINDOW_MS", 500));
@@ -118,14 +120,15 @@ public class WebServer extends NanoHTTPD {
                     SharedPreferences.Editor editor = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE)
                             .edit();
 
-                    if (json.has("recordingMode")) {
-                        int mode = json.getInt("recordingMode");
-                        if (mode >= 0 && mode <= 2) {
-                            editor.putInt("RECORDING_MODE", mode);
-                        }
+                    if (json.has("micEnabled"))
+                        editor.putBoolean("MIC_ENABLED", json.getBoolean("micEnabled"));
+                    if (json.has("shieldEnabled"))
+                        editor.putBoolean("SHIELD_ENABLED", json.getBoolean("shieldEnabled"));
+                    if (json.has("forceRecord")) {
+                        boolean bForce = json.getBoolean("forceRecord");
+                        editor.putBoolean("FORCE_RECORD", bForce);
+                        sentinel.updateForceRecordTimestamp(bForce);
                     }
-                    if (json.has("SHIELD_ENABLED"))
-                        editor.putBoolean("SHIELD_ENABLED", json.getBoolean("SHIELD_ENABLED"));
                     if (json.has("SPIKE_THRESHOLD"))
                         editor.putInt("SPIKE_THRESHOLD", json.getInt("SPIKE_THRESHOLD"));
                     if (json.has("REQUIRED_SPIKES"))

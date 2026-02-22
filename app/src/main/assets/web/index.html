@@ -165,19 +165,24 @@
             bottom: 0;
             background: rgba(0, 0, 0, 0.8);
             z-index: 100;
-            align-items: center;
+            align-items: flex-start;
+            /* Evitar que el centro exacto sature el Top-Bar */
             justify-content: center;
+            padding-top: 60px;
+            /* Separación prudencial de la barra de navegación del host */
         }
 
         .modal-content {
             background: #222222;
-            padding: 25px;
+            padding: 25px 25px 60px 25px;
             border-radius: 12px;
             width: 85%;
             max-width: 400px;
+            margin: 0 auto;
             color: white;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-            max-height: 85vh;
+            max-height: 75vh;
+            /* Evasión del error de Bottom-Bar / 100vh de Safari/Chrome móvil */
             overflow-y: auto;
         }
 
@@ -291,6 +296,72 @@
             outline: none;
             border-radius: 20px;
         }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #555;
+            transition: .3s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: var(--status-green);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(22px);
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px 15px;
+            border-radius: 8px;
+        }
+
+        .setting-label {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        /* CSS para inmovilizar el Scroll principal */
+        body.modal-open {
+            overflow: hidden;
+        }
     </style>
 </head>
 
@@ -315,7 +386,11 @@
         </div>
 
         <br>
-        <div id="statusBadge" class="status-badge">Conectando...</div>
+        <button id="btnRecMaster" class="pill-btn"
+            style="display: block; width: 100%; margin: 10px 0 25px 0; text-align: center; font-size: 1.3rem; padding: 18px; background-color: var(--status-red); border: none; color: white; border-radius: 12px; font-weight: bold; cursor: pointer; transition: background 0.2s;"
+            onclick="toggleContinuousRec()">
+            ⏺️ GRABAR AHORA
+        </button>
 
         <div class="instrument-panel">
             <button id="btnLive" class="settings-btn"
@@ -345,26 +420,43 @@
     <!-- Modal de Ajustes -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
-            <h2>Ajustes del Centinela</h2>
-            <div class="form-group">
-                <label>Modo de Grabación</label>
-                <select id="inpRecordingMode"
-                    style="width: 100%; padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px;">
-                    <option value="0">0 - Reposo Absoluto (Micrófono IDLE)</option>
-                    <option value="1">1 - Escudo de Detección (Recomendado)</option>
-                    <option value="2">2 - Grabación Continua (Sin análisis)</option>
-                </select>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">Ajustes del Centinela</h2>
+                <button onclick="closeSettings()"
+                    style="background: none; border: none; color: #888; font-size: 2rem; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
             </div>
-            <div class="form-group">
-                <label><input type="checkbox" id="inpShield"> SHIELD_ENABLED (Escudo)</label>
+
+            <div class="setting-row">
+                <div class="setting-label">
+                    <strong style="color: #fff; font-size: 1.05rem;">Vigilancia Activa</strong>
+                    <span style="font-size: 0.8rem; color: #aaa;">Encender/Apagar micrófono celular.</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="inpMicEnabled" onchange="toggleShieldVisibility()">
+                    <span class="slider"></span>
+                </label>
             </div>
+
+            <div class="setting-row" id="shieldRow">
+                <div class="setting-label">
+                    <strong style="color: #fff; font-size: 1.05rem;">Filtro Anti-Falsas Alarmas</strong>
+                    <span style="font-size: 0.8rem; color: #aaa;">Obliga al micrófono a escuchar varios tirones seguidos
+                        para grabar.</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="inpShieldEnabled">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
             <div class="form-group">
-                <label>SPIKE_THRESHOLD: <span id="valSpike">10000</span></label>
+                <label>Volumen mínimo de disparo: <strong id="valSpike"
+                        style="color:var(--status-green);">10000</strong></label>
                 <input type="range" id="inpSpike" min="0" max="32767" value="10000"
                     oninput="document.getElementById('valSpike').innerText=this.value">
             </div>
             <div class="form-group">
-                <label>REQUIRED_SPIKES (Picos para Alarma)</label>
+                <label>Picos Consecutivos para saltar (REQUIRED_SPIKES)</label>
                 <input type="number" id="inpRequired" min="1" max="10">
             </div>
             <div class="form-group">
@@ -421,7 +513,10 @@
                 .then(data => {
                     const amp = data.currentAmplitude || 0;
                     const isRecording = data.isRecording;
-                    const recordingMode = data.recordingMode !== undefined ? data.recordingMode : 1;
+
+                    const micEnabled = data.micEnabled !== undefined ? data.micEnabled : true;
+                    const shieldEnabled = data.shieldEnabled !== undefined ? data.shieldEnabled : true;
+                    const forceRecord = data.forceRecord || false;
 
                     latestConfig = data; // Almacenamos para rellenar el modal
 
@@ -474,26 +569,45 @@
                     if (percentage > 100) percentage = 100;
                     vumeter.style.width = percentage + '%';
 
-                    // Lógica de colores y estados
-                    if (recordingMode === 0) {
-                        statusBadge.textContent = "Reposo Absoluto";
+                    // Lógica de colores y estados - V31
+                    const btnRecMaster = document.getElementById('btnRecMaster');
+
+                    if (!micEnabled) {
+                        statusBadge.textContent = "Micrófono Apagado";
                         statusBadge.style.backgroundColor = "var(--status-gray)";
                         vumeter.style.backgroundColor = "var(--status-gray)";
-                    } else if (recordingMode === 2) {
+                        btnRecMaster.innerHTML = `⚠️ MICRO OFF EN AJUSTES`;
+                        btnRecMaster.style.backgroundColor = "var(--status-gray)";
+                    } else if (forceRecord) {
                         statusBadge.textContent = "Grabación Continua";
                         statusBadge.style.backgroundColor = "var(--status-red)";
                         vumeter.style.backgroundColor = "var(--status-red)";
+
+                        let timeStr = "00:00:00";
+                        if (data.recordingStartTimestamp) {
+                            const diff = Math.floor((Date.now() - data.recordingStartTimestamp) / 1000);
+                            const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+                            const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+                            const s = String(diff % 60).padStart(2, '0');
+                            timeStr = `${h}:${m}:${s}`;
+                        }
+                        btnRecMaster.innerHTML = `⏹️ DETENER [${timeStr}]`;
+                        btnRecMaster.style.backgroundColor = "#555";
                     } else if (isRecording) {
                         statusBadge.textContent = "Grabando Alarma";
                         statusBadge.style.backgroundColor = "var(--status-red)";
                         vumeter.style.backgroundColor = "var(--status-red)";
+                        btnRecMaster.innerHTML = `⏺️ GRABAR AHORA`;
+                        btnRecMaster.style.backgroundColor = "var(--status-red)";
                     } else {
-                        statusBadge.textContent = "Vigilando";
+                        statusBadge.textContent = shieldEnabled ? "Vigilando (Escudo ON)" : "Vigilando (Picos Directos)";
                         statusBadge.style.backgroundColor = "var(--primary-dark)";
+                        btnRecMaster.innerHTML = `⏺️ GRABAR AHORA`;
+                        btnRecMaster.style.backgroundColor = "var(--status-red)";
 
                         // Vúmetro dinámico en escucha
                         if (amp > currentSpikeThreshold) {
-                            vumeter.style.backgroundColor = "var(--status-red)";
+                            vumeter.style.backgroundColor = shieldEnabled ? "var(--status-yellow)" : "var(--status-red)";
                         } else {
                             vumeter.style.backgroundColor = "var(--status-green)";
                         }
@@ -508,24 +622,53 @@
         }
 
         function openSettings() {
-            document.getElementById('inpRecordingMode').value = latestConfig.recordingMode ?? 1;
-            document.getElementById('inpShield').checked = latestConfig.SHIELD_ENABLED ?? true;
+            document.getElementById('inpMicEnabled').checked = (latestConfig.micEnabled !== undefined) ? latestConfig.micEnabled : true;
+            document.getElementById('inpShieldEnabled').checked = (latestConfig.shieldEnabled !== undefined) ? latestConfig.shieldEnabled : true;
+            toggleShieldVisibility();
+
             document.getElementById('inpSpike').value = latestConfig.SPIKE_THRESHOLD ?? 10000;
             document.getElementById('valSpike').innerText = latestConfig.SPIKE_THRESHOLD ?? 10000;
             document.getElementById('inpRequired').value = latestConfig.REQUIRED_SPIKES ?? 3;
             document.getElementById('inpWindow').value = latestConfig.SHIELD_WINDOW_MS ?? 500;
             document.getElementById('inpDuration').value = latestConfig.RECORD_DURATION_MS ?? 15000;
+
+            document.body.classList.add('modal-open');
             document.getElementById('settingsModal').style.display = 'flex';
         }
 
         function closeSettings() {
+            document.body.classList.remove('modal-open');
             document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function toggleShieldVisibility() {
+            const mic = document.getElementById('inpMicEnabled').checked;
+            document.getElementById('shieldRow').style.opacity = mic ? '1' : '0.3';
+            document.getElementById('shieldRow').style.pointerEvents = mic ? 'auto' : 'none';
+        }
+
+        function toggleContinuousRec() {
+            if (latestConfig && latestConfig.micEnabled === false) {
+                alert("⚠️ Active la [Vigilancia Activa] en Ajustes primero.");
+                return;
+            }
+            const isForced = latestConfig && latestConfig.forceRecord;
+            const newForceState = !isForced;
+
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ forceRecord: newForceState })
+            }).then(res => res.json()).then(data => {
+                if (data.status !== 'ok') alert("Error: " + data.message);
+                updateDashboard();
+            }).catch(err => alert("Error de red al activar/desactivar grabación"));
         }
 
         function saveSettings() {
             const payload = {
-                recordingMode: parseInt(document.getElementById('inpRecordingMode').value),
-                SHIELD_ENABLED: document.getElementById('inpShield').checked,
+                micEnabled: document.getElementById('inpMicEnabled').checked,
+                shieldEnabled: document.getElementById('inpShieldEnabled').checked,
                 SPIKE_THRESHOLD: parseInt(document.getElementById('inpSpike').value),
                 REQUIRED_SPIKES: parseInt(document.getElementById('inpRequired').value),
                 SHIELD_WINDOW_MS: parseInt(document.getElementById('inpWindow').value),

@@ -33,8 +33,9 @@ public class AudioSentinel {
     private static final int CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO;
     private static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
 
-    // Nombres de las preferencias (V28)
-    private static final String PREF_RECORDING_MODE = "RECORDING_MODE"; // 0=Reposo, 1=Deteccion, 2=Continuo
+    // Nombres de las preferencias (V31)
+    private static final String PREF_MIC_ENABLED = "MIC_ENABLED";
+    private static final String PREF_FORCE_RECORD = "FORCE_RECORD";
     private static final String PREF_SHIELD_ENABLED = "SHIELD_ENABLED";
     private static final String PREF_SPIKE_THRESHOLD = "SPIKE_THRESHOLD";
     private static final String PREF_REQUIRED_SPIKES = "REQUIRED_SPIKES";
@@ -47,8 +48,9 @@ public class AudioSentinel {
     private Context context;
     private SharedPreferences prefs;
 
-    // Variables de configuración cacheadas en RAM (Eco-Mode V27 -> V28)
-    private volatile int recordingModeCached = 1; // Por defecto: 1 (Detección)
+    // Variables de configuración cacheadas en RAM (Eco-Mode V27 -> V31)
+    private volatile boolean micEnabledCached = true;
+    private volatile boolean forceRecordCached = false;
     private volatile boolean shieldEnabledCached = true;
     private volatile int spikeThresholdCached = 10000;
     private volatile int requiredSpikesCached = 3;
@@ -59,8 +61,11 @@ public class AudioSentinel {
         if (key == null)
             return;
         switch (key) {
-            case PREF_RECORDING_MODE:
-                recordingModeCached = sharedPreferences.getInt(PREF_RECORDING_MODE, 1);
+            case PREF_MIC_ENABLED:
+                micEnabledCached = sharedPreferences.getBoolean(PREF_MIC_ENABLED, true);
+                break;
+            case PREF_FORCE_RECORD:
+                forceRecordCached = sharedPreferences.getBoolean(PREF_FORCE_RECORD, false);
                 break;
             case PREF_SHIELD_ENABLED:
                 shieldEnabledCached = sharedPreferences.getBoolean(PREF_SHIELD_ENABLED, true);
@@ -83,6 +88,7 @@ public class AudioSentinel {
 
     private volatile double currentAmplitude = 0;
     private volatile boolean isRecordingStatus = false;
+    private volatile Long recordingStartTimestamp = null;
     private final CopyOnWriteArrayList<OutputStream> liveListeners = new CopyOnWriteArrayList<>();
 
     public void addLiveListener(OutputStream os) {
@@ -101,12 +107,29 @@ public class AudioSentinel {
         return isRecordingStatus;
     }
 
+    public Long getRecordingStartTimestamp() {
+        return recordingStartTimestamp;
+    }
+
+    public void updateForceRecordTimestamp(boolean isForced) {
+        if (isForced) {
+            recordingStartTimestamp = System.currentTimeMillis();
+        } else {
+            recordingStartTimestamp = null;
+        }
+    }
+
     public AudioSentinel(Context context) {
         this.context = context.getApplicationContext();
         this.prefs = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE);
 
-        // Inicializar cache inicial (V28)
-        recordingModeCached = prefs.getInt(PREF_RECORDING_MODE, 1);
+        // Inicializar cache inicial (V31)
+        micEnabledCached = prefs.getBoolean(PREF_MIC_ENABLED, true);
+        forceRecordCached = prefs.getBoolean(PREF_FORCE_RECORD, false);
+        if (forceRecordCached) {
+            recordingStartTimestamp = System.currentTimeMillis();
+        }
+
         shieldEnabledCached = prefs.getBoolean(PREF_SHIELD_ENABLED, true);
         spikeThresholdCached = prefs.getInt(PREF_SPIKE_THRESHOLD, 10000);
         requiredSpikesCached = prefs.getInt(PREF_REQUIRED_SPIKES, 3);
@@ -184,9 +207,10 @@ public class AudioSentinel {
             byte[] byteBuffer = new byte[bufferSize]; // Para escritura WAV
 
             while (isRunning) {
-                // 1. Lectura de Preferencias desde RAM (Eco-Mode V27)
+                // 1. Lectura de Preferencias desde RAM (Eco-Mode V31)
                 // NO consultamos SharedPreferences.getXXX en cada ciclo
-                int recordingMode = recordingModeCached;
+                boolean micEnabled = micEnabledCached;
+                boolean forceRecord = forceRecordCached;
                 boolean shieldEnabled = shieldEnabledCached;
                 int spikeThreshold = spikeThresholdCached;
                 int requiredSpikes = requiredSpikesCached;
@@ -195,8 +219,8 @@ public class AudioSentinel {
 
                 boolean hasListeners = !liveListeners.isEmpty();
 
-                // 2. Modo Standby (Kill Switch)
-                if (recordingModeCached == 0 && !hasListeners) {
+                // 2. Modo Kill Switch (Micrófono Apagado)
+                if (!micEnabled) {
                     if (isRecording) {
                         // Forzar cierre si se apaga de golpe
                         isRecording = false;
@@ -217,45 +241,46 @@ public class AudioSentinel {
                             fos = null;
                         }
                     }
-                    // Ya NO hacemos Thread.sleep(1000) ni 'continue' porque provoca Buffer Overflow
-                    // en Xiaomi
-                    // Dejamos que 'audioRecord.read()' bloquee de forma nativa esperando el buffer,
-                    // drenándolo en silencio.
+                    // Leemos el buffer para drenarlo de la RAM y evitar Crash/Overflow en Xiaomi
                 }
 
-                // Leer audio (Esto bloqueará el hilo eficientemente y evita el Overflow)
+                // Leer audio (Esto bloqueará el hilo eficientemente)
                 int readResult = audioRecord.read(buffer, 0, buffer.length);
                 if (readResult > 0) {
                     long currentTime = System.currentTimeMillis();
-                    double amplitude = calculateAmplitude(buffer, readResult);
+
+                    // Si el micro está apagado por software, forzamos silencio matemático
+                    double amplitude = !micEnabled ? 0 : calculateAmplitude(buffer, readResult);
                     this.currentAmplitude = amplitude;
 
                     boolean wantToRecord = false;
 
-                    // 3. Lógica del Modo
-                    if (recordingMode == 2) {
-                        wantToRecord = true; // Continuo absoluto
-                    } else if (recordingMode == 1) { // Detección
-                        if (amplitude > spikeThreshold) {
-                            if (!shieldEnabled) {
-                                wantToRecord = true;
-                            } else {
-                                if (spikeCount == 0 || (currentTime - firstSpikeTime) > shieldWindowMs) {
-                                    firstSpikeTime = currentTime;
-                                    spikeCount = 1;
-                                } else {
-                                    spikeCount++;
-                                }
-                                if (spikeCount >= requiredSpikes) {
+                    // 3. Lógica del Modo de Operación (V31)
+                    if (micEnabled) {
+                        if (forceRecord) {
+                            wantToRecord = true; // Continuo absoluto guiado por el Botón REC
+                        } else { // Detección Clásica
+                            if (amplitude > spikeThreshold) {
+                                if (!shieldEnabled) {
                                     wantToRecord = true;
-                                    spikeCount = 0;
+                                } else {
+                                    if (spikeCount == 0 || (currentTime - firstSpikeTime) > shieldWindowMs) {
+                                        firstSpikeTime = currentTime;
+                                        spikeCount = 1;
+                                    } else {
+                                        spikeCount++;
+                                    }
+                                    if (spikeCount >= requiredSpikes) {
+                                        wantToRecord = true;
+                                        spikeCount = 0;
+                                    }
                                 }
                             }
-                        }
-                        if (wantToRecord) {
-                            recordingEndTime = currentTime + recordDurationMs;
-                        } else if (isRecording && currentTime < recordingEndTime) {
-                            wantToRecord = true; // Seguimos dentro de la ventana del Trigger
+                            if (wantToRecord) {
+                                recordingEndTime = currentTime + recordDurationMs;
+                            } else if (isRecording && currentTime < recordingEndTime) {
+                                wantToRecord = true; // Seguimos dentro de la ventana del Trigger
+                            }
                         }
                     }
 
@@ -311,9 +336,9 @@ public class AudioSentinel {
                     }
 
                     // 5. Procesamiento Multitarea: Inyección de ADTS (Disco + Red)
-                    if (isRecording || hasListeners) {
-                        // Si hay escuchas pero el modo es 0 (o 1 sin trigger), debemos encender un
-                        // Codec fantasma
+                    if (micEnabled && (isRecording || hasListeners)) {
+                        // Si hay escuchas pero no estamos grabando a disco, encendemos un Codec
+                        // fantasma
                         if (codec == null && hasListeners && !isRecording) {
                             try {
                                 MediaFormat format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC,
@@ -394,7 +419,7 @@ public class AudioSentinel {
                                 outputBufferIndex = codec.dequeueOutputBuffer(bufferInfo, 0);
                             }
                         }
-                    } else if (!isRecording && !hasListeners && codec != null) {
+                    } else if ((!micEnabled || (!isRecording && !hasListeners)) && codec != null) {
                         try {
                             codec.stop();
                             codec.release();
