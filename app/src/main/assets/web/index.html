@@ -429,11 +429,24 @@
 
             <div class="setting-row">
                 <div class="setting-label">
-                    <strong style="color: #fff; font-size: 1.05rem;">Vigilancia Activa</strong>
-                    <span style="font-size: 0.8rem; color: #aaa;">Encender/Apagar micrófono celular.</span>
+                    <strong style="color: #fff; font-size: 1.05rem;">Hardware Micrófono</strong>
+                    <span style="font-size: 0.8rem; color: #aaa;">Maestro Kill-Switch. Si se apaga, el móvil queda
+                        totalmente sordo.</span>
                 </div>
                 <label class="toggle-switch">
                     <input type="checkbox" id="inpMicEnabled" onchange="toggleShieldVisibility()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row" id="autoDetectionRow">
+                <div class="setting-label">
+                    <strong style="color: #fff; font-size: 1.05rem;">Detección Automática</strong>
+                    <span style="font-size: 0.8rem; color: #aaa;">Si el Micro está ON, permite escuchar alertas
+                        automáticas por ruidos.</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="inpAutoDetectionEnabled">
                     <span class="slider"></span>
                 </label>
             </div>
@@ -560,6 +573,7 @@
                     const isRecording = data.isRecording;
 
                     const micEnabled = data.micEnabled !== undefined ? data.micEnabled : true;
+                    const autoDetectionEnabled = data.autoDetectionEnabled !== undefined ? data.autoDetectionEnabled : true;
                     const shieldEnabled = data.shieldEnabled !== undefined ? data.shieldEnabled : true;
                     const forceRecord = data.forceRecord || false;
 
@@ -619,65 +633,93 @@
                     if (percentage > 100) percentage = 100;
                     if (vumeter) vumeter.style.width = percentage + '%';
 
-                    // Lógica de colores y estados - V31
+                    // Lógica de colores y estados - V38 Dicotomía
+                    const btnLive = document.getElementById('btnLive');
 
                     if (!micEnabled) {
                         if (statusBadge) {
                             statusBadge.textContent = "Micrófono Apagado";
                             statusBadge.style.backgroundColor = "var(--status-gray)";
+                            statusBadge.style.color = "#fff";
                         }
                         if (vumeter) vumeter.style.backgroundColor = "var(--status-gray)";
                         if (btnRecMaster) {
                             btnRecMaster.innerHTML = `⚠️ MICRO OFF EN AJUSTES`;
                             btnRecMaster.style.backgroundColor = "var(--status-gray)";
+                            btnRecMaster.disabled = true;
                         }
-                    } else if (forceRecord) {
-                        if (statusBadge) {
-                            statusBadge.textContent = "Grabación Continua";
-                            statusBadge.style.backgroundColor = "var(--status-red)";
-                        }
-                        if (vumeter) vumeter.style.backgroundColor = "var(--status-red)";
-
-                        let timeStr = "00:00:00";
-                        if (data.recordingStartTimestamp) {
-                            const diff = Math.floor((Date.now() - data.recordingStartTimestamp) / 1000);
-                            const h = String(Math.floor(diff / 3600)).padStart(2, '0');
-                            const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
-                            const s = String(diff % 60).padStart(2, '0');
-                            timeStr = `${h}:${m}:${s}`;
-                        }
-                        if (btnRecMaster) {
-                            btnRecMaster.innerHTML = `⏹️ DETENER [${timeStr}]`;
-                            btnRecMaster.style.backgroundColor = "#555";
-                        }
-                    } else if (isRecording) {
-                        // DETECCIÓN ACTIVA (GRABANDO)
-                        if (statusBadge) {
-                            statusBadge.textContent = "Grabando Alarma";
-                            statusBadge.style.backgroundColor = "var(--status-red)";
-                        }
-                        if (vumeter) vumeter.style.backgroundColor = "var(--status-red)";
-                        if (btnRecMaster) {
-                            btnRecMaster.innerHTML = `⏺️ GRABAR AHORA`;
-                            btnRecMaster.style.backgroundColor = "var(--status-red)";
+                        if (btnLive) {
+                            btnLive.disabled = true;
+                            btnLive.style.opacity = "0.5";
+                            btnLive.innerHTML = "📻 Escuchar en Vivo (Hardware OFF)";
+                            stopLiveStream();
                         }
                     } else {
-                        // VIGILANCIA PASIVA (REPOSO ACTIVO)
-                        if (statusBadge) {
-                            statusBadge.textContent = shieldEnabled ? "Vigilando (Escudo ON)" : "Vigilando (Picos Directos)";
-                            statusBadge.style.backgroundColor = "var(--primary-dark)";
-                        }
-                        if (btnRecMaster) {
-                            btnRecMaster.innerHTML = `⏺️ GRABAR AHORA`;
-                            btnRecMaster.style.backgroundColor = "var(--status-red)";
+                        if (btnRecMaster) btnRecMaster.disabled = false;
+                        if (btnLive) {
+                            btnLive.disabled = false;
+                            btnLive.style.opacity = "1";
+                            // Restaurar texto si no estamos reproduciendo
+                            if (!liveAudioElement) btnLive.innerHTML = "📻 Escuchar en Vivo (OFF)";
                         }
 
-                        // Vúmetro dinámico en escucha
-                        let currentSpikeThreshold = (data.SPIKE_THRESHOLD !== undefined) ? data.SPIKE_THRESHOLD : 10000;
-                        if (amp > currentSpikeThreshold) {
-                            if (vumeter) vumeter.style.backgroundColor = shieldEnabled ? "var(--status-yellow)" : "var(--status-red)";
+                        if (forceRecord) {
+                            if (statusBadge) {
+                                statusBadge.textContent = "Grabación Continua";
+                                statusBadge.style.backgroundColor = "var(--status-red)";
+                                statusBadge.style.color = "#fff";
+                            }
+                            if (vumeter) vumeter.style.backgroundColor = "var(--status-red)";
+
+                            let timeStr = "00:00:00";
+                            if (data.recordingStartTimestamp) {
+                                const diff = Math.floor((Date.now() - data.recordingStartTimestamp) / 1000);
+                                const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+                                const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+                                const s = String(diff % 60).padStart(2, '0');
+                                timeStr = `${h}:${m}:${s}`;
+                            }
+                            if (btnRecMaster) {
+                                btnRecMaster.innerHTML = `⏹️ DETENER [${timeStr}]`;
+                                btnRecMaster.style.backgroundColor = "#555";
+                            }
+                        } else if (isRecording) {
+                            // DETECCIÓN ACTIVA (GRABANDO)
+                            if (statusBadge) {
+                                statusBadge.textContent = "Grabando Alarma";
+                                statusBadge.style.backgroundColor = "var(--status-red)";
+                                statusBadge.style.color = "#fff";
+                            }
+                            if (vumeter) vumeter.style.backgroundColor = "var(--status-red)";
+                            if (btnRecMaster) {
+                                btnRecMaster.innerHTML = `⏺️ GRABAR AHORA`;
+                                btnRecMaster.style.backgroundColor = "var(--status-red)";
+                            }
                         } else {
-                            if (vumeter) vumeter.style.backgroundColor = "var(--status-green)";
+                            // VIGILANCIA PASIVA (REPOSO ACTIVO)
+                            if (statusBadge) {
+                                if (!autoDetectionEnabled) {
+                                    statusBadge.textContent = "👂 Sólo Escucha (Detección OFF)";
+                                    statusBadge.style.backgroundColor = "var(--status-yellow)";
+                                    statusBadge.style.color = "#000";
+                                } else {
+                                    statusBadge.textContent = shieldEnabled ? "Vigilando (Escudo ON)" : "Vigilando (Picos Directos)";
+                                    statusBadge.style.backgroundColor = "var(--primary-dark)";
+                                    statusBadge.style.color = "#fff";
+                                }
+                            }
+                            if (btnRecMaster) {
+                                btnRecMaster.innerHTML = `⏺️ GRABAR AHORA`;
+                                btnRecMaster.style.backgroundColor = "var(--status-red)";
+                            }
+
+                            // Vúmetro dinámico en escucha
+                            let currentSpikeThreshold = (data.SPIKE_THRESHOLD !== undefined) ? data.SPIKE_THRESHOLD : 10000;
+                            if (amp > currentSpikeThreshold && autoDetectionEnabled) {
+                                if (vumeter) vumeter.style.backgroundColor = shieldEnabled ? "var(--status-yellow)" : "var(--status-red)";
+                            } else {
+                                if (vumeter) vumeter.style.backgroundColor = "var(--status-green)";
+                            }
                         }
                     }
                 })
@@ -695,6 +737,7 @@
 
         function openSettings() {
             document.getElementById('inpMicEnabled').checked = (latestConfig.micEnabled !== undefined) ? latestConfig.micEnabled : true;
+            document.getElementById('inpAutoDetectionEnabled').checked = (latestConfig.autoDetectionEnabled !== undefined) ? latestConfig.autoDetectionEnabled : true;
             document.getElementById('inpShieldEnabled').checked = (latestConfig.shieldEnabled !== undefined) ? latestConfig.shieldEnabled : true;
             toggleShieldVisibility();
 
@@ -717,6 +760,8 @@
             const mic = document.getElementById('inpMicEnabled').checked;
             document.getElementById('shieldRow').style.opacity = mic ? '1' : '0.3';
             document.getElementById('shieldRow').style.pointerEvents = mic ? 'auto' : 'none';
+            document.getElementById('autoDetectionRow').style.opacity = mic ? '1' : '0.3';
+            document.getElementById('autoDetectionRow').style.pointerEvents = mic ? 'auto' : 'none';
         }
 
         function toggleContinuousRec() {
@@ -740,6 +785,7 @@
         function saveSettings() {
             const payload = {
                 micEnabled: document.getElementById('inpMicEnabled').checked,
+                autoDetectionEnabled: document.getElementById('inpAutoDetectionEnabled').checked,
                 shieldEnabled: document.getElementById('inpShieldEnabled').checked,
                 SPIKE_THRESHOLD: parseInt(document.getElementById('inpSpike').value),
                 REQUIRED_SPIKES: parseInt(document.getElementById('inpRequired').value),

@@ -35,6 +35,7 @@ public class AudioSentinel {
 
     // Nombres de las preferencias (V31)
     private static final String PREF_MIC_ENABLED = "MIC_ENABLED";
+    private static final String PREF_AUTO_DETECTION = "AUTO_DETECTION_ENABLED"; // Nuevo V38
     private static final String PREF_FORCE_RECORD = "FORCE_RECORD";
     private static final String PREF_SHIELD_ENABLED = "SHIELD_ENABLED";
     private static final String PREF_SPIKE_THRESHOLD = "SPIKE_THRESHOLD";
@@ -50,6 +51,7 @@ public class AudioSentinel {
 
     // Variables de configuración cacheadas en RAM (Eco-Mode V27 -> V31)
     private volatile boolean micEnabledCached = true;
+    private volatile boolean autoDetectionCached = true; // Nuevo V38
     private volatile boolean forceRecordCached = false;
     private volatile boolean shieldEnabledCached = true;
     private volatile int spikeThresholdCached = 10000;
@@ -63,6 +65,9 @@ public class AudioSentinel {
         switch (key) {
             case PREF_MIC_ENABLED:
                 micEnabledCached = sharedPreferences.getBoolean(PREF_MIC_ENABLED, true);
+                break;
+            case PREF_AUTO_DETECTION:
+                autoDetectionCached = sharedPreferences.getBoolean(PREF_AUTO_DETECTION, true);
                 break;
             case PREF_FORCE_RECORD:
                 forceRecordCached = sharedPreferences.getBoolean(PREF_FORCE_RECORD, false);
@@ -125,6 +130,7 @@ public class AudioSentinel {
 
         // Inicializar cache inicial (V31)
         micEnabledCached = prefs.getBoolean(PREF_MIC_ENABLED, true);
+        autoDetectionCached = prefs.getBoolean(PREF_AUTO_DETECTION, true);
         forceRecordCached = prefs.getBoolean(PREF_FORCE_RECORD, false);
         if (forceRecordCached) {
             recordingStartTimestamp = System.currentTimeMillis();
@@ -210,6 +216,7 @@ public class AudioSentinel {
                 // 1. Lectura de Preferencias desde RAM (Eco-Mode V31)
                 // NO consultamos SharedPreferences.getXXX en cada ciclo
                 boolean micEnabled = micEnabledCached;
+                boolean autoDetection = autoDetectionCached;
                 boolean forceRecord = forceRecordCached;
                 boolean shieldEnabled = shieldEnabledCached;
                 int spikeThreshold = spikeThresholdCached;
@@ -259,7 +266,7 @@ public class AudioSentinel {
                     if (micEnabled) {
                         if (forceRecord) {
                             wantToRecord = true; // Continuo absoluto guiado por el Botón REC
-                        } else { // Detección Clásica
+                        } else if (autoDetection) { // Detección Clásica solo si está habilitada (V38)
                             if (amplitude > spikeThreshold) {
                                 if (!shieldEnabled) {
                                     wantToRecord = true;

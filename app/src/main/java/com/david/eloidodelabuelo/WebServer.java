@@ -90,6 +90,7 @@ public class WebServer extends NanoHTTPD {
 
                 SharedPreferences prefs = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE);
                 json.put("micEnabled", prefs.getBoolean("MIC_ENABLED", true));
+                json.put("autoDetectionEnabled", prefs.getBoolean("AUTO_DETECTION_ENABLED", true)); // Nuevo V38
                 json.put("shieldEnabled", prefs.getBoolean("SHIELD_ENABLED", true));
                 json.put("forceRecord", prefs.getBoolean("FORCE_RECORD", false));
                 json.put("recordingStartTimestamp", sentinel.getRecordingStartTimestamp());
@@ -122,6 +123,8 @@ public class WebServer extends NanoHTTPD {
 
                     if (json.has("micEnabled"))
                         editor.putBoolean("MIC_ENABLED", json.getBoolean("micEnabled"));
+                    if (json.has("autoDetectionEnabled")) // Nuevo V38
+                        editor.putBoolean("AUTO_DETECTION_ENABLED", json.getBoolean("autoDetectionEnabled"));
                     if (json.has("shieldEnabled"))
                         editor.putBoolean("SHIELD_ENABLED", json.getBoolean("shieldEnabled"));
                     if (json.has("forceRecord")) {
