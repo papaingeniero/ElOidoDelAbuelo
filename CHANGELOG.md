@@ -1,5 +1,13 @@
 # CHANGELOG - El Oído del Abuelo
 
+## [v1.0-dev.40] - 2026-02-23
+### 🚀 Refinio Semántico y Telemetría de Detección
+- **Semántica Intuitiva**: Renombrados los estados para mayor claridad.
+  - "Vigilando" -> "**VIGILANDO (DETECTANDO SONIDO)**".
+  - "Grabando Alarma" -> "**GRABANDO SONIDO DETECTADO**".
+- **Cronómetro de Detección**: Corregido bug de la v39.1 donde el contador se quedaba en 0:00:00. Ahora las grabaciones automáticas muestran el tiempo transcurrido en tiempo real en el botón principal.
+- **Sincronización Total**: El botón principal ahora actúa como un espejo del estado del sistema, mostrando "VIGILANDO" cuando está en reposo activo.
+
 ## [v1.0-dev.38] - 2026-02-23
 ### 🚀 Dicotomía de Mando: Hardware vs Lógica
 - **Jerarquía de Poder**: Separación del control del **Hardware Micrófono** (Master Kill-Switch) de la **Detección Automática** (Sub-lógica de Alertas).

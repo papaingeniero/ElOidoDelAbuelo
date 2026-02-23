@@ -680,13 +680,13 @@
                                 timeStr = `${h}:${m}:${s}`;
                             }
                             if (btnRecMaster) {
-                                btnRecMaster.innerHTML = `⏹️ DETENER [${timeStr}]`;
+                                btnRecMaster.innerHTML = `⏹️ DETENER GRABACIÓN [${timeStr}]`;
                                 btnRecMaster.style.backgroundColor = "#555";
                             }
                         } else if (isRecording) {
-                            // DETECCIÓN ACTIVA (GRABANDO) - V39
+                            // DETECCIÓN ACTIVA (GRABANDO) - V40
                             if (statusBadge) {
-                                statusBadge.textContent = "Grabando Sonido Detectado";
+                                statusBadge.textContent = "GRABANDO SONIDO DETECTADO";
                                 statusBadge.style.backgroundColor = "var(--status-red)";
                                 statusBadge.style.color = "#fff";
                             }
@@ -702,7 +702,7 @@
                             }
 
                             if (btnRecMaster) {
-                                btnRecMaster.innerHTML = `⏺️ GRABANDO... [${timeStr}]`;
+                                btnRecMaster.innerHTML = `⏺️ GRABANDO SONIDO DETECTADO [${timeStr}]`;
                                 btnRecMaster.style.backgroundColor = "var(--status-red)";
                             }
                         } else {
@@ -713,14 +713,18 @@
                                     statusBadge.style.backgroundColor = "var(--status-yellow)";
                                     statusBadge.style.color = "#000";
                                 } else {
-                                    statusBadge.textContent = "Vigilando (Detectando Sonido)";
+                                    statusBadge.textContent = "VIGILANDO (DETECTANDO SONIDO)";
                                     statusBadge.style.backgroundColor = "var(--primary-dark)";
                                     statusBadge.style.color = "#fff";
                                 }
                             }
                             if (btnRecMaster) {
-                                btnRecMaster.innerHTML = `⏺️ GRABAR AHORA`;
-                                btnRecMaster.style.backgroundColor = "var(--status-red)";
+                                if (!autoDetectionEnabled) {
+                                    btnRecMaster.innerHTML = `⏺️ GRABAR AHORA (MANUAL)`;
+                                } else {
+                                    btnRecMaster.innerHTML = `🛡️ VIGILANDO (DETECTANDO SONIDO)`;
+                                }
+                                btnRecMaster.style.backgroundColor = autoDetectionEnabled ? "var(--primary-dark)" : "var(--status-red)";
                             }
 
                             // Vúmetro dinámico en escucha

@@ -494,3 +494,27 @@ El General planteó un dilema ético y técnico: ¿Debe funcionar la escucha en 
 | 5. Bloqueo Hardware (Privacidad) | ✅ |
 | 6. Modo "Sólo Escucha" Funcional | ✅ |
 | 7. Sync Push GitHub | ✅ |
+
+## 🚀 Refinio Semántico y Cronómetro v1.0-dev.40 | 23-Feb-2026
+### 📜 El Problema
+El General detectó dos fricciones en la UI:
+1. La terminología "Picos Directos" era técnica y poco descriptiva.
+2. El cronómetro implementado en la v39.1 fallaba, mostrando `0:00:00` en grabaciones automáticas por culpa de un fallo de asignación en el bucle principal de Java.
+
+### 🛠️ La Solución
+1. **Literalidad Militar**: Se han adoptado los términos exactos: "**VIGILANDO (DETECTANDO SONIDO)**" y "**GRABANDO SONIDO DETECTADO**". Además, el botón principal ahora refleja el estado del sistema incluso en reposo, reforzando el concepto de "Vigilancia".
+2. **Sincronización de Tiempo (V39.1 Core)**: Se ha corregido `AudioSentinel.java` para que asigne el `recordingStartTimestamp` en el mismo milisegundo en que se dispara el trigger de audio, unificando la telemetría para grabaciones manuales y automáticas.
+
+### 🎓 Lecciones Aprendidas
+- **El "0" es el enemigo**: Ver un contador estático en una situación de "alarma" genera ansiedad técnica. La telemetría de tiempo debe ser lo más robusta y redundante posible.
+- **Botón Espejo**: En una SPA (Single Page Application) de control, el botón principal no debe ser solo un disparador, sino un indicador de estado vivo.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V40) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.40 | ✅ |
+| 5. Cronómetro Auto-Detección OK | ✅ |
+| 6. Semántica "Detectando Sonido" | ✅ |
+| 7. Clean Build & Cache Purge | ✅ |
