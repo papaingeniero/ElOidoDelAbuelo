@@ -1,3 +1,8 @@
+## [v1.0-dev.41] - 2026-02-23
+### Fixed
+- **Estabilidad de Re-Ignición (Play Mode)**: Corregido bug donde presionar +5s o -5s mientras el audio estaba sonando causaba un engarzamiento del cabezal al no destruirse correctamente el callback `onended` del `BufferSource` previo, lo cual producía parpadeos erráticos en la UI.
+- **Micro-Seeking JS**: Refactorizada la función `setWaveformTime` para reciclar el inyector `playFromWaveTime(waveCurrentTime)`, eliminando código redundante y previniendo fugas de estado interno del reproductor.
+
 # CHANGELOG - El Oído del Abuelo
 
 ## [v1.0-dev.40] - 2026-02-23

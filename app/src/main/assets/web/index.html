@@ -1103,12 +1103,15 @@
         function setWaveformTime(newTime) {
             waveCurrentTime = newTime;
             if (isWavePlaying) {
-                waveAudioSource.stop();
-                waveAudioSource = waveAudioContext.createBufferSource();
-                waveAudioSource.buffer = waveAudioBuffer;
-                waveAudioSource.connect(waveAudioContext.destination);
-                waveAudioSource.start(0, waveCurrentTime);
-                waveStartTime = waveAudioContext.currentTime - waveCurrentTime;
+                // 1. Muerte silenciosa: quitamos el onended ANTES de parar
+                if (waveAudioSource) {
+                    waveAudioSource.onended = null;
+                    // 2. Paramos el audio viejo
+                    waveAudioSource.stop();
+                }
+                
+                // 3. Usamos tu función centralizada para arrancar el nuevo
+                playFromWaveTime(waveCurrentTime);
             } else {
                 wavePauseTime = waveCurrentTime;
             }

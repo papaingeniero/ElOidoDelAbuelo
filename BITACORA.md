@@ -518,3 +518,22 @@ El General detectó dos fricciones en la UI:
 | 5. Cronómetro Auto-Detección OK | ✅ |
 | 6. Semántica "Detectando Sonido" | ✅ |
 | 7. Clean Build & Cache Purge | ✅ |
+
+## 🚀 Fix v1.0-dev.41: Scrubbing Estabilizado (Audio Muerde Audio) | 23-Feb-2026
+### 📜 El Problema
+Al usar los botones +5s y -5s en el reproductor de ondas mientras la pista estaba sonando ("PLAY" activo), el código en `index.html` asfixiaba el motor HTML5 `AudioContext`. El cabezal se desplazaba, pero el estado interno del `BufferSource` viejo se encadenaba con el nuevo al no purgar el callback `onended`, generando inconsistencias visuales y parpadeo en el botón Play/Pause.
+
+### 🛠️ La Solución
+1. **Muerte Silenciosa (Orphan Callback)**: Se alteró el método `setWaveformTime(newTime)`. Antes de ejecutar `waveAudioSource.stop()`, ahora inyectamos proactivamente `waveAudioSource.onended = null;`.
+2. **Centralización del Playback**: En lugar de repetir manualmente la creación del `BufferSource`, reconducimos la lógica de re-ignición directamente hacia `playFromWaveTime(waveCurrentTime)`, reciclando el código robusto probado en la V34.
+
+### 🎓 Lecciones Aprendidas
+- **Efecto Dominó en Asincronía**: Cortar por la fuerza un `stop()` en la Web Audio API desencadena instintivamente su evento `onended`. Si la UI confía ciegamente en ese evento para alterar su estado visual (cambiar a "Play" o resetear el cabezal al final), un salto manual introducido por el usuario estallará el diseño. La decapitación preventiva (`onended = null`) es el antídoto.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V41) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.41 | ✅ |
+| 5. Muerte Silenciosa de `onended` | ✅ |
