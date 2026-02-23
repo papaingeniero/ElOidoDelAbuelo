@@ -1046,13 +1046,28 @@
             ctx.fillRect(playHeadX - 1, height - 10, 3, 10);
         }
 
+        function killCurrentAudio() {
+            if (waveAudioSource) {
+                waveAudioSource.onended = null;
+                try { waveAudioSource.stop(0); } catch (e) { }
+                try { waveAudioSource.disconnect(); } catch (e) { }
+                waveAudioSource = null;
+            }
+        }
+
         function playFromWaveTime(time) {
             if (!waveAudioBuffer) return;
+
+            killCurrentAudio();
 
             waveAudioSource = waveAudioContext.createBufferSource();
             waveAudioSource.buffer = waveAudioBuffer;
             waveAudioSource.connect(waveAudioContext.destination);
-            waveAudioSource.start(0, time);
+            try {
+                waveAudioSource.start(0, time);
+            } catch (e) {
+                console.warn("AudioContext Start Error", e);
+            }
             waveStartTime = waveAudioContext.currentTime - time;
 
             waveAudioSource.onended = () => {
@@ -1074,7 +1089,7 @@
 
             if (isWavePlaying) {
                 // PAUSE
-                waveAudioSource.stop();
+                killCurrentAudio();
                 wavePauseTime = waveCurrentTime;
                 isWavePlaying = false;
                 wavePlayBtn.innerHTML = "▶️ PLAY";
@@ -1087,7 +1102,7 @@
                 playFromWaveTime(waveCurrentTime);
                 isWavePlaying = true;
                 wavePlayBtn.innerHTML = "⏸ PAUSE";
-                requestAnimationFrame(updateWaveformAnim);
+                waveAnimationId = requestAnimationFrame(updateWaveformAnim);
             }
         }
 
@@ -1103,14 +1118,7 @@
         function setWaveformTime(newTime) {
             waveCurrentTime = newTime;
             if (isWavePlaying) {
-                // 1. Muerte silenciosa: quitamos el onended ANTES de parar
-                if (waveAudioSource) {
-                    waveAudioSource.onended = null;
-                    // 2. Paramos el audio viejo
-                    waveAudioSource.stop();
-                }
-                
-                // 3. Usamos tu función centralizada para arrancar el nuevo
+                killCurrentAudio();
                 playFromWaveTime(waveCurrentTime);
             } else {
                 wavePauseTime = waveCurrentTime;
@@ -1120,9 +1128,7 @@
         }
 
         function stopWaveform() {
-            if (isWavePlaying && waveAudioSource) {
-                waveAudioSource.stop();
-            }
+            killCurrentAudio();
             isWavePlaying = false;
             wavePlayBtn.innerHTML = "▶️ PLAY";
             cancelAnimationFrame(waveAnimationId);

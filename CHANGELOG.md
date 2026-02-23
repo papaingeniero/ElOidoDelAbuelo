@@ -1,3 +1,8 @@
+## [v1.0-dev.42] - 2026-02-23
+### Fixed
+- **Aniquilación de Nodo Fantasma**: Solucionado el bug crítico donde los saltos de audio de `+5s` y `-5s` desplazaban el cabezal visual pero la pista seguía sonando desde el tiempo anterior. Se implementó una función centralizada `killCurrentAudio()` que fuerza la desconexión física (`disconnect()`) y parada inmediata del `AudioBufferSourceNode` antiguo.
+- **Rastreo de ID de Animación**: Reparado el `cancelAnimationFrame()` que fallaba al pausar la pista, guardando ahora correctamente el puntero `waveAnimationId` al presionar PLAY.
+
 ## [v1.0-dev.41] - 2026-02-23
 ### Fixed
 - **Estabilidad de Re-Ignición (Play Mode)**: Corregido bug donde presionar +5s o -5s mientras el audio estaba sonando causaba un engarzamiento del cabezal al no destruirse correctamente el callback `onended` del `BufferSource` previo, lo cual producía parpadeos erráticos en la UI.

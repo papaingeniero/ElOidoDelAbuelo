@@ -537,3 +537,27 @@ Al usar los botones +5s y -5s en el reproductor de ondas mientras la pista estab
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.41 | ✅ |
 | 5. Muerte Silenciosa de `onended` | ✅ |
+
+## 🚀 Hotfix v1.0-dev.42: Silenciamiento Físico `killCurrentAudio` | 23-Feb-2026
+### 📜 El Problema
+Al presionar los botones de +5s y -5s durante la reproducción de la onda, el cabezal visual se desplazaba correctamente a la nueva posición temporal (e.g. 15s), pero el audio que se escuchaba seguía siendo el que estaba por debajo (10s) de forma continua. El método `waveAudioSource.stop()` estándar no estaba consiguiendo desenganchar el motor de manera fiable, dejando una "pista fantasma" sonando mientras la nueva pista se ignoraba o colisionaba en silencio.
+
+### 🛠️ La Solución
+1. **Arma de Destrucción Masiva `killCurrentAudio`**: Se ha sustituido el débil bloque de `stop()` condicional por una función unificada y despiadada. Ahora, cualquier cambio de estado (Pausa, Scrubbing, o Saltos +/-) invoca un protocolo de extirpación garantizada:
+   - Resetea el callback `onended` a `null`.
+   - Lanza un `stop(0)` estricto (inmediato) envuelto en un `try-catch`.
+   - Lanza un `disconnect()` físico para desenchufar el nodo del `audioDestination` del Hardware.
+   - Destruye la variable en memoria `waveAudioSource = null`.
+2. **Defensa Anticipada**: Se inyectó la llamada a `killCurrentAudio()` al principio exacto de `playFromWaveTime()`, asegurando que es matemáticamente imposible que dos fuentes intenten nacer o superponerse, incluso si un evento Asíncrono o táctil intentara lanzar dos playbacks simultáneamente.
+3. **Loop de Animación Seguro**: Se capturó correctamente el ID de la animación `waveAnimationId = requestAnimationFrame(...)` tras presionar PLAY, para que `cancelAnimationFrame` obre su magia al pausar.
+
+### 🎓 Lecciones Aprendidas
+- **Desconexión Física vs Parada Lógica**: En Web Audio API, confiar únicamente en `.stop()` es arriesgado cuando se realizan manipulaciones algorítmicas de tiempo en milisegundos. Arrancar físicamente el nodo del gráfico de sonido usando `.disconnect()` es la única bala de plata (`Silver Bullet`) contra los *Ghost Nodes* o fallos silentes de reproducción solapada de WebKit.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V42) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.42 | ✅ |
+| 5. Aniquilación de Nodo Fantasma | ✅ |
