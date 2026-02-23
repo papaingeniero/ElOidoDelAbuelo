@@ -538,11 +538,18 @@
             }
         }, true); // Usar fase de captura porque los eventos media no burbujean
 
-        const vumeter = document.getElementById('vumeter');
-        const statusBadge = document.getElementById('statusBadge');
-        const amplitudeValue = document.getElementById('amplitudeValue');
-
+        // Elementos Dashboard (se obtienen en cada ciclo por seguridad V35)
         function updateDashboard() {
+            const vumeter = document.getElementById('vumeter');
+            const statusBadge = document.getElementById('statusBadge');
+            const amplitudeValue = document.getElementById('amplitudeValue');
+            const btnRecMaster = document.getElementById('btnRecMaster');
+
+            // Si no estamos en el dashboard principal (ej. modal full screen o error), abortar silenciosamente
+            if (!vumeter || !statusBadge || !amplitudeValue || !btnRecMaster) {
+                return;
+            }
+
             fetch('/api/status')
                 .then(response => {
                     if (!response.ok) throw new Error("Network response was not ok");
@@ -598,19 +605,21 @@
                     }
 
                     // Ajustar UI del threshold-marker
-                    let currentSpikeThreshold = (data.SPIKE_THRESHOLD !== undefined) ? data.SPIKE_THRESHOLD : 10000;
-                    document.querySelector('.threshold-marker').style.left = `calc((${currentSpikeThreshold} / 32767) * 100%)`;
+                    const marker = document.querySelector('.threshold-marker');
+                    if (marker) {
+                        let currentSpikeThreshold = (data.SPIKE_THRESHOLD !== undefined) ? data.SPIKE_THRESHOLD : 10000;
+                        marker.style.left = `calc((${currentSpikeThreshold} / 32767) * 100%)`;
+                    }
 
                     // Actualizar texto numérico
-                    amplitudeValue.textContent = Math.round(amp);
+                    if (amplitudeValue) amplitudeValue.textContent = Math.round(amp);
 
                     // Calcular porcentaje para ancho CSS
                     let percentage = (amp / MAX_AMPLITUDE) * 100;
                     if (percentage > 100) percentage = 100;
-                    vumeter.style.width = percentage + '%';
+                    if (vumeter) vumeter.style.width = percentage + '%';
 
                     // Lógica de colores y estados - V31
-                    const btnRecMaster = document.getElementById('btnRecMaster');
 
                     if (!micEnabled) {
                         statusBadge.textContent = "Micrófono Apagado";
@@ -655,9 +664,13 @@
                 })
                 .catch(error => {
                     console.error('Error fetching status:', error);
-                    statusBadge.textContent = "Sin Conexión";
-                    statusBadge.style.backgroundColor = "var(--status-gray)";
-                    vumeter.style.width = '0%';
+                    const statusBadge = document.getElementById('statusBadge');
+                    const vumeter = document.getElementById('vumeter');
+                    if (statusBadge) {
+                        statusBadge.textContent = "Sin Conexión";
+                        statusBadge.style.backgroundColor = "var(--status-gray)";
+                    }
+                    if (vumeter) vumeter.style.width = '0%';
                 });
         }
 
@@ -1034,13 +1047,19 @@
         }
 
         function updateWaveformAnim() {
-            if (isWavePlaying) {
+            // V35 GUARDIAN: Si estamos arrastrando, NO actualizamos el tiempo desde el reloj.
+            // Esto evita que el cabezal pegue saltos erráticos compitiendo con el dedo.
+            if (isWavePlaying && !isDragging) {
                 waveCurrentTime = waveAudioContext.currentTime - waveStartTime;
                 if (waveCurrentTime > waveAudioBuffer.duration) {
                     waveCurrentTime = waveAudioBuffer.duration;
                 }
                 drawWaveform();
                 updateWaveTimeDisplay();
+                requestAnimationFrame(updateWaveformAnim);
+            } else if (isWavePlaying && isDragging) {
+                // Si estamos arrastrando pero "Play" está activo, seguimos pidiendo frames
+                // para que el dibujo sea fluido, pero sin calcular waveCurrentTime desde el reloj.
                 requestAnimationFrame(updateWaveformAnim);
             }
         }

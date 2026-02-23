@@ -1,3 +1,8 @@
+## [v1.0-dev.35] - 2026-02-23
+### Fixed
+- **Estabilización de Scrubbing (Play Mode)**: Inyectada guardia de animación `isDragging` que congela el reloj interno durante el arrastre, eliminando los parpadeos y saltos erráticos del cabezal mientras se reproduce.
+- **Blindaje de Telemetría (Security)**: Implementados null-checks heréticos y retorno preventivo en `updateDashboard` para evitar inundación de `TypeError` en consola cuando el modal de onda está activo.
+
 ## [v1.0-dev.34] - 2026-02-23
 ### Fixed
 - **Persistencia de Estado Acústico**: Corregido bug donde el modo "PLAY" se perdía al soltar el dedo tras un arrastre (Scrubbing). Ahora el sistema recuerda si estaba reproduciendo y reanuda automáticamente en el nuevo punto.

@@ -430,3 +430,15 @@ Al arrastrar el dedo sobre la onda (v33), el sistema pausaba el audio para permi
 
 ### 🎓 Lecciones Aprendidas
 - En la Web Audio API, los eventos `onended` se disparan tanto por el fin natural del buffer como por una llamada manual a `stop()`. Distinguir estas dos causas mediante una bandera de estado (`isDragging`) es crítico para mantener una interfaz reactiva y predecible.
+
+## 🚀 Estabilización de Onda y Telemetría v1.0-dev.35 | 23-Feb-2026
+### 📜 El Problema
+Aunque la v34 corregía la persistencia, el cabezal seguía comportándose de forma errática al arrastrarlo mientras el audio estaba en "PLAY". Esto se debía a que el bucle de animación visual seguía calculando la posición según el reloj antiguo, compitiendo violentamente con el movimiento del dedo del usuario. Además, se detectaron errores `null pointer` en la telemetría del dashboard al solapar el modal.
+
+### 🛠️ La Solución
+1. **Prioridad de Usuario (Scrubbing-First)**: Se inyectó una guardia en `updateWaveformAnim` que detiene la actualización del reloj si `isDragging` es verdadero. El dibujo ahora obedece exclusivamente al desplazamiento táctil hasta que se suelta el dedo.
+2. **Saneamiento de Consola**: Se rediseñó `updateDashboard` con comprobaciones de nulidad estrictas y un `return` preventivo si los elementos del dashboard no son accesibles, eliminando el ruido de errores en las herramientas de desarrollador.
+
+### 🎓 Lecciones Aprendidas
+- **Interacción vs Animación**: En interfaces de alto rendimiento, los bucles de `requestAnimationFrame` deben estar subordinados a las banderas de interacción. Forzar la actualización visual manual durante el arrastre es la única forma de evitar el "ghosting" o los saltos de cabezal.
+- **Robustez de Telemetría**: La arquitectura de un dashboard web debe ser tolerante a la ausencia temporal de elementos visuales (modales, cambios de vista), especialmente en ciclos de polling agresivo.
