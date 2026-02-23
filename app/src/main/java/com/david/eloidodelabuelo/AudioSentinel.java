@@ -295,6 +295,8 @@ public class AudioSentinel {
                     if (wantToRecord && !isRecording) {
                         isRecording = true;
                         isRecordingStatus = true;
+                        recordingStartTimestamp = System.currentTimeMillis(); // V39.1 Fix: Asignar tiempo para el
+                                                                              // cronómetro
                         try {
                             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
                                     .format(new Date());
@@ -318,10 +320,13 @@ public class AudioSentinel {
                         } catch (IOException e) {
                             Log.e(TAG, "Error iniciando MediaCodec/Archivo", e);
                             isRecording = false;
+                            isRecordingStatus = false;
+                            recordingStartTimestamp = null;
                         }
                     } else if (!wantToRecord && isRecording) {
                         isRecording = false;
                         isRecordingStatus = false;
+                        recordingStartTimestamp = null; // Liberar timestamp al terminar
                         if (codec != null) {
                             try {
                                 codec.stop();
