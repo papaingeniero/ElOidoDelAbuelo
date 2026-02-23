@@ -684,15 +684,25 @@
                                 btnRecMaster.style.backgroundColor = "#555";
                             }
                         } else if (isRecording) {
-                            // DETECCIÓN ACTIVA (GRABANDO)
+                            // DETECCIÓN ACTIVA (GRABANDO) - V39
                             if (statusBadge) {
-                                statusBadge.textContent = "Grabando Alarma";
+                                statusBadge.textContent = "Grabando Sonido Detectado";
                                 statusBadge.style.backgroundColor = "var(--status-red)";
                                 statusBadge.style.color = "#fff";
                             }
                             if (vumeter) vumeter.style.backgroundColor = "var(--status-red)";
+
+                            let timeStr = "00:00:00";
+                            if (data.recordingStartTimestamp) {
+                                const diff = Math.floor((Date.now() - data.recordingStartTimestamp) / 1000);
+                                const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+                                const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+                                const s = String(diff % 60).padStart(2, '0');
+                                timeStr = `${h}:${m}:${s}`;
+                            }
+
                             if (btnRecMaster) {
-                                btnRecMaster.innerHTML = `⏺️ GRABAR AHORA`;
+                                btnRecMaster.innerHTML = `⏺️ GRABANDO... [${timeStr}]`;
                                 btnRecMaster.style.backgroundColor = "var(--status-red)";
                             }
                         } else {
@@ -703,7 +713,7 @@
                                     statusBadge.style.backgroundColor = "var(--status-yellow)";
                                     statusBadge.style.color = "#000";
                                 } else {
-                                    statusBadge.textContent = shieldEnabled ? "Vigilando (Escudo ON)" : "Vigilando (Picos Directos)";
+                                    statusBadge.textContent = "Vigilando (Detectando Sonido)";
                                     statusBadge.style.backgroundColor = "var(--primary-dark)";
                                     statusBadge.style.color = "#fff";
                                 }
