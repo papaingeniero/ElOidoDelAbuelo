@@ -470,3 +470,27 @@ El General detectó que al pasar de "Micrófono Apagado" a "Activo" en los ajust
 ### 🎓 Lecciones Aprendidas
 - **Anidamiento Peligroso**: Evitar meter lógica de estado base dentro de condicionales de excepción (como una grabación en curso). El estado base debe ser el `else` final o el punto de entrada principal.
 - **Resiliencia de UI**: Una UI que no reacciona al "Guardar" genera desconfianza en el usuario aunque el backend esté haciendo su trabajo. La reactividad es parte de la corrección funcional.
+
+## 🚀 Dicotomía de Mando v1.0-dev.38 | 23-Feb-2026
+### 📜 El Problema
+El General planteó un dilema ético y técnico: ¿Debe funcionar la escucha en vivo si el sistema de vigilancia está apagado? La respuesta corta fue "No". Si el usuario apaga el sistema por privacidad (Kill Switch), nada debe salir del móvil. Sin embargo, surge la necesidad de monitorizar sin llenar el disco de alertas automáticas.
+
+### 🛠️ La Solución
+1. **Doble Mando V38**: Se ha implementado una jerarquía de dos niveles:
+    - **Master (Hardware Micrófono)**: Si se apaga, el servidor mata el `AudioRecord` y el `MediaCodec`. El flujo de datos es CERO. El Dashboard bloquea el botón de escucha en vivo.
+    - **Sub-lógica (Detección Automática)**: Si está OFF pero el Master está ON, el audio fluye (Escucha en Vivo) pero el motor de picos ignora los ruidos.
+2. **Badge de Monitorización**: Se ha creado un estado visual intermedio "Sólo Escucha (Detección OFF)" con colores de advertencia (Amarillo/Negro) para indicar que el micro está "caliente" pero no "vigilante".
+
+### 🎓 Lecciones Aprendidas
+- **Metáfora del Grifo**: En sistemas de vigilancia, siempre debe haber una "Llave Maestra" que el usuario identifique como fuente única de verdad para su privacidad.
+- **Dicotomía de Control**: Separar Hardware de Software permite casos de uso híbridos (Escucha pura) que antes eran imposibles por estar las lógicas acopladas.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V38) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.38 | ✅ |
+| 5. Bloqueo Hardware (Privacidad) | ✅ |
+| 6. Modo "Sólo Escucha" Funcional | ✅ |
+| 7. Sync Push GitHub | ✅ |

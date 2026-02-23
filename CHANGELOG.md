@@ -1,3 +1,12 @@
+# CHANGELOG - El Oído del Abuelo
+
+## [v1.0-dev.38] - 2026-02-23
+### 🚀 Dicotomía de Mando: Hardware vs Lógica
+- **Jerarquía de Poder**: Separación del control del **Hardware Micrófono** (Master Kill-Switch) de la **Detección Automática** (Sub-lógica de Alertas).
+- **Modo Monitorización**: Permite escuchar en vivo de forma indefinida sin generar grabaciones automáticas por ruido cuando la detección está OFF.
+- **Seguridad Garantizada**: El botón de "Escuchar en Vivo" se bloquea físicamente si el hardware está desactivado, garantizando privacidad absoluta.
+- **Badge de Estado**: Nuevo indicador visual "Sólo Escucha (Detección OFF)" en color amarillo/negro para evitar confusiones de modo.
+
 ## [v1.0-dev.37] - 2026-02-23
 ### Fixed
 - **Sincronización de Estados Preferencias**: Corregido bug donde el Dashboard no mostraba "VIGILANDO" inmediatamente tras activar el micrófono en ajustes. Se ha independizado la lógica de reposo activo de la de grabación de alarma.
