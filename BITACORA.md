@@ -418,3 +418,15 @@ Aunque la v32 permitía saltar en el tiempo haciendo clic, la experiencia de usu
 ### 🎓 Lecciones Aprendidas
 - **Interacciones Táctiles vs Mouse**: La API de Touch (`e.touches[0].clientX`) difiere de la de Mouse (`e.clientX`). Crear una función agnóstica de normalización de coordenadas es vital para proyectos multiplataforma.
 - **Debouncing de AudioContext**: Reiniciar una fuente de audio (`bufferSource`) en cada evento de movimiento de ratón genera clics auditivos y saturación de memoria. La técnica de "Actualización Visual Continua + Salto de Audio al Soltar" es el estándar de oro para reproductores eficientes.
+
+## 🚀 Persistencia de Estado en Scrubbing v1.0-dev.34 | 23-Feb-2026
+### 📜 El Problema
+Al arrastrar el dedo sobre la onda (v33), el sistema pausaba el audio para permitir el movimiento fluido. Sin embargo, al soltar el dedo, la aplicación "olvidaba" si el usuario estaba en modo Play antes de iniciar el arrastre, obligándole a pulsar el botón de Play manualmente cada vez.
+
+### 🛠️ La Solución
+1. **Delegación de Responsabilidad**: Se extrajo la creación del `BufferSource` a la función `playFromWaveTime(time)`.
+2. **Memoria de Estado**: El sistema ya no resetea `isWavePlaying` a `false` durante el arrastre. Al disparar el evento `mouseup/touchend`, si `isWavePlaying` es verdadero, se invoca inmediatamente `playFromWaveTime`.
+3. **Blindaje de Eventos**: Se añadió una guardia `!isDragging` en el callback `onended`. Esto evita que la llamada manual a `stop()` (necesaria para mover el cabezal) sea interpretada erróneamente por el navegador como el "fin del audio", lo que reseteaba la UI de forma prematura.
+
+### 🎓 Lecciones Aprendidas
+- En la Web Audio API, los eventos `onended` se disparan tanto por el fin natural del buffer como por una llamada manual a `stop()`. Distinguir estas dos causas mediante una bandera de estado (`isDragging`) es crítico para mantener una interfaz reactiva y predecible.

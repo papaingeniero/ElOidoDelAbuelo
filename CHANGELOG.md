@@ -1,3 +1,8 @@
+## [v1.0-dev.34] - 2026-02-23
+### Fixed
+- **Persistencia de Estado Acústico**: Corregido bug donde el modo "PLAY" se perdía al soltar el dedo tras un arrastre (Scrubbing). Ahora el sistema recuerda si estaba reproduciendo y reanuda automáticamente en el nuevo punto.
+- **Refactorización del Motor de Onda**: Unificación del arranque del `BufferSource` en la función centralizada `playFromWaveTime` para evitar fugas de eventos `onended`.
+
 ## [v1.0-dev.33] - 2026-02-23
 ### Added
 - **Navegación Fluida de Onda (Drag-to-Seek)**: Nuevo comportamiento interactivo para el modal Waveform que permite el "Scrubbing Acústico" (Arrastrar y Soltar) sobre el espacio temporal usando el Ratón en Mac/PC y movimientos nativos del Dedo en dispositivos móviles para buscar puntos de ruido de manera natural.

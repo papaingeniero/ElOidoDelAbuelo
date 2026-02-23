@@ -954,6 +954,29 @@
             ctx.fillRect(playHeadX - 1, height - 10, 3, 10);
         }
 
+        function playFromWaveTime(time) {
+            if (!waveAudioBuffer) return;
+
+            waveAudioSource = waveAudioContext.createBufferSource();
+            waveAudioSource.buffer = waveAudioBuffer;
+            waveAudioSource.connect(waveAudioContext.destination);
+            waveAudioSource.start(0, time);
+            waveStartTime = waveAudioContext.currentTime - time;
+
+            waveAudioSource.onended = () => {
+                // Solo detener el estado de juego si NO estamos arrastrando
+                // Si estamos arrastrando, el 'stop' es manual y temporal
+                if (isWavePlaying && !isDragging) {
+                    isWavePlaying = false;
+                    waveCurrentTime = waveAudioBuffer.duration;
+                    wavePlayBtn.innerHTML = "▶️ PLAY";
+                    cancelAnimationFrame(waveAnimationId);
+                    drawWaveform();
+                    updateWaveTimeDisplay();
+                }
+            };
+        }
+
         function toggleWaveformPlay() {
             if (!waveAudioBuffer) return;
 
@@ -969,26 +992,9 @@
                 if (waveCurrentTime >= waveAudioBuffer.duration) {
                     waveCurrentTime = 0; // Restart if at end
                 }
-                waveAudioSource = waveAudioContext.createBufferSource();
-                waveAudioSource.buffer = waveAudioBuffer;
-                waveAudioSource.connect(waveAudioContext.destination);
-                waveAudioSource.start(0, waveCurrentTime);
-                waveStartTime = waveAudioContext.currentTime - waveCurrentTime;
+                playFromWaveTime(waveCurrentTime);
                 isWavePlaying = true;
                 wavePlayBtn.innerHTML = "⏸ PAUSE";
-
-                waveAudioSource.onended = () => {
-                    // Detener naturalmente al llegar al final
-                    if (isWavePlaying) {
-                        isWavePlaying = false;
-                        waveCurrentTime = waveAudioBuffer.duration;
-                        wavePlayBtn.innerHTML = "▶️ PLAY";
-                        cancelAnimationFrame(waveAnimationId);
-                        drawWaveform();
-                        updateWaveTimeDisplay();
-                    }
-                };
-
                 requestAnimationFrame(updateWaveformAnim);
             }
         }
@@ -1088,12 +1094,8 @@
             // El dedo se ha levantado. Consolidar la orden real al motor de sonido
             // Solo ordenamos reproducir de nuevo si ya estaba el play activo antes de arrastrar
             if (isWavePlaying) {
-                // Forzamos "reanudar" reconectando el source en el nuevo tiempo.
-                waveAudioSource = waveAudioContext.createBufferSource();
-                waveAudioSource.buffer = waveAudioBuffer;
-                waveAudioSource.connect(waveAudioContext.destination);
-                waveAudioSource.start(0, waveCurrentTime);
-                waveStartTime = waveAudioContext.currentTime - waveCurrentTime;
+                // Reanudamos la reproducción real en el nuevo tiempo
+                playFromWaveTime(waveCurrentTime);
             }
         }
 
