@@ -472,9 +472,47 @@
                 <button class="btn" style="background: var(--status-red); color: white; width: 100%; margin-top: 10px;"
                     onclick="deleteRecordings()">🗑️ Purgar Todo el Historial</button>
             </div>
-            <div class="btn-row">
+            <div class="btn-row" style="padding-bottom: 100px;">
                 <button class="btn btn-close" onclick="closeSettings()">Cancelar</button>
                 <button class="btn btn-save" onclick="saveSettings()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal del Waveform Player -->
+    <div id="waveformModal" class="modal">
+        <div class="modal-content" style="max-height: 85vh; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 id="waveTitle"
+                    style="margin: 0; font-size: 1.1rem; color: var(--primary-color); word-break: break-all;">
+                    Analizando...</h2>
+                <button onclick="closeWaveform()"
+                    style="background: none; border: none; color: #888; font-size: 2rem; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
+            </div>
+
+            <div style="background: #111; border-radius: 8px; padding: 10px; margin-bottom: 15px; position: relative;">
+                <canvas id="waveCanvas" width="400" height="120"
+                    style="width: 100%; height: 120px; cursor: pointer; display: block;"></canvas>
+                <!-- Mensaje de Carga Superpuesto -->
+                <div id="waveLoading"
+                    style="position: absolute; top:0; left:0; right:0; bottom:0; display:flex; justify-content:center; align-items:center; background: rgba(0,0,0,0.7); border-radius: 8px; font-weight: bold; color: var(--status-green);">
+                    🔄 Procesando Audio...
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 15px; font-family: monospace; font-size: 1.2rem; color: #ccc;"
+                id="waveTimeDisplay">
+                00:00 / 00:00
+            </div>
+
+            <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; align-items: center;">
+                <button class="settings-btn" style="margin:0; padding: 10px 15px; font-size: 1.2rem;"
+                    onclick="seekWaveform(-5)">⏮ -5s</button>
+                <button id="wavePlayBtn" class="pill-btn"
+                    style="background: var(--status-green); border: none; color: black; padding: 10px 25px; border-radius: 20px; font-weight: bold; font-size: 1.2rem; cursor: pointer;"
+                    onclick="toggleWaveformPlay()">▶️ PLAY</button>
+                <button class="settings-btn" style="margin:0; padding: 10px 15px; font-size: 1.2rem;"
+                    onclick="seekWaveform(5)">+5s ⏭</button>
             </div>
         </div>
     </div>
@@ -532,28 +570,30 @@
                         const tempText = document.getElementById('tempText');
                         const tempIcon = document.getElementById('tempIcon');
 
-                        batText.textContent = data.batteryPct + "%" + (data.isCharging ? " (AC)" : "");
-                        if (data.isCharging) {
-                            batText.style.color = "var(--status-green)";
-                            batIcon.textContent = "⚡";
-                        } else if (data.batteryPct <= 20) {
-                            batText.style.color = "var(--status-red)";
-                            batIcon.textContent = "🪫";
-                        } else {
-                            batText.style.color = "#fff";
-                            batIcon.textContent = "🔋";
-                        }
+                        if (batText && batIcon && tempText && tempIcon) {
+                            batText.textContent = data.batteryPct + "%" + (data.isCharging ? " (AC)" : "");
+                            if (data.isCharging) {
+                                batText.style.color = "var(--status-green)";
+                                batIcon.textContent = "⚡";
+                            } else if (data.batteryPct <= 20) {
+                                batText.style.color = "var(--status-red)";
+                                batIcon.textContent = "🪫";
+                            } else {
+                                batText.style.color = "#fff";
+                                batIcon.textContent = "🔋";
+                            }
 
-                        tempText.textContent = data.tempCelsius.toFixed(1) + "°C";
-                        if (data.tempCelsius > 40) {
-                            tempText.style.color = "var(--status-red)";
-                            tempIcon.style.color = "var(--status-red)";
-                        } else if (data.tempCelsius > 35) {
-                            tempText.style.color = "orange";
-                            tempIcon.style.color = "orange";
-                        } else {
-                            tempText.style.color = "#fff";
-                            tempIcon.style.color = "inherit";
+                            tempText.textContent = data.tempCelsius.toFixed(1) + "°C";
+                            if (data.tempCelsius > 40) {
+                                tempText.style.color = "var(--status-red)";
+                                tempIcon.style.color = "var(--status-red)";
+                            } else if (data.tempCelsius > 35) {
+                                tempText.style.color = "orange";
+                                tempIcon.style.color = "orange";
+                            } else {
+                                tempText.style.color = "#fff";
+                                tempIcon.style.color = "inherit";
+                            }
                         }
                     }
 
@@ -744,10 +784,7 @@
                                 <span class="history-date">🚨 ${dateStr}</span>
                                 <span class="history-size">📁 ${sizeStr}</span>
                             </div>
-                            <audio controls preload="none">
-                                <source src="/api/audio?file=${encodeURIComponent(f.name)}" type="audio/wav">
-                                Tu navegador no soporta la etiqueta de audio.
-                            </audio>
+                            <button class="settings-btn" style="display: block; width: 100%; margin-top: 10px; background: #333; padding: 12px; font-size: 1.05rem;" onclick="openWaveform('${f.name}')">👁️ Analizar Pista Auditiva</button>
                         `;
                         list.appendChild(card);
                     });
@@ -810,6 +847,216 @@
                 stopLiveStream();
             }
         }
+
+        // --- REPRODUCTOR DE ONDA FORENSE ---
+        let waveAudioContext = null;
+        let waveAudioBuffer = null;
+        let waveAudioSource = null;
+        let waveStartTime = 0;
+        let wavePauseTime = 0;
+        let isWavePlaying = false;
+        let waveCurrentTime = 0;
+        let waveAnimationId = null;
+        let waveFileName = "";
+
+        const canvas = document.getElementById('waveCanvas');
+        const ctx = canvas.getContext('2d');
+        const waveLoading = document.getElementById('waveLoading');
+        const waveTitle = document.getElementById('waveTitle');
+        const waveTimeDisplay = document.getElementById('waveTimeDisplay');
+        const wavePlayBtn = document.getElementById('wavePlayBtn');
+
+        function openWaveform(fileName) {
+            // Pausar cualquier otro audio sonando
+            document.querySelectorAll('audio').forEach(a => a.pause());
+            if (liveAudioElement) stopLiveStream();
+
+            waveFileName = fileName;
+            waveTitle.innerText = "Analizando: " + decodeURIComponent(fileName);
+            waveLoading.style.display = 'flex';
+            document.getElementById('waveformModal').style.display = 'flex';
+            document.body.classList.add('modal-open');
+
+            // Iniciar o reanudar AudioContext (necesario por politicas de navegadores)
+            if (!waveAudioContext) {
+                waveAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (waveAudioContext.state === 'suspended') {
+                waveAudioContext.resume();
+            }
+
+            // Descargar y Decodificar
+            fetch('/api/audio?file=' + encodeURIComponent(fileName))
+                .then(response => response.arrayBuffer())
+                .then(arrayBuffer => waveAudioContext.decodeAudioData(arrayBuffer))
+                .then(audioBuffer => {
+                    waveAudioBuffer = audioBuffer;
+                    waveLoading.style.display = 'none';
+                    waveCurrentTime = 0;
+                    drawWaveform();
+                    updateWaveTimeDisplay();
+                })
+                .catch(e => {
+                    console.error("Error decodificando audio", e);
+                    waveLoading.innerText = "❌ Error al decodificar pista";
+                });
+        }
+
+        function closeWaveform() {
+            stopWaveform();
+            document.getElementById('waveformModal').style.display = 'none';
+            document.body.classList.remove('modal-open');
+            waveAudioBuffer = null;
+        }
+
+        function drawWaveform() {
+            if (!waveAudioBuffer) return;
+            const width = canvas.width;
+            const height = canvas.height;
+            ctx.clearRect(0, 0, width, height);
+
+            const data = waveAudioBuffer.getChannelData(0); // Tomar canal izquierdo/mono
+            const step = Math.ceil(data.length / width);
+            const amp = height / 2;
+
+            // Calcular ancho del pixel de reproducción actual
+            const duration = waveAudioBuffer.duration;
+            const playHeadX = (waveCurrentTime / duration) * width;
+
+            for (let i = 0; i < width; i++) {
+                let min = 1.0;
+                let max = -1.0;
+                for (let j = 0; j < step; j++) {
+                    const datum = data[(i * step) + j];
+                    if (datum < min) min = datum;
+                    if (datum > max) max = datum;
+                }
+
+                // Amplificación Mágica: Multiplicamos el pico para que el silencio tenga cuerpo
+                const diff = max - min;
+                const boostedDiff = diff * 5.0; // Boost x5
+
+                // Si el audio es silencio puro de micrófono (flatline real), dejamos que sea fino (1px)
+                // Esto evitará que parezca una barra constante si no hay picos reales
+                const drawHeight = Math.max(1, boostedDiff * amp);
+                const drawY = amp - (drawHeight / 2); // Centrado vertical matemático
+
+                // Pintar rojo (ya reproducido) o verde (por reproducir)
+                ctx.fillStyle = i <= playHeadX ? '#d32f2f' : '#4caf50';
+                ctx.fillRect(i, drawY, 1, drawHeight);
+            }
+
+            // Dibujar línea del cabezal separada de la onda central
+            ctx.fillStyle = 'white';
+            // Puntero Superior
+            ctx.fillRect(playHeadX - 1, 0, 3, 10);
+            // Puntero Inferior
+            ctx.fillRect(playHeadX - 1, height - 10, 3, 10);
+        }
+
+        function toggleWaveformPlay() {
+            if (!waveAudioBuffer) return;
+
+            if (isWavePlaying) {
+                // PAUSE
+                waveAudioSource.stop();
+                wavePauseTime = waveCurrentTime;
+                isWavePlaying = false;
+                wavePlayBtn.innerHTML = "▶️ PLAY";
+                cancelAnimationFrame(waveAnimationId);
+            } else {
+                // PLAY
+                if (waveCurrentTime >= waveAudioBuffer.duration) {
+                    waveCurrentTime = 0; // Restart if at end
+                }
+                waveAudioSource = waveAudioContext.createBufferSource();
+                waveAudioSource.buffer = waveAudioBuffer;
+                waveAudioSource.connect(waveAudioContext.destination);
+                waveAudioSource.start(0, waveCurrentTime);
+                waveStartTime = waveAudioContext.currentTime - waveCurrentTime;
+                isWavePlaying = true;
+                wavePlayBtn.innerHTML = "⏸ PAUSE";
+
+                waveAudioSource.onended = () => {
+                    // Detener naturalmente al llegar al final
+                    if (isWavePlaying) {
+                        isWavePlaying = false;
+                        waveCurrentTime = waveAudioBuffer.duration;
+                        wavePlayBtn.innerHTML = "▶️ PLAY";
+                        cancelAnimationFrame(waveAnimationId);
+                        drawWaveform();
+                        updateWaveTimeDisplay();
+                    }
+                };
+
+                requestAnimationFrame(updateWaveformAnim);
+            }
+        }
+
+        function seekWaveform(seconds) {
+            if (!waveAudioBuffer) return;
+            let newTime = waveCurrentTime + seconds;
+            if (newTime < 0) newTime = 0;
+            if (newTime > waveAudioBuffer.duration) newTime = waveAudioBuffer.duration;
+
+            setWaveformTime(newTime);
+        }
+
+        function setWaveformTime(newTime) {
+            waveCurrentTime = newTime;
+            if (isWavePlaying) {
+                waveAudioSource.stop();
+                waveAudioSource = waveAudioContext.createBufferSource();
+                waveAudioSource.buffer = waveAudioBuffer;
+                waveAudioSource.connect(waveAudioContext.destination);
+                waveAudioSource.start(0, waveCurrentTime);
+                waveStartTime = waveAudioContext.currentTime - waveCurrentTime;
+            } else {
+                wavePauseTime = waveCurrentTime;
+            }
+            drawWaveform();
+            updateWaveTimeDisplay();
+        }
+
+        function stopWaveform() {
+            if (isWavePlaying && waveAudioSource) {
+                waveAudioSource.stop();
+            }
+            isWavePlaying = false;
+            wavePlayBtn.innerHTML = "▶️ PLAY";
+            cancelAnimationFrame(waveAnimationId);
+        }
+
+        function updateWaveformAnim() {
+            if (isWavePlaying) {
+                waveCurrentTime = waveAudioContext.currentTime - waveStartTime;
+                if (waveCurrentTime > waveAudioBuffer.duration) {
+                    waveCurrentTime = waveAudioBuffer.duration;
+                }
+                drawWaveform();
+                updateWaveTimeDisplay();
+                requestAnimationFrame(updateWaveformAnim);
+            }
+        }
+
+        function updateWaveTimeDisplay() {
+            if (!waveAudioBuffer) return;
+            const formatTime = (time) => {
+                const mins = Math.floor(time / 60).toString().padStart(2, '0');
+                const secs = Math.floor(time % 60).toString().padStart(2, '0');
+                return `${mins}:${secs}`;
+            };
+            waveTimeDisplay.innerText = `${formatTime(waveCurrentTime)} / ${formatTime(waveAudioBuffer.duration)}`;
+        }
+
+        // Listener para Click-to-Seek en el Canvas
+        canvas.addEventListener('click', (e) => {
+            if (!waveAudioBuffer) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const ratio = x / rect.width;
+            setWaveformTime(ratio * waveAudioBuffer.duration);
+        });
 
         // Polling agresivo para sensación de tiempo real fluido
         setInterval(updateDashboard, 200);

@@ -388,3 +388,17 @@ El panel de control "Modos de Grabación" ("Reposo Absoluto", "Vigilancia", "Con
 ### 🎓 Lecciones Aprendidas
 - El parámetro absoluto `100vh` en CSS Web Móvil es defectuoso por diseño (ignora las barras de UI inferiores y superiores del navegador dinámico). Sustituirlo por porcentajes relativos blindados (`75vh`) elimina los estancamientos de scroll en las capas flotantes de las Single Page Applications IoT.
 - Anclar listeners de CSS classes dinámicas al bloque `body` es el anti-patrón de scroll nativo más liviano y fiable para modales *Full-Screen*.
+
+## 🚀 Reproductor Forense WebAudio Avanzado v1.0-dev.32 | 23-Feb-2026
+### 📜 El Problema
+El Historial de Alertas listaba los eventos mediante etiquetas nativas HTML5 `<audio>`, lo que forzaba descargas opacas en el navegador y no permitía la auditoría visual de la amplitud (picos de decibelios) para localizar rápidamente las anomalías acústicas sin tener que escuchar la pista entera de forma lineal.
+
+### 🛠️ La Solución
+1. **Delegación de Carga al Cliente (Opción 1)**: Para no colapsar la RAM de Xiaomi calculando ondas, se construyó un `<canvas>` en `index.html`. El Mac/iPhone se encarga de descargar la pista vía `fetch()`, usar el chip propio mediante `AudioContext().decodeAudioData()` y extraer numéricamente los miles de picos PCM.
+2. **Interfaz de Waveform (Modal)**: Los audios nativos se suprimieron a favor del botón hipervínculo gigante "👁️ Analizar Pista Auditiva". Este gatillo levanta una Modal de pantalla completa oscura donde se inyecta el Canvas.
+3. **Reproductividad Táctil (Seeking)**: El Canvas reacciona a los clics evaluando al X en pantalla (`e.clientX`) vs la Anchura del Rectángulo, disparando una macro interna que redirige el cabezal `waveAudioSource.start(0, ratio * waveAudioBuffer.duration)`.
+4. **Amplificación de Falsos Silencios**: Una grabación casi silenciosa dibuja picos minúsculos. Se inyectó una magnificación matemática de rango logarítmico `(max - min) * 5.0` con un `Math.max(1, ...)` para que la onda siempre levante 1px, resultando en un rastro visible para silencios y montañas rojas/verdes gigantes para ruidos estridentes.
+5. **Cabezal No Invasivo**: El puntero de avance de `playHeadX` se dividió en dos estacas de longitud 10px (Superior e Inferior) en vez de cruzar verticalmente los 100px ahogando u ocultando el dibujo de la onda original.
+
+### 🎓 Lecciones Aprendidas
+- **Canvas y Variables Nativas CSS**: La declaración global estricta de `ctx.fillStyle` no traduce directamente de selectores `var(--color)` extraídos del DOM. Forzar Hexadecimales directos (`#4caf50`) evadió un bug masivo de renderizado Blanco puro persistente a pesar de estar la onda calculada correctamente en memoria.

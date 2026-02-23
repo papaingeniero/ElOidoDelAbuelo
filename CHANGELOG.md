@@ -1,3 +1,11 @@
+## [v1.0-dev.32] - 2026-02-23
+### Added
+- **Waveform Modal**: Nuevo reproductor forense interactivo `AudioContext` en el Historial para visualizar gráficamente los picos de sonido de la pista antes de escucharla.
+- **Micro-Seeking JS**: Rutina matemática `Click-to-Seek` que permite pulsar en cualquier punto de la onda para arrastrar el cabezal, y controles flotantes `[-5s] [+5s]`.
+### Fixed
+- Evasión de sobrecarga en el backend al renderizar la onda acústica forzando al navegador cliente (`Fetch Blob`) a procesar el dibujo mediante CPU remota.
+- Multiplicador algoritmico (`Boost x5`) al lienzo del Canvas para materializar rastros silentes que se ahogaban por su falta de amplitud frente al cabezal.
+
 ## [v1.0-dev.31] - 2026-02-23
 ### Changed
 - Reemplazo del Selector Desplegable de Modos por un Botón Maestro ("⏺️ GRABAR AHORA") en el Dashboard.
