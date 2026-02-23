@@ -1,3 +1,8 @@
+## [v1.0-dev.37] - 2026-02-23
+### Fixed
+- **Sincronización de Estados Preferencias**: Corregido bug donde el Dashboard no mostraba "VIGILANDO" inmediatamente tras activar el micrófono en ajustes. Se ha independizado la lógica de reposo activo de la de grabación de alarma.
+- **Refactorización de Máquina de Estados (Frontend)**: Limpieza de condicionales en `updateDashboard` para garantizar que el estado por defecto sea siempre la vigilancia activa si el hardware lo permite.
+
 ## [v1.0-dev.36] - 2026-02-23
 ### Fixed
 - **Dashboard Restaurado**: Corregido bug crítico donde la falta de un elemento visual (`statusBadge`) detenía toda la telemetría (batería, temperatura, vúmetro). Ahora el motor de actualización es resiliente a la ausencia de elementos del DOM.

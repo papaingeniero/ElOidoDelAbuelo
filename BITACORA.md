@@ -454,3 +454,19 @@ Tras la v35, el Dashboard dejó de mostrar telemetría de batería, temperatura 
 ### 🎓 Lecciones Aprendidas
 - **Las Guardias de Seguridad son Espadas de Doble Filo**: Un `return` agresivo puede proteger contra un crash, pero puede "matar" el sistema si la pieza que falta es secundaria. Siempre es mejor fallar de forma elegante (graceful degradation) que detener el motor por completo.
 - **Verificación de DOM**: Los IDs son contratos sagrados entre el HTML y el JS. Romper uno es romper el contrato de comunicación del sistema.
+
+## 🚀 Sincronización de Preferencias v1.0-dev.37 | 23-Feb-2026
+### 📜 El Problema
+El General detectó que al pasar de "Micrófono Apagado" a "Activo" en los ajustes y guardar, la pantalla principal seguía mostrando "MICRÓFONO APAGADO" durante un intervalo o de forma indefinida. La lógica de "Vigilando" estaba incorrectamente anidada dentro del estado de "Grabando Alarma", lo que impedía que se mostrara en el estado de reposo inicial.
+
+### 🛠️ La Solución
+1. **Máquina de Estados de 4 Vías**: Se ha rediseñado el flujo `if/else` en `index.html` para que los estados sean mutuamente excluyentes y jerárquicos:
+    - **Nivel 0**: Kill Switch (Micro OFF).
+    - **Nivel 1**: Forzado Manual (REC Continuo).
+    - **Nivel 2**: Detección Activa (Grabando Alarma).
+    - **Nivel 3 (Default)**: Vigilancia Pasiva (Reposo Activo).
+2. **Refresco Instantáneo**: Se ha asegurado que la llamada a `updateDashboard()` tras el `POST` de ajustes sea efectiva al estar ahora los estados correctamente mapeados.
+
+### 🎓 Lecciones Aprendidas
+- **Anidamiento Peligroso**: Evitar meter lógica de estado base dentro de condicionales de excepción (como una grabación en curso). El estado base debe ser el `else` final o el punto de entrada principal.
+- **Resiliencia de UI**: Una UI que no reacciona al "Guardar" genera desconfianza en el usuario aunque el backend esté haciendo su trabajo. La reactividad es parte de la corrección funcional.

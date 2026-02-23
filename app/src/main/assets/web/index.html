@@ -622,15 +622,21 @@
                     // Lógica de colores y estados - V31
 
                     if (!micEnabled) {
-                        statusBadge.textContent = "Micrófono Apagado";
-                        statusBadge.style.backgroundColor = "var(--status-gray)";
-                        vumeter.style.backgroundColor = "var(--status-gray)";
-                        btnRecMaster.innerHTML = `⚠️ MICRO OFF EN AJUSTES`;
-                        btnRecMaster.style.backgroundColor = "var(--status-gray)";
+                        if (statusBadge) {
+                            statusBadge.textContent = "Micrófono Apagado";
+                            statusBadge.style.backgroundColor = "var(--status-gray)";
+                        }
+                        if (vumeter) vumeter.style.backgroundColor = "var(--status-gray)";
+                        if (btnRecMaster) {
+                            btnRecMaster.innerHTML = `⚠️ MICRO OFF EN AJUSTES`;
+                            btnRecMaster.style.backgroundColor = "var(--status-gray)";
+                        }
                     } else if (forceRecord) {
-                        statusBadge.textContent = "Grabación Continua";
-                        statusBadge.style.backgroundColor = "var(--status-red)";
-                        vumeter.style.backgroundColor = "var(--status-red)";
+                        if (statusBadge) {
+                            statusBadge.textContent = "Grabación Continua";
+                            statusBadge.style.backgroundColor = "var(--status-red)";
+                        }
+                        if (vumeter) vumeter.style.backgroundColor = "var(--status-red)";
 
                         let timeStr = "00:00:00";
                         if (data.recordingStartTimestamp) {
@@ -640,14 +646,23 @@
                             const s = String(diff % 60).padStart(2, '0');
                             timeStr = `${h}:${m}:${s}`;
                         }
-                        btnRecMaster.innerHTML = `⏹️ DETENER [${timeStr}]`;
-                        btnRecMaster.style.backgroundColor = "#555";
+                        if (btnRecMaster) {
+                            btnRecMaster.innerHTML = `⏹️ DETENER [${timeStr}]`;
+                            btnRecMaster.style.backgroundColor = "#555";
+                        }
                     } else if (isRecording) {
-                        statusBadge.textContent = "Grabando Alarma";
-                        statusBadge.style.backgroundColor = "var(--status-red)";
-                        vumeter.style.backgroundColor = "var(--status-red)";
-                        btnRecMaster.innerHTML = `⏺️ GRABAR AHORA`;
-                        btnRecMaster.style.backgroundColor = "var(--status-red)";
+                        // DETECCIÓN ACTIVA (GRABANDO)
+                        if (statusBadge) {
+                            statusBadge.textContent = "Grabando Alarma";
+                            statusBadge.style.backgroundColor = "var(--status-red)";
+                        }
+                        if (vumeter) vumeter.style.backgroundColor = "var(--status-red)";
+                        if (btnRecMaster) {
+                            btnRecMaster.innerHTML = `⏺️ GRABAR AHORA`;
+                            btnRecMaster.style.backgroundColor = "var(--status-red)";
+                        }
+                    } else {
+                        // VIGILANCIA PASIVA (REPOSO ACTIVO)
                         if (statusBadge) {
                             statusBadge.textContent = shieldEnabled ? "Vigilando (Escudo ON)" : "Vigilando (Picos Directos)";
                             statusBadge.style.backgroundColor = "var(--primary-dark)";
@@ -658,6 +673,7 @@
                         }
 
                         // Vúmetro dinámico en escucha
+                        let currentSpikeThreshold = (data.SPIKE_THRESHOLD !== undefined) ? data.SPIKE_THRESHOLD : 10000;
                         if (amp > currentSpikeThreshold) {
                             if (vumeter) vumeter.style.backgroundColor = shieldEnabled ? "var(--status-yellow)" : "var(--status-red)";
                         } else {
