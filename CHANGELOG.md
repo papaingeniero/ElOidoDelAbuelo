@@ -1,3 +1,7 @@
+## [v1.0-dev.33] - 2026-02-23
+### Added
+- **Navegación Fluida de Onda (Drag-to-Seek)**: Nuevo comportamiento interactivo para el modal Waveform que permite el "Scrubbing Acústico" (Arrastrar y Soltar) sobre el espacio temporal usando el Ratón en Mac/PC y movimientos nativos del Dedo en dispositivos móviles para buscar puntos de ruido de manera natural.
+
 ## [v1.0-dev.32] - 2026-02-23
 ### Added
 - **Waveform Modal**: Nuevo reproductor forense interactivo `AudioContext` en el Historial para visualizar gráficamente los picos de sonido de la pista antes de escucharla.

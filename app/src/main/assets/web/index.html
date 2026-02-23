@@ -1049,16 +1049,74 @@
             waveTimeDisplay.innerText = `${formatTime(waveCurrentTime)} / ${formatTime(waveAudioBuffer.duration)}`;
         }
 
-        // Listener para Click-to-Seek en el Canvas
-        canvas.addEventListener('click', (e) => {
-            if (!waveAudioBuffer) return;
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const ratio = x / rect.width;
-            setWaveformTime(ratio * waveAudioBuffer.duration);
-        });
+        // --- LÓGICA DE SCRUBBING (DRAG-TO-SEEK) ---
+        let isDragging = false;
 
-        // Polling agresivo para sensación de tiempo real fluido
+        function handlePointerDown(e) {
+            if (!waveAudioBuffer) return;
+            isDragging = true;
+            // Opcional: pausar temporalmente sin perder el control de Play
+            if (isWavePlaying) waveAudioSource.stop();
+            handlePointerMove(e); // Procesar el salto inicial instantáneo
+        }
+
+        function handlePointerMove(e) {
+            if (!isDragging || !waveAudioBuffer) return;
+            const rect = canvas.getBoundingClientRect();
+            // Soporte para Mouse (clientX) y Touch (touches[0].clientX)
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const x = clientX - rect.left;
+            let ratio = x / rect.width;
+
+            // Delimitar márgenes de seguridad matemáticos
+            if (ratio < 0) ratio = 0;
+            if (ratio > 1) ratio = 1;
+
+            const newTime = ratio * waveAudioBuffer.duration;
+
+            // Actualización fantasma-fluida de los visuales mientras se arrastra (Sin disparar AudioContext pesado)
+            waveCurrentTime = newTime;
+            // Si estaba jugando y lo paramos, ajustamos wavePauseTime.
+            wavePauseTime = waveCurrentTime;
+            drawWaveform();
+            updateWaveTimeDisplay();
+        }
+
+        function handlePointerUp() {
+            if (!isDragging || !waveAudioBuffer) return;
+            isDragging = false;
+            // El dedo se ha levantado. Consolidar la orden real al motor de sonido
+            // Solo ordenamos reproducir de nuevo si ya estaba el play activo antes de arrastrar
+            if (isWavePlaying) {
+                // Forzamos "reanudar" reconectando el source en el nuevo tiempo.
+                waveAudioSource = waveAudioContext.createBufferSource();
+                waveAudioSource.buffer = waveAudioBuffer;
+                waveAudioSource.connect(waveAudioContext.destination);
+                waveAudioSource.start(0, waveCurrentTime);
+                waveStartTime = waveAudioContext.currentTime - waveCurrentTime;
+            }
+        }
+
+        // Oyentes para Ratón (Desktop Mac/PC)
+        canvas.addEventListener('mousedown', handlePointerDown);
+        canvas.addEventListener('mousemove', handlePointerMove);
+        canvas.addEventListener('mouseup', handlePointerUp);
+        canvas.addEventListener('mouseleave', handlePointerUp);
+
+        // Oyentes para Táctil Nativo (Xiaomi/iPhone)
+        canvas.addEventListener('touchstart', (e) => {
+            // e.preventDefault(); // Opcional, evitar scroll del modal si pulsas en el canvas
+            handlePointerDown(e);
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault(); // Obligatorio para evitar el scroll "Banda Goma" del navegador en Y
+            handlePointerMove(e);
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', handlePointerUp);
+
+        // Polling agresivo para sensación de tiempo real fluido en Dashboard general
         setInterval(updateDashboard, 200);
 
         // Cargar historial al iniciar

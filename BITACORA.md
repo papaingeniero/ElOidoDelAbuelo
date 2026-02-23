@@ -402,3 +402,19 @@ El Historial de Alertas listaba los eventos mediante etiquetas nativas HTML5 `<a
 
 ### 🎓 Lecciones Aprendidas
 - **Canvas y Variables Nativas CSS**: La declaración global estricta de `ctx.fillStyle` no traduce directamente de selectores `var(--color)` extraídos del DOM. Forzar Hexadecimales directos (`#4caf50`) evadió un bug masivo de renderizado Blanco puro persistente a pesar de estar la onda calculada correctamente en memoria.
+
+## 🚀 Navegación Fluida de Onda: Drag-to-Seek v1.0-dev.33 | 23-Feb-2026
+### 📜 El Problema
+Aunque la v32 permitía saltar en el tiempo haciendo clic, la experiencia de usuario era rígida. En dispositivos móviles (Xiaomi/iPhone), el usuario espera poder arrastrar el cabezal de forma fluida (Scrubbing) para inspeccionar visualmente la onda mientras busca un punto exacto sin tener que soltar el dedo.
+
+### 🛠️ La Solución
+1. **Máquina de Estados de Interacción**: Se implementó la variable `isDragging` para gestionar el ciclo de vida del gesto (Pulsar -> Arrastrar -> Soltar).
+2. **Soporte Híbrido Ratón/Táctil**: Se inyectaron Event Listeners específicos:
+    - **Escritorio**: `mousedown`, `mousemove`, `mouseup`, `mouseleave`.
+    - **Móvil**: `touchstart`, `touchmove`, `touchend`.
+3. **Optimización de Renderizado (Ghost-Scrubbing)**: Durante el movimiento (`mousemove`/`touchmove`), el sistema solo actualiza el valor de `waveCurrentTime` y redibuja el Canvas, pero NO reinicia el `AudioContext`. El salto real del motor de audio (operación costosa) solo se ejecuta en el evento `mouseup` o `touchend`, garantizando una fluidez de 60 FPS durante el arrastre.
+4. **Prevención de Scroll Nativo**: Se usó `e.preventDefault()` en el evento `touchmove` del Canvas para evitar que el navegador intente hacer scroll en la página mientras el usuario está deslizando el dedo lateralmente por la onda.
+
+### 🎓 Lecciones Aprendidas
+- **Interacciones Táctiles vs Mouse**: La API de Touch (`e.touches[0].clientX`) difiere de la de Mouse (`e.clientX`). Crear una función agnóstica de normalización de coordenadas es vital para proyectos multiplataforma.
+- **Debouncing de AudioContext**: Reiniciar una fuente de audio (`bufferSource`) en cada evento de movimiento de ratón genera clics auditivos y saturación de memoria. La técnica de "Actualización Visual Continua + Salto de Audio al Soltar" es el estándar de oro para reproductores eficientes.
