@@ -369,6 +369,7 @@
 
     <div class="dashboard">
         <h1>El Oído del Abuelo <span id="appVersion" style="font-size: 0.8rem; color: var(--status-gray);"></span></h1>
+        <div id="statusBadge" class="status-badge">Vigilando</div>
         <button class="settings-btn" onclick="openSettings()">⚙️ Ajustes</button>
 
         <!-- HARDWARE TELEMETRY TOOLBAR -->
@@ -545,10 +546,9 @@
             const amplitudeValue = document.getElementById('amplitudeValue');
             const btnRecMaster = document.getElementById('btnRecMaster');
 
-            // Si no estamos en el dashboard principal (ej. modal full screen o error), abortar silenciosamente
-            if (!vumeter || !statusBadge || !amplitudeValue || !btnRecMaster) {
-                return;
-            }
+            // Si no hay vumeter, probablemente el dashboard no está cargado, pero no abortamos todo el fetch
+            // para permitir que la lógica de configuración (latestConfig) se actualice.
+            const hasDashboard = vumeter && statusBadge && amplitudeValue && btnRecMaster;
 
             fetch('/api/status')
                 .then(response => {
@@ -648,17 +648,20 @@
                         vumeter.style.backgroundColor = "var(--status-red)";
                         btnRecMaster.innerHTML = `⏺️ GRABAR AHORA`;
                         btnRecMaster.style.backgroundColor = "var(--status-red)";
-                    } else {
-                        statusBadge.textContent = shieldEnabled ? "Vigilando (Escudo ON)" : "Vigilando (Picos Directos)";
-                        statusBadge.style.backgroundColor = "var(--primary-dark)";
-                        btnRecMaster.innerHTML = `⏺️ GRABAR AHORA`;
-                        btnRecMaster.style.backgroundColor = "var(--status-red)";
+                        if (statusBadge) {
+                            statusBadge.textContent = shieldEnabled ? "Vigilando (Escudo ON)" : "Vigilando (Picos Directos)";
+                            statusBadge.style.backgroundColor = "var(--primary-dark)";
+                        }
+                        if (btnRecMaster) {
+                            btnRecMaster.innerHTML = `⏺️ GRABAR AHORA`;
+                            btnRecMaster.style.backgroundColor = "var(--status-red)";
+                        }
 
                         // Vúmetro dinámico en escucha
                         if (amp > currentSpikeThreshold) {
-                            vumeter.style.backgroundColor = shieldEnabled ? "var(--status-yellow)" : "var(--status-red)";
+                            if (vumeter) vumeter.style.backgroundColor = shieldEnabled ? "var(--status-yellow)" : "var(--status-red)";
                         } else {
-                            vumeter.style.backgroundColor = "var(--status-green)";
+                            if (vumeter) vumeter.style.backgroundColor = "var(--status-green)";
                         }
                     }
                 })

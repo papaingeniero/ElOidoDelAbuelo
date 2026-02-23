@@ -442,3 +442,15 @@ Aunque la v34 corregía la persistencia, el cabezal seguía comportándose de fo
 ### 🎓 Lecciones Aprendidas
 - **Interacción vs Animación**: En interfaces de alto rendimiento, los bucles de `requestAnimationFrame` deben estar subordinados a las banderas de interacción. Forzar la actualización visual manual durante el arrastre es la única forma de evitar el "ghosting" o los saltos de cabezal.
 - **Robustez de Telemetría**: La arquitectura de un dashboard web debe ser tolerante a la ausencia temporal de elementos visuales (modales, cambios de vista), especialmente en ciclos de polling agresivo.
+
+## 🚀 Rescate del Dashboard Mudo v1.0-dev.36 | 23-Feb-2026
+### 📜 El Problema
+Tras la v35, el Dashboard dejó de mostrar telemetría de batería, temperatura y actividad del micrófono. El General sospechó que el servidor estaba "dormido", pero la realidad era que el cliente estaba "paralizado" por mi propia guardia de seguridad: al no encontrar el ID `statusBadge` (que se había perdido en un refactor previo), el script ejecutaba un `return` preventivo antes de siquiera realizar el `fetch`.
+
+### 🛠️ La Solución
+1. **Restauración Anatómica**: Se ha vuelto a inyectar el div `#statusBadge` en el corazón del HTML del dashboard.
+2. **Filosofía Tolerante a Fallos**: Se ha refactorizado `updateDashboard` para que, en lugar de abortar la misión (`return`), simplemente marque una bandera `hasDashboard` y proceda con el `fetch`. La actualización de los elementos visuales ahora está protegida individualmente, permitiendo que el resto del sistema siga vivo aunque falte una pieza.
+
+### 🎓 Lecciones Aprendidas
+- **Las Guardias de Seguridad son Espadas de Doble Filo**: Un `return` agresivo puede proteger contra un crash, pero puede "matar" el sistema si la pieza que falta es secundaria. Siempre es mejor fallar de forma elegante (graceful degradation) que detener el motor por completo.
+- **Verificación de DOM**: Los IDs son contratos sagrados entre el HTML y el JS. Romper uno es romper el contrato de comunicación del sistema.

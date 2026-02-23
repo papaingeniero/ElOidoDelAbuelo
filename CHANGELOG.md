@@ -1,3 +1,8 @@
+## [v1.0-dev.36] - 2026-02-23
+### Fixed
+- **Dashboard Restaurado**: Corregido bug crítico donde la falta de un elemento visual (`statusBadge`) detenía toda la telemetría (batería, temperatura, vúmetro). Ahora el motor de actualización es resiliente a la ausencia de elementos del DOM.
+- **Recuperación de UI**: Re-inyectado el `statusBadge` en el HTML del Dashboard que había sido omitido accidentalmente.
+
 ## [v1.0-dev.35] - 2026-02-23
 ### Fixed
 - **Estabilización de Scrubbing (Play Mode)**: Inyectada guardia de animación `isDragging` que congela el reloj interno durante el arrastre, eliminando los parpadeos y saltos erráticos del cabezal mientras se reproduce.
