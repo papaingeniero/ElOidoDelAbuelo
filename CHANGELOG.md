@@ -1,3 +1,7 @@
+## [v1.0-dev.49] - 2026-02-24
+### Added
+- **Patrón Chivato JSON (Mini Waveforms)**: Las formas de onda se generan como archivo `.json` diezmado (1 de cada 2 picos) al finalizar cada grabación en `AudioSentinel`. El `WebServer` inyecta los picos en `/api/recordings` bajo la clave `peaks`. El Dashboard dibuja mini-ondas `<canvas>` de 40px en cada tarjeta del historial usando barras teal (`#03dac6`), con CERO impacto en la RAM del móvil.
+
 ## [v1.0-dev.48] - 2026-02-24
 ### Added
 - **Duración de Audio en Tarjetas**: Cada tarjeta del historial muestra ahora la duración del archivo de audio (`⏱️ MM:SS`) junto al tamaño. Extraída en el backend mediante `MediaMetadataRetriever` y enviada como `durationMs` en `/api/recordings`.

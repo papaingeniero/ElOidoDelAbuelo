@@ -13,6 +13,7 @@ import android.util.Log;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -191,6 +192,9 @@ public class AudioSentinel {
         FileOutputStream fos = null;
         File currentAacFile = null;
 
+        // Chivato JSON: Lista de picos para la forma de onda (V49)
+        java.util.List<Integer> wavePeaks = new java.util.ArrayList<>();
+
         // Variables MediaCodec (V28)
         MediaCodec codec = null;
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
@@ -259,6 +263,11 @@ public class AudioSentinel {
                     // Si el micro está apagado por software, forzamos silencio matemático
                     double amplitude = !micEnabled ? 0 : calculateAmplitude(buffer, readResult);
                     this.currentAmplitude = amplitude;
+
+                    // Chivato JSON: Capturar pico si estamos grabando (V49)
+                    if (isRecording) {
+                        wavePeaks.add((int) amplitude);
+                    }
 
                     boolean wantToRecord = false;
 
@@ -344,6 +353,30 @@ public class AudioSentinel {
                             }
                             fos = null;
                         }
+
+                        // Chivato JSON: Guardar picos diezmados (1 de cada 2) como archivo .json (V49)
+                        if (currentAacFile != null && !wavePeaks.isEmpty()) {
+                            try {
+                                String jsonName = currentAacFile.getName().replaceAll("\\.[^.]+$", ".json");
+                                File jsonFile = new File(currentAacFile.getParentFile(), jsonName);
+                                StringBuilder sb = new StringBuilder("[");
+                                for (int pi = 0; pi < wavePeaks.size(); pi += 2) {
+                                    if (pi > 0)
+                                        sb.append(",");
+                                    sb.append(wavePeaks.get(pi));
+                                }
+                                sb.append("]");
+                                FileWriter fw = new FileWriter(jsonFile);
+                                fw.write(sb.toString());
+                                fw.close();
+                                Log.d(TAG, "Chivato JSON guardado: " + jsonFile.getName() + " ("
+                                        + (wavePeaks.size() / 2) + " picos)");
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error guardando chivato JSON", e);
+                            }
+                        }
+                        wavePeaks.clear();
+
                         Log.d(TAG, "Grabación AAC detenida.");
                     }
 

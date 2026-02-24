@@ -626,3 +626,32 @@ Las tarjetas del historial mostraban la fecha y el tamaño del archivo, pero no 
 | 4. Commit v1.0-dev.48 | ⬜ |
 | 5. Duración en JSON Backend | ✅ |
 | 6. Duración Visible en Tarjetas | ✅ |
+
+## 🚀 Arquitectura V49: Patrón Chivato JSON (Mini Waveforms) | 24-Feb-2026
+### 📜 El Problema
+El reproductor forense (v32) calculaba la forma de onda descargando el archivo completo de audio y decodificándolo con `AudioContext.decodeAudioData()` **en el cliente**. Esto significaba que cada tarjeta del historial requería una descarga masiva (megas de audio) solo para mostrar una vista previa. Era imposible mostrar ondas en miniatura en la lista sin colapsar el ancho de banda y la RAM del Xiaomi.
+
+### 🛠️ La Solución
+Implementación de un patrón de "Chivato de Metadatos" que desacopla la captura de picos del Frontend:
+
+1. **AudioSentinel.java (Captura)**: Durante cada ciclo de lectura del micrófono, si `isRecording == true`, el pico de amplitud (`int`) se añade a una `ArrayList<Integer>` llamada `wavePeaks`. Al finalizar la grabación (bloque de cierre de `fos` y `codec`), se serializa la lista **diezmada** (1 de cada 2 picos, loop `pi += 2`) como un archivo `.json` con el mismo nombre que el `.m4a`. Se usa `FileWriter` con `StringBuilder` manual para evitar la sobrecarga de `JSONArray` de Android. La lista se limpia con `wavePeaks.clear()` inmediatamente después.
+
+2. **WebServer.java (Transporte)**: En el endpoint `/api/recordings`, dentro del bucle de listado, se comprueba si existe un archivo `.json` hermano de cada `.m4a`/`.aac`. Si existe, se lee con `BufferedReader`, se parsea como `JSONArray` y se inyecta en el objeto JSON bajo la clave `"peaks"`.
+
+3. **index.html (Renderizado)**: Se inyecta un `<canvas>` de 40px de alto en la plantilla de cada tarjeta (oculto si no hay picos). Una nueva función `drawMiniWaveform(canvasId, peaks)` normaliza cada pico contra `32767`, calcula el paso horizontal (`step = width / peaks.length`) y dibuja barras verticales con `ctx.fillRect` en color teal (`#03dac6`). La función se invoca tras insertar la tarjeta en el DOM.
+
+### 🎓 Lecciones Aprendidas
+- **Diezmado (Downsampling)**: Guardar todos los picos sería redundante para una vista previa de 400px de ancho. Saltar 1 de cada 2 reduce el tamaño del JSON a la mitad sin pérdida visual perceptible.
+- **Separación de Responsabilidades**: El móvil captura y guarda los metadatos (coste marginal de I/O al cerrar grabación). El navegador del Mac solo recibe un array de enteros y dibuja. Cero decodificación de audio en ningún lado.
+- **Archivos `.json` huérfanos elegantes**: Si se borra el audio, el JSON queda huérfano pero no molesta (no aparece en el listado porque solo se filtran `.m4a`/`.aac`). El botón de purga también los limpiará si añadimos el filtro en el futuro.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V49) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.49 | ⬜ |
+| 5. AudioSentinel wavePeaks | ✅ |
+| 6. WebServer peaks injection | ✅ |
+| 7. Frontend drawMiniWaveform | ✅ |
+

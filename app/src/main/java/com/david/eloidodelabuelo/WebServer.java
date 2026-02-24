@@ -223,6 +223,22 @@ public class WebServer extends NanoHTTPD {
                     }
                     obj.put("durationMs", durationMs);
 
+                    // Chivato JSON: Inyectar picos de onda si existe el archivo .json (V49)
+                    try {
+                        String jsonName = file.getName().replaceAll("\\.[^.]+$", ".json");
+                        File jsonFile = new File(file.getParentFile(), jsonName);
+                        if (jsonFile.exists()) {
+                            java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(jsonFile));
+                            StringBuilder sb = new StringBuilder();
+                            String line;
+                            while ((line = br.readLine()) != null)
+                                sb.append(line);
+                            br.close();
+                            obj.put("peaks", new JSONArray(sb.toString()));
+                        }
+                    } catch (Exception ignored) {
+                    }
+
                     jsonArray.put(obj);
                 }
                 Response r = newFixedLengthResponse(Response.Status.OK, "application/json", jsonArray.toString());
