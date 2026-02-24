@@ -693,4 +693,23 @@ Las ondas miniatura y el analizador forense mostraban la forma de la señal de a
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.51 | ⬜ |
 
+## 🚀 Refinamiento V52: Normalización Absoluta 100% | 24-Feb-2026
+### 📜 El Problema
+Las versiones V49-V51 de las funciones de onda usaban trucos de amplificación artificial (boost x1.5, x5, techo visual de 8000) para hacer las ondas visibles. Esto distorsionaba las proporciones reales: el usuario no podía comparar fielmente la intensidad relativa entre distintos momentos de una grabación.
+
+### 🛠️ La Solución
+**Filosofía: Máxima resolución visual, cero ficción matemática.**
+1. **`drawMiniWaveform()`**: `localMax = Math.max(...peaks, 100)` → cada pico se normaliza como `peaks[i] / localMax`. El pico más fuerte SIEMPRE alcanza el 100% de la altura del canvas. Sin boost, sin techo artificial.
+2. **`drawWaveform()`**: Pre-escaneo de `globalMax` (mínimo `0.01`). La diferencia (max-min) de cada columna se normaliza como `diff / (globalMax * 2)`. Factor `*2` porque `diff` cubre el rango simétrico completo (-1 a +1). Ondas centradas verticalmente.
+
+### 🎓 Lecciones Aprendidas
+- **Honestidad visual sobre cosmética**: Amplificar artificialmente produce ondas "bonitas" pero mentirosas. La normalización pura contra el máximo real es la única representación fiel de la energía sonora relativa a lo largo de la grabación.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V52) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.52 | ⬜ |
+
 

@@ -1,3 +1,7 @@
+## [v1.0-dev.52] - 2026-02-24
+### Changed
+- **Normalización Absoluta 100%**: Reescritas `drawMiniWaveform()` y `drawWaveform()`. Eliminados boost artificial (x1.5, x5) y techo visual arbitrario (8000). Ahora el pico más alto de cada grabación SIEMPRE toca el borde del canvas, maximizando la resolución visual de las diferencias de amplitud.
+
 ## [v1.0-dev.51] - 2026-02-24
 ### Added
 - **Escala de Amplitud en Waveforms**: Las mini-ondas del historial muestran `Pico: N` (amplitud máxima PCM) en la esquina superior izquierda. El analizador forense ahora incluye líneas guía horizontales (centro, techo, suelo) y etiquetas de amplitud PCM (`±maxPcm`, `0`) para contexto visual del volumen real.

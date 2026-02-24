@@ -859,7 +859,7 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // --- MINI WAVEFORM: Dibujante de ondas en miniatura (Chivato JSON V49) ---
+        // --- MINI WAVEFORM: Dibujante de ondas en miniatura (Chivato JSON V49, Norm V52) ---
         function drawMiniWaveform(canvasId, peaks) {
             const canvas = document.getElementById(canvasId);
             if (!canvas || !peaks || peaks.length === 0) return;
@@ -868,37 +868,19 @@
             const height = canvas.height;
             const step = width / peaks.length;
 
-            // 1. Buscamos el sonido más fuerte de ESTA grabación concreta
+            // Normalización Pura: El pico máximo es nuestro techo exacto (mínimo 100 para evitar div/0)
             const localMax = Math.max(...peaks, 100);
-
-            // 2. Definimos un "techo visual". Si el audio es bajito, usamos 8000 para no amplificar 
-            // ruido blanco en exceso. Si hay un ruido fuerte, usamos ese pico máximo.
-            const visualCeiling = Math.max(localMax, 8000);
 
             ctx.clearRect(0, 0, width, height);
             ctx.fillStyle = '#03dac6';
 
             for (let i = 0; i < peaks.length; i++) {
-                // Normalizamos en base al techo visual, no al inalcanzable 32767
-                const normalized = Math.min(peaks[i] / visualCeiling, 1.0);
-
-                // Aplicamos un Boost Visual x1.5 y calculamos la altura
-                let barHeight = Math.max(1, (normalized * height) * 1.5);
-                if (barHeight > height) barHeight = height; // Cortar a ras de techo si se pasa
-
+                const normalized = peaks[i] / localMax;
+                const barHeight = Math.max(1, normalized * height);
                 const x = i * step;
-
-                // Centramos la onda verticalmente (estilo analizador) en lugar de apoyarla abajo
                 const y = (height - barHeight) / 2;
-
                 ctx.fillRect(x, y, Math.max(1, step - 0.5), barHeight);
             }
-
-            // Etiqueta de pico máximo en esquina superior izquierda (V51)
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            ctx.font = '11px monospace';
-            ctx.textAlign = 'left';
-            ctx.fillText('Pico: ' + localMax, 4, 12);
         }
 
         function loadHistory() {
@@ -1120,37 +1102,18 @@
             const height = canvas.height;
             ctx.clearRect(0, 0, width, height);
 
-            const data = waveAudioBuffer.getChannelData(0); // Tomar canal izquierdo/mono
+            const data = waveAudioBuffer.getChannelData(0);
             const step = Math.ceil(data.length / width);
-            const amp = height / 2;
 
-            // Calcular ancho del pixel de reproducción actual
+            // 1. Escaneo previo para encontrar el pico global de TODO el archivo
+            let globalMax = 0.01; // Mínimo para evitar div/0
+            for (let k = 0; k < data.length; k++) {
+                const absVal = Math.abs(data[k]);
+                if (absVal > globalMax) globalMax = absVal;
+            }
+
             const duration = waveAudioBuffer.duration;
             const playHeadX = (waveCurrentTime / duration) * width;
-
-            // Escanear pico global para etiquetas de escala (V51)
-            let globalMax = 0;
-            for (let i = 0; i < data.length; i++) {
-                const abs = Math.abs(data[i]);
-                if (abs > globalMax) globalMax = abs;
-            }
-            const maxPcm = Math.round(globalMax * 32767);
-
-            // Líneas guía (Grid)
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.beginPath();
-            ctx.moveTo(0, height / 2); ctx.lineTo(width, height / 2); // Centro (0)
-            ctx.moveTo(0, 0); ctx.lineTo(width, 0); // Techo
-            ctx.moveTo(0, height); ctx.lineTo(width, height); // Suelo
-            ctx.stroke();
-
-            // Etiquetas de texto
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-            ctx.font = '10px monospace';
-            ctx.textAlign = 'left';
-            ctx.fillText('+' + maxPcm, 2, 10);
-            ctx.fillText('0', 2, (height / 2) - 2);
-            ctx.fillText('-' + maxPcm, 2, height - 2);
 
             for (let i = 0; i < width; i++) {
                 let min = 1.0;
@@ -1161,25 +1124,18 @@
                     if (datum > max) max = datum;
                 }
 
-                // Amplificación Mágica: Multiplicamos el pico para que el silencio tenga cuerpo
                 const diff = max - min;
-                const boostedDiff = diff * 5.0; // Boost x5
+                // Normalización Pura contra el pico global (multiplicado por 2 porque diff cubre de min a max)
+                const normalized = diff / (globalMax * 2);
+                const drawHeight = Math.max(1, normalized * height);
+                const drawY = (height - drawHeight) / 2;
 
-                // Si el audio es silencio puro de micrófono (flatline real), dejamos que sea fino (1px)
-                // Esto evitará que parezca una barra constante si no hay picos reales
-                const drawHeight = Math.max(1, boostedDiff * amp);
-                const drawY = amp - (drawHeight / 2); // Centrado vertical matemático
-
-                // Pintar rojo (ya reproducido) o verde (por reproducir)
                 ctx.fillStyle = i <= playHeadX ? '#d32f2f' : '#4caf50';
                 ctx.fillRect(i, drawY, 1, drawHeight);
             }
 
-            // Dibujar línea del cabezal separada de la onda central
             ctx.fillStyle = 'white';
-            // Puntero Superior
             ctx.fillRect(playHeadX - 1, 0, 3, 10);
-            // Puntero Inferior
             ctx.fillRect(playHeadX - 1, height - 10, 3, 10);
         }
 
