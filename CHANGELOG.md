@@ -1,3 +1,11 @@
+## [v1.0-dev.45] - 2026-02-24
+### Fixed
+- **ABI Mismatch (INSTALL_FAILED_NO_MATCHING_ABIS)**: Reemplazado el binario nativo de Cloudflare `arm64-v8a` (64-bit) por `armeabi-v7a` (32-bit). Aunque el procesador del Xiaomi Redmi 9C (MediaTek Helio G35) soporta 64 bits, la capa del sistema operativo MIUI instalada funciona en modo 32 bits (muy común en dispositivos Android GO o con menos de 3GB de RAM).
+
+## [v1.0-dev.44] - 2026-02-24
+### Fixed
+- **SELinux W^X Bypass (Error 13)**: Corregido el "Permission Denied" al ejecutar `cloudflared` en Android 10+. El binario ahora se despliega como una librería nativa camuflada (`libcloudflared.so`) dentro de `jniLibs/arm64-v8a/` para forzar al Package Manager de Android a extraerlo en el directorio seguro `/data/app/.../lib/` que sí permite ejecución nativa, saltándose la protección Write-XOR-Execute de la partición de datos.
+
 ## [v1.0-dev.43] - 2026-02-24
 ### Added
 - **Cloudflare Zero Trust Access (Túnel Inverso VPN)**: Integración total del binario oficial `cloudflared` (arm64) como un subproceso estático nativo. La aplicación ahora establece un canal encriptado bidireccional directamente con los servidores de Cloudflare esquivando restricciones de operadora (CGNAT) y la necesidad de abrir puertos.

@@ -583,3 +583,43 @@ Se ha orquestado la integración de un **Gateway de Seguridad B2B (MFA)** empotr
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.43 | ✅ |
 | 5. Despliegue Cloudflared Local | ✅ |
+
+## 🚀 Hotfix v1.0-dev.44: SELinux W^X Bypass | 24-Feb-2026
+### 📜 El Problema
+Al inyectar el binario `cloudflared` en la v43 y extraerlo manualmente al almacenamiento interno (`/data/data/.../files/`), el sistema operativo (API 29+) interceptó la llamada a `ProcessBuilder` y asesinó el proceso al instante. El logcat arrojó un error `Permission denied (error=13)` provocado por la política de seguridad SELinux (Write-XOR-Execute), que prohíbe taxativamente la ejecución de binarios que han sido "escritos" por el usuario en tiempo de ejecución para evitar malware.
+
+### 🛠️ La Solución
+1. **Camuflaje de Librería (JNI)**: Se ha movido el binario puro de Linux `cloudflared` desde la carpeta `/assets/` hacia la carpeta reservada para librerías nativas en C/C++: `/jniLibs/arm64-v8a/libcloudflared.so`.
+2. **Extracción Nivel-Sistema**: Se ha añadido explícitamente a Android (`android:extractNativeLibs="true"` en el Manifest) para garantizar que, durante la instalación del APK, sea su propio Package Manager quien extraiga este archivo.
+3. **Bypass Autorizado**: El instalador de Android descomprime la "librería" en su directorio fortificado (`getApplicationInfo().nativeLibraryDir`), otorgándole de fábrica el bit de ejecución y la bendición de SELinux.
+4. **Disparo Limpio**: `OidoService` ya no copia archivos iterativamente; simplemente lee la ruta del sistema y dispara el subproceso directamente desde la zona segura nativa.
+
+### 🎓 Lecciones Aprendidas
+- **La Paradoja de W^X en Android 10+**: Nunca intentes extraer y ejecutar un binario estático manualmente en el almacenamiento de datos de la App. La única forma de introducir un caballo de Troya binario ejecutable en las últimas versiones de Android sin Root es disfrazarlo estrictamente de librería `.so` e inyectarlo en el empaquetado nativo JNI.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V44) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.44 | ✅ |
+| 5. Bypass SELinux | ✅ |
+
+## 🚀 Hotfix v1.0-dev.45: ABI Mismatch (32-bit Fallback) | 24-Feb-2026
+### 📜 El Problema
+Al intentar desplegar la v44 con el bypass nativo JNI, la instalación ADB falló con un error contundente: `INSTALL_FAILED_NO_MATCHING_ABIS: Failed to extract native libraries`. El motivo oculto es que aunque el procesador del Xiaomi Redmi 9C (MediaTek Helio G35) tiene una arquitectura de 64 bits (`arm64-v8a`), el fabricante Xiaomi instaló una versión de sistema operativo Android/MIUI de 32 bits (`armeabi-v7a`) para ahorrar memoria RAM en dispositivos de gama de entrada.
+
+### 🛠️ La Solución
+1. **Reemplazo Táctico**: Se eliminó el binario `cloudflared-linux-arm64` de la compilación.
+2. **Arquitectura Correcta**: Se descargó explícitamente la versión de 32 bits de ARM (`cloudflared-linux-arm`) y se inyectó en el directorio correcto de librerías JNI para esta arquitectura: `/jniLibs/armeabi-v7a/libcloudflared.so`.
+
+### 🎓 Lecciones Aprendidas
+- **El Hardware 64-bit no garantiza un SO 64-bit**: Nunca asumas el bitness del OS basándote en la CPU del dispositivo. En dispositivos budget (< 3GB RAM), es habitual encontrar Systems on a Chip de 64 bits corriendo OS Android Go o versiones castradas de 32 bits. Siempre hay que fiarse de `getprop ro.product.cpu.abi` y compilar/desplegar binarios para `armeabi-v7a` si esa es la respuesta.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V45) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.45 | ✅ |
+| 5. Instalación APK Exitosa | ✅ |

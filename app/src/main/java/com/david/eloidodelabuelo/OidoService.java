@@ -55,25 +55,17 @@ public class OidoService extends Service {
     private void startCloudflaredTunnel() {
         new Thread(() -> {
             try {
-                File cloudflaredFile = new File(getFilesDir(), "cloudflared");
+                // Recuperar el binario camuflado como librería desde el sistema
+                String nativeLibDir = getApplicationInfo().nativeLibraryDir;
+                File cloudflaredFile = new File(nativeLibDir, "libcloudflared.so");
 
-                // Siempre extraemos/sobreescribimos para asegurar que tenemos la versión
-                // correcta del APK
-                try (InputStream is = getAssets().open("cloudflared");
-                        OutputStream os = new FileOutputStream(cloudflaredFile)) {
-                    byte[] buffer = new byte[1024];
-                    int length;
-                    while ((length = is.read(buffer)) > 0) {
-                        os.write(buffer, 0, length);
-                    }
-                    Log.d(TAG, "Binario cloudflared extraído a disco");
+                if (!cloudflaredFile.exists()) {
+                    Log.e(TAG, "Binario libcloudflared.so no encontrado en " + cloudflaredFile.getAbsolutePath());
+                    return;
                 }
 
-                // Dar permisos de ejecución
-                cloudflaredFile.setExecutable(true);
-
-                // Levantar el proceso en background
-                Log.d(TAG, "Iniciando túnel Cloudflare Access...");
+                // Levantar el proceso en background directamente desde la zona segura
+                Log.d(TAG, "Iniciando túnel Cloudflare Access desde jniLibs...");
                 ProcessBuilder pb = new ProcessBuilder(
                         cloudflaredFile.getAbsolutePath(),
                         "tunnel",
@@ -87,6 +79,16 @@ public class OidoService extends Service {
 
                 cloudflaredProcess = pb.start();
                 Log.d(TAG, "Proceso Cloudflared en ejecución (PID oculto)");
+
+                java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(cloudflaredProcess.getInputStream()));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    Log.d("CloudflaredLog", line);
+                }
+
+                int exitCode = cloudflaredProcess.waitFor();
+                Log.e(TAG, "Proceso Cloudflared finalizó prematuramente con código: " + exitCode);
 
             } catch (Exception e) {
                 Log.e(TAG, "Fallo crítico al iniciar Cloudflared", e);
