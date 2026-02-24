@@ -796,9 +796,25 @@
                 alert("⚠️ Active la [Vigilancia Activa] en Ajustes primero.");
                 return;
             }
-            const isForced = latestConfig && latestConfig.forceRecord;
-            const newForceState = !isForced;
 
+            const isForced = latestConfig && latestConfig.forceRecord;
+            const isRecordingAuto = latestConfig && latestConfig.isRecording && !isForced;
+
+            // Si está grabando por detección automática, el botón actúa como ABORTAR
+            if (isRecordingAuto) {
+                fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ abortRecording: true })
+                }).then(res => res.json()).then(data => {
+                    if (data.status !== 'ok') alert("Error: " + data.message);
+                    updateDashboard();
+                }).catch(err => alert("Error de red al abortar grabación"));
+                return;
+            }
+
+            // Comportamiento normal (Toggle Grabación Manual)
+            const newForceState = !isForced;
             fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

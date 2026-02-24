@@ -790,6 +790,29 @@ Extirpación total de la dependencia en `WebServer.java`:
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.56 | ⬜ |
 
+## 🚀 Innovación V57: Kill Switch de Grabación | 24-Feb-2026
+### 📜 El Problema
+Cuando el sistema detecta un ruido y empieza a grabar automáticamente (Trigger Auto), la interfaz web muestra que está grabando, pero el botón principal de grabación no tenía una función clara (o intentaba forzar una grabación paralela redundante). El usuario no tenía forma de cancelar una grabación automática una vez iniciada sin esperar a que terminara el temporizador (ej. si era una falsa alarma obvia).
+
+### 🛠️ La Solución
+Implementación de un sistema de interceptación asíncrona:
+1. **AudioSentinel.java**: Inyección de una señal `abortRequested`. Si esta señal se activa durante el periodo de `autoDetection`, el centinela reinicia forzosamente el `recordingEndTime` y limpia el buffer de detección, forzando la parada inmediata del codec.
+2. **WebServer.java**: Nuevo comando `abortRecording` en el endpoint de ajustes que invoca el método del centinela.
+3. **index.html**: Inteligencia de contexto en `toggleContinuousRec()`. Si detecta que hay una grabación automática activa, el botón REC se transforma automáticamente en un botón de **Abortar**, enviando la señal de kill switch en lugar del comando de grabación manual.
+
+### 🎓 Lecciones Aprendidas
+- **Intervención Humana sobre Automatismo**: Proporcionar al usuario el control final (Override) sobre una decisión tomada por la IA (Detección de Ruido) mejora drásticamente la UX. El botón de REC ahora es un botón de "Control de Estado" contextual, no solo un interruptor on/off.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V57) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.57 | ⬜ |
+| 5. Lógica de Aborto Backend | ✅ |
+| 6. Interfaz Abortar Frontend | ✅ |
+
+
 
 
 

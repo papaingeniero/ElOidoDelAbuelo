@@ -59,6 +59,7 @@ public class AudioSentinel {
     private volatile int requiredSpikesCached = 3;
     private volatile int shieldWindowMsCached = 500;
     private volatile int recordDurationMsCached = 15000;
+    private volatile boolean abortRequested = false;
 
     private final SharedPreferences.OnSharedPreferenceChangeListener prefListener = (sharedPreferences, key) -> {
         if (key == null)
@@ -115,6 +116,10 @@ public class AudioSentinel {
 
     public Long getRecordingStartTimestamp() {
         return recordingStartTimestamp;
+    }
+
+    public void abortCurrentRecording() {
+        abortRequested = true;
     }
 
     public void updateForceRecordTimestamp(boolean isForced) {
@@ -277,26 +282,32 @@ public class AudioSentinel {
                         if (forceRecord) {
                             wantToRecord = true; // Continuo absoluto guiado por el Botón REC
                         } else if (autoDetection) { // Detección Clásica solo si está habilitada (V38)
-                            if (amplitude > spikeThreshold) {
-                                if (!shieldEnabled) {
-                                    wantToRecord = true;
-                                } else {
-                                    if (spikeCount == 0 || (currentTime - firstSpikeTime) > shieldWindowMs) {
-                                        firstSpikeTime = currentTime;
-                                        spikeCount = 1;
-                                    } else {
-                                        spikeCount++;
-                                    }
-                                    if (spikeCount >= requiredSpikes) {
+                            if (abortRequested) {
+                                recordingEndTime = 0;
+                                spikeCount = 0;
+                                abortRequested = false;
+                            } else {
+                                if (amplitude > spikeThreshold) {
+                                    if (!shieldEnabled) {
                                         wantToRecord = true;
-                                        spikeCount = 0;
+                                    } else {
+                                        if (spikeCount == 0 || (currentTime - firstSpikeTime) > shieldWindowMs) {
+                                            firstSpikeTime = currentTime;
+                                            spikeCount = 1;
+                                        } else {
+                                            spikeCount++;
+                                        }
+                                        if (spikeCount >= requiredSpikes) {
+                                            wantToRecord = true;
+                                            spikeCount = 0;
+                                        }
                                     }
                                 }
-                            }
-                            if (wantToRecord) {
-                                recordingEndTime = currentTime + recordDurationMs;
-                            } else if (isRecording && currentTime < recordingEndTime) {
-                                wantToRecord = true; // Seguimos dentro de la ventana del Trigger
+                                if (wantToRecord) {
+                                    recordingEndTime = currentTime + recordDurationMs;
+                                } else if (isRecording && currentTime < recordingEndTime) {
+                                    wantToRecord = true; // Seguimos dentro de la ventana del Trigger
+                                }
                             }
                         }
                     }

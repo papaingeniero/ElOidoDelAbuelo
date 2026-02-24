@@ -1,3 +1,7 @@
+## [v1.0-dev.57] - 2026-02-24
+### Added
+- **Kill Switch de Grabación**: El botón principal de REC ahora actúa como un botón de "Abortar" cuando el sistema está en medio de una grabación automática. Esto permite al usuario detener detecciones falsas o grabaciones no deseadas instantáneamente sin esperar a que termine el temporizador. Implementado mediante intercepción de hilo en `AudioSentinel`.
+
 ## [v1.0-dev.56] - 2026-02-24
 ### Removed
 - **Eliminación de MediaMetadataRetriever**: Extirpación total de la dependencia `MediaMetadataRetriever` en el `WebServer`. El sistema ahora confía exclusivamente en el patrón de Metadatos Estáticos (.json), eliminando riesgos de bloqueos y reduciendo la complejidad del código.

@@ -132,6 +132,9 @@ public class WebServer extends NanoHTTPD {
                         editor.putBoolean("FORCE_RECORD", bForce);
                         sentinel.updateForceRecordTimestamp(bForce);
                     }
+                    if (json.has("abortRecording") && json.getBoolean("abortRecording")) {
+                        sentinel.abortCurrentRecording();
+                    }
                     if (json.has("SPIKE_THRESHOLD"))
                         editor.putInt("SPIKE_THRESHOLD", json.getInt("SPIKE_THRESHOLD"));
                     if (json.has("REQUIRED_SPIKES"))
