@@ -1,5 +1,22 @@
 # Bitácora de Desarrollo: El Oído del Abuelo
 
+## 🚀 Fase 60: Separación de Responsabilidades UX (Dicotomía Badge-Botón) | 24-Feb-2026
+### 📜 El Problema
+La interfaz del Dashboard presentaba una sobrecarga cognitiva en el botón de grabación maestro (`btnRecMaster`). El botón cumplía una doble función confusa: informar del estado del sistema (ej: "VIGILANDO") y actuar como disparador. Esto limitaba la claridad visual sobre si el micrófono estaba realmente activo o en qué modo operativo se encontraba el centinela.
+
+### 🛠️ La Solución
+Se ha implementado el patrón UX de **Separación de Responsabilidades** para independizar la telemetría del estado de la capacidad de actuación:
+1. **Inyección de Badge de Estado**: Se ha creado un nuevo contenedor `<div id="system-state-badge">` sobre el botón principal. Este panel actúa como un "semáforo" informativo constante.
+2. **Refactorización de `updateDashboard()`**: La lógica de polling AJAX ahora gestiona dos canales de salida visual independientes:
+   - **Canal Informativo (Badge)**: Narra el estado exacto del hardware y la lógica (Kill-Switch, Automático, Manual, Vigilancia) con colores específicos (`#ff5252`, `#ffd600`, `#03dac6`).
+   - **Canal de Actuación (Botón)**: Se simplifica para ofrecer solo las acciones disponibles ("GRABAR AHORA", "DETENER", "ABORTAR").
+3. **Consistencia de Privacidad**: El badge refuerza visualmente el estado del "Kill-Switch" de hardware, mostrando un mensaje de advertencia rojo cuando el micrófono está desactivado en ajustes.
+
+### 🎓 Lecciones Aprendidas
+- **Dicotomía Semántica**: Separar el "Estado" (lo que pasa) de la "Acción" (lo que puedo hacer) reduce el error humano y mejora la confianza del operador remoto en el sistema de vigilancia.
+- **Inyección Quirúrgica**: Modificar archivos HTML/JS servidos por `NanoHTTPD` requiere una precisión milimétrica en los selectores de ID para no romper el ciclo de polling de telemetría agresivo.
+
+
 ## 🚀 Inicio del Proyecto | 19-Feb-2026
 ### 📜 El Problema
 Necesitamos establecer una base sólida para el proyecto 'El Oído del Abuelo', asegurando compatibilidad estricta con Android 10 (API 29) y un entorno limpio.

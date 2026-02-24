@@ -1,4 +1,10 @@
+## [v1.0-dev.60] - 2026-02-24
+### Added
+- **Separación de Responsabilidades UX**: Implementación de un panel luminoso estático (`system-state-badge`) para el estado del sistema, desacoplándolo del botón de grabación manual.
+- **Lógica de Estados Multivariantes**: Nueva gestión inteligente de la UI que distingue entre Kill-Switch (Micro OFF), Grabación Manual, Alarma por Ruido, Sólo Escuchay Vigilancia Activa, con feedback visual de colores y bordes reactivos.
+
 ## [v1.0-dev.59] - 2026-02-24
+
 ### Added
 - **Umbral Interactivo (Draggable)**: El marcador de umbral en el vúmetro ahora es arrastrable. El usuario puede calibrar la sensibilidad del sistema directamente sobre la barra de amplitud, persistiendo el cambio automáticamente al soltar. Implementado con `Pointer Events` para compatibilidad total con ratón y pantallas táctiles.
 
