@@ -102,9 +102,23 @@
             background-color: rgba(255, 255, 255, 0.4);
             left: calc((10000 / 32767) * 100%);
             z-index: 10;
+            cursor: ew-resize;
+            touch-action: none;
+            /* Evita el scroll nativo al arrastrar */
         }
 
         .threshold-marker::after {
+            content: "";
+            position: absolute;
+            top: -15px;
+            bottom: -15px;
+            left: -15px;
+            right: -15px;
+            /* Hitbox táctil gigante para facilitar el agarre */
+        }
+
+        /* Reutilizamos el span para el texto de 'Umbral' de forma estable */
+        .threshold-marker::before {
             content: "Umbral";
             position: absolute;
             top: -16px;
@@ -112,6 +126,7 @@
             font-size: 0.65rem;
             color: rgba(255, 255, 255, 0.6);
             font-weight: bold;
+            pointer-events: none;
         }
 
         #thresholdLabel {
@@ -678,13 +693,15 @@
                         }
                     }
 
-                    // Ajustar UI del threshold-marker
-                    const marker = document.querySelector('.threshold-marker');
-                    const thresholdLabel = document.getElementById('thresholdLabel');
-                    if (marker) {
-                        let currentSpikeThreshold = (data.SPIKE_THRESHOLD !== undefined) ? data.SPIKE_THRESHOLD : 10000;
-                        marker.style.left = `calc((${currentSpikeThreshold} / 32767) * 100%)`;
-                        if (thresholdLabel) thresholdLabel.textContent = currentSpikeThreshold;
+                    // Ajustar UI del threshold-marker (Saltar si se está arrastrando - V59)
+                    if (typeof isDraggingThreshold === 'undefined' || !isDraggingThreshold) {
+                        const marker = document.querySelector('.threshold-marker');
+                        const thresholdLabel = document.getElementById('thresholdLabel');
+                        if (marker) {
+                            let currentSpikeThreshold = (data.SPIKE_THRESHOLD !== undefined) ? data.SPIKE_THRESHOLD : 10000;
+                            marker.style.left = `calc((${currentSpikeThreshold} / 32767) * 100%)`;
+                            if (thresholdLabel) thresholdLabel.textContent = currentSpikeThreshold;
+                        }
                     }
 
                     // Actualizar texto numérico
@@ -1406,6 +1423,52 @@
         }, { passive: false });
 
         canvas.addEventListener('touchend', handlePointerUp);
+
+        // --- Lógica de Arrastre de Umbral (V59) ---
+        let isDraggingThreshold = false;
+        const vContainer = document.querySelector('.meter-bg');
+        const tMarker = document.querySelector('.threshold-marker');
+        const tLabel = document.getElementById('thresholdLabel');
+
+        if (tMarker && vContainer) {
+            tMarker.addEventListener('pointerdown', (e) => {
+                isDraggingThreshold = true;
+                tMarker.setPointerCapture(e.pointerId);
+            });
+
+            tMarker.addEventListener('pointermove', (e) => {
+                if (!isDraggingThreshold) return;
+                const rect = vContainer.getBoundingClientRect();
+                let x = e.clientX - rect.left;
+                let percent = Math.max(0, Math.min(x, rect.width)) / rect.width;
+                let newThresh = Math.round(percent * 32767);
+
+                tMarker.style.left = (percent * 100) + '%';
+                if (tLabel) tLabel.innerText = newThresh;
+            });
+
+            tMarker.addEventListener('pointerup', (e) => {
+                if (!isDraggingThreshold) return;
+                isDraggingThreshold = false;
+                tMarker.releasePointerCapture(e.pointerId);
+
+                const rect = vContainer.getBoundingClientRect();
+                let x = e.clientX - rect.left;
+                let percent = Math.max(0, Math.min(x, rect.width)) / rect.width;
+                let finalThresh = Math.round(percent * 32767);
+
+                // Actualización optimista
+                if (latestConfig) latestConfig.SPIKE_THRESHOLD = finalThresh;
+
+                fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ SPIKE_THRESHOLD: finalThresh })
+                }).then(res => res.json()).then(data => {
+                    updateDashboard();
+                }).catch(err => console.error("Error guardando umbral", err));
+            });
+        }
 
         // Polling agresivo para sensación de tiempo real fluido en Dashboard general
         setInterval(updateDashboard, 200);

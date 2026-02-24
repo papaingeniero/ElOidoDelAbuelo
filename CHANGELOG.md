@@ -1,3 +1,7 @@
+## [v1.0-dev.59] - 2026-02-24
+### Added
+- **Umbral Interactivo (Draggable)**: El marcador de umbral en el vúmetro ahora es arrastrable. El usuario puede calibrar la sensibilidad del sistema directamente sobre la barra de amplitud, persistiendo el cambio automáticamente al soltar. Implementado con `Pointer Events` para compatibilidad total con ratón y pantallas táctiles.
+
 ## [v1.0-dev.58] - 2026-02-24
 ### Added
 - **Mejora del Vúmetro**: Añadida una escala numérica graduada (0, 8k, 16k, 24k, 32k) en el eje X del vúmetro.

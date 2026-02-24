@@ -832,6 +832,29 @@ Implementación de un sistema de referencia graduada en el eje X:
 | 5. Escala Graduada (0-32k) | ✅ |
 | 6. Umbral Numérico Dinámico | ✅ |
 
+## 🚀 Innovación V59: Umbral Interactivo por Arrastre | 24-Feb-2026
+### 📜 El Problema
+Aunque en V58 añadimos una escala visual y etiquetas, el ajuste del umbral seguía dependiendo de entrar en el menú de Ajustes y escribir un número. Para una calibración rápida basada en el ruido ambiental real (que el usuario está viendo en la barra azul), esto resultaba lento y poco intuitivo.
+
+### 🛠️ La Solución
+Implementación de manipulación directa sobre el Vúmetro:
+1. **API Pointer Events**: Se utilizó `setPointerCapture` para permitir un arrastre fluido que no pierde el foco incluso si el usuario mueve el dedo fuera del marker.
+2. **Hitbox Táctil**: Se amplió el área de agarre mediante un pseudoelemento `::after` invisible de 30px, facilitando el toque en dispositivos móviles sin oscurecer la barra.
+3. **Persistencia Optimista**: Al soltar la marca, los metadatos se envían al servidor mediante `POST /api/settings`, actualizando las preferencias de Android instantáneamente.
+4. **Control de Concurrencia**: Se modificó `updateDashboard` para que deje de mover el marcador mientras el usuario lo tiene "capturado" por arrastre, evitando saltos visuales.
+
+### 🎓 Lecciones Aprendidas
+- **Interacción Directa**: Siempre que sea posible, permitir que el usuario interactúe con los datos donde los ve (el vúmetro) en lugar de donde se configuran (el modal). Esto reduce la "carga cognitiva" y acelera la calibración del sistema en el entorno real del Xiaomi.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V59) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.59 | ⬜ |
+| 5. Soporte Táctil (Pointer Events) | ✅ |
+| 6. Persistencia al soltar (POST) | ✅ |
+
 | 5. Lógica de Aborto Backend | ✅ |
 | 6. Interfaz Abortar Frontend | ✅ |
 
