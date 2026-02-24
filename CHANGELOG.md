@@ -1,3 +1,7 @@
+## [v1.0-dev.50] - 2026-02-24
+### Changed
+- **Boost Visual de Mini Waveforms**: Reescrita `drawMiniWaveform()` con normalización dinámica (`localMax` vs techo visual de 8000), boost `x1.5` y centrado vertical estilo analizador de audio. Las ondas se ven altas y claras incluso en grabaciones de bajo volumen.
+
 ## [v1.0-dev.49] - 2026-02-24
 ### Added
 - **Patrón Chivato JSON (Mini Waveforms)**: Las formas de onda se generan como archivo `.json` diezmado (1 de cada 2 picos) al finalizar cada grabación en `AudioSentinel`. El `WebServer` inyecta los picos en `/api/recordings` bajo la clave `peaks`. El Dashboard dibuja mini-ondas `<canvas>` de 40px en cada tarjeta del historial usando barras teal (`#03dac6`), con CERO impacto en la RAM del móvil.

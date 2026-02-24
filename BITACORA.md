@@ -655,3 +655,24 @@ Implementación de un patrón de "Chivato de Metadatos" que desacopla la captura
 | 6. WebServer peaks injection | ✅ |
 | 7. Frontend drawMiniWaveform | ✅ |
 
+## 🚀 Refinamiento V50: Boost Visual de Mini Waveforms | 24-Feb-2026
+### 📜 El Problema
+La primera versión de `drawMiniWaveform()` (V49) normalizaba contra el valor absoluto teórico del PCM 16-bit (`32767`). En la práctica, las grabaciones domésticas rara vez superan los 10.000 de amplitud máxima, lo que producía ondas minúsculas y apenas visibles en el canvas de 40px.
+
+### 🛠️ La Solución
+Reescritura de la función con tres mejoras:
+1. **Normalización Dinámica**: En lugar de dividir por `32767`, se busca el pico real máximo (`localMax = Math.max(...peaks)`) de la grabación concreta.
+2. **Techo Visual Inteligente**: Se establece `visualCeiling = Math.max(localMax, 8000)`. Esto evita amplificar ruido blanco de grabaciones casi silenciosas mientras permite que grabaciones con volumen moderado usen todo el espacio vertical.
+3. **Boost x1.5 + Centrado**: Se multiplica la altura normalizada por 1.5 (clipping a `height` si se excede) y se centra verticalmente la barra (estilo analizador de audio) en lugar de anclarla al suelo del canvas.
+
+### 🎓 Lecciones Aprendidas
+- **Normalización vs Acotación**: Normalizar contra un máximo teórico inalcanzable es un error de diseño visual clásico. El techo debe ser contextual (per-recording) para usar eficientemente los pixeles disponibles.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V50) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.50 | ⬜ |
+
+
