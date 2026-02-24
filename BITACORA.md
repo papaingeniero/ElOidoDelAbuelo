@@ -753,5 +753,24 @@ Implementación de un patrón de **Metadatos Estáticos** que persiste la inform
 | 5. AudioSentinel V54 (Duration in JSON) | ✅ |
 | 6. WebServer V54 (Metadata Priority) | ✅ |
 
+## 🚀 Hotfix V55: Condición de Carrera en Duración | 24-Feb-2026
+### 📜 El Problema
+En las grabaciones manuales (forzadas desde el Web Dashboard), la duración guardada en el JSON era de 0ms. Esto se debía a una **Condición de Carrera**: el `WebServer` llamaba a `updateForceRecordTimestamp(false)` nada más recibir la orden de parada, lo que ponía `recordingStartTimestamp = null` ANTES de que el bucle principal de `AudioSentinel` pudiera calcular la `finalDurationMs`.
+
+### 🛠️ La Solución
+Eliminación de la limpieza redundante y prematura:
+1. **AudioSentinel.java**: Se elimina el bloque `else` del método `updateForceRecordTimestamp`. Ahora este método solo se encarga de *iniciar* el cronómetro. La responsabilidad de *limpiarlo* recae exclusivamente en el bucle principal del centinela, justo después de haber calculado y persistido la duración en el JSON.
+
+### 🎓 Lecciones Aprendidas
+- **Propiedad de las Variables de Estado**: Si una variable de estado (como un timestamp) es consumida por un hilo (bucle del Centinela), la limpieza de dicha variable debe realizarse preferiblemente en ese mismo hilo tras su consumo, evitando que hilos externos (WebServer via UI) la invaliden prematuramente.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V55) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.55 | ⬜ |
+
+
 
 

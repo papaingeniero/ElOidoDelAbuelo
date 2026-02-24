@@ -120,9 +120,10 @@ public class AudioSentinel {
     public void updateForceRecordTimestamp(boolean isForced) {
         if (isForced) {
             recordingStartTimestamp = System.currentTimeMillis();
-        } else {
-            recordingStartTimestamp = null;
         }
+        // Eliminamos el 'else' para evitar la condición de carrera.
+        // El bucle principal ya hace 'recordingStartTimestamp = null;' tras calcular
+        // finalDurationMs.
     }
 
     public AudioSentinel(Context context) {

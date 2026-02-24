@@ -1,3 +1,7 @@
+## [v1.0-dev.55] - 2026-02-24
+### Fixed
+- **Hotfix: Condición de Carrera en Duración**: Corregido un error que provocaba que las grabaciones manuales tuvieran una duración de 0ms. Se eliminó la limpieza prematura del timestamp en `updateForceRecordTimestamp`, delegando la responsabilidad al bucle principal del centinela.
+
 ## [v1.0-dev.54] - 2026-02-24
 ### Optimized
 - **Patrón de Metadatos Estáticos**: Ahora la duración del audio se guarda en el mismo archivo `.json` que los picos de onda. El `WebServer` prioriza la lectura desde el JSON, evitando el uso intensivo de `MediaMetadataRetriever` en el listado del historial, lo que mejora drásticamente el rendimiento y reduce el consumo de batería del Xiaomi. Mantiene retrocompatibilidad con grabaciones antiguas.
