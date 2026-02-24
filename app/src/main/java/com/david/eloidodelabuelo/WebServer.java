@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 
+import android.media.MediaMetadataRetriever;
 import android.os.BatteryManager;
 import android.os.Environment;
 
@@ -204,6 +205,24 @@ public class WebServer extends NanoHTTPD {
                     obj.put("name", file.getName());
                     obj.put("size", file.length());
                     obj.put("timestamp", file.lastModified());
+
+                    // Extraer duración del audio (MediaMetadataRetriever)
+                    long durationMs = 0;
+                    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                    try {
+                        mmr.setDataSource(file.getAbsolutePath());
+                        String durStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                        if (durStr != null)
+                            durationMs = Long.parseLong(durStr);
+                    } catch (Exception ignored) {
+                    } finally {
+                        try {
+                            mmr.release();
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    obj.put("durationMs", durationMs);
+
                     jsonArray.put(obj);
                 }
                 Response r = newFixedLengthResponse(Response.Status.OK, "application/json", jsonArray.toString());

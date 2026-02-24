@@ -606,3 +606,23 @@ Dos intervenciones quirúrgicas en el CSS y JavaScript de `index.html`:
 | 4. Commit v1.0-dev.47 | ⬜ |
 | 5. CSS Visitada Funcional | ✅ |
 | 6. Long-Press Highlight Toggle | ✅ |
+
+## 🚀 UX Feature v1.0-dev.48: Duración de Audio en Tarjetas | 24-Feb-2026
+### 📜 El Problema
+Las tarjetas del historial mostraban la fecha y el tamaño del archivo, pero no la duración del audio. El operador no podía saber de un vistazo si una alerta era un ruido de 3 segundos o una grabación continua de 2 minutos.
+
+### 🛠️ La Solución
+1. **Backend (Java)**: En el endpoint `/api/recordings` de `WebServer.java`, se instancia un `MediaMetadataRetriever` por cada archivo para extraer `METADATA_KEY_DURATION`. El valor en milisegundos se envía como `durationMs` en el JSON. Cada extracción está envuelta en `try-catch` individual con `finally { mmr.release() }` para garantizar que un archivo corrupto no rompa el listado completo.
+2. **Frontend (JS)**: En `loadHistory()` de `index.html`, se formatea `durationMs` a `MM:SS` y se muestra como `⏱️ 01:23 · 📁 45.2 KB` en la cabecera de la tarjeta.
+
+### 🎓 Lecciones Aprendidas
+- **`MediaMetadataRetriever` es económico**: A diferencia de decodificar el audio completo, MMR solo lee las cabeceras del contenedor (MP4/AAC), resultando en una operación de I/O mínimo por archivo.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V48) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.48 | ⬜ |
+| 5. Duración en JSON Backend | ✅ |
+| 6. Duración Visible en Tarjetas | ✅ |

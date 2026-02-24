@@ -890,10 +890,16 @@
                         const sizeKB = f.size / 1024;
                         const sizeStr = sizeKB > 1024 ? (sizeKB / 1024).toFixed(2) + ' MB' : sizeKB.toFixed(1) + ' KB';
 
+                        // Formatear duración (MM:SS)
+                        const durSec = Math.floor((f.durationMs || 0) / 1000);
+                        const durMin = Math.floor(durSec / 60);
+                        const durRemSec = durSec % 60;
+                        const durStr = durSec > 0 ? String(durMin).padStart(2, '0') + ':' + String(durRemSec).padStart(2, '0') : '--:--';
+
                         card.innerHTML = `
                             <div class="history-card-header">
                                 <span class="history-date">🚨 ${dateStr}</span>
-                                <span class="history-size">📁 ${sizeStr}</span>
+                                <span class="history-size">⏱️ ${durStr} · 📁 ${sizeStr}</span>
                             </div>
                             <button class="settings-btn" style="display: block; width: 100%; margin-top: 10px; background: #333; padding: 12px; font-size: 1.05rem;" onclick="openWaveform('${f.name}')">👁️ Analizar Pista Auditiva</button>
                         `;
@@ -904,7 +910,7 @@
 
                         function startLongPress(e) {
                             longPressTriggered = false;
-                            longPressTimer = setTimeout(function() {
+                            longPressTimer = setTimeout(function () {
                                 longPressTriggered = true;
                                 card.classList.toggle('highlighted');
                             }, 600);
