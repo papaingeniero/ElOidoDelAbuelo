@@ -1,3 +1,7 @@
+## [v1.0-dev.56] - 2026-02-24
+### Removed
+- **Eliminación de MediaMetadataRetriever**: Extirpación total de la dependencia `MediaMetadataRetriever` en el `WebServer`. El sistema ahora confía exclusivamente en el patrón de Metadatos Estáticos (.json), eliminando riesgos de bloqueos y reduciendo la complejidad del código.
+
 ## [v1.0-dev.55] - 2026-02-24
 ### Fixed
 - **Hotfix: Condición de Carrera en Duración**: Corregido un error que provocaba que las grabaciones manuales tuvieran una duración de 0ms. Se eliminó la limpieza prematura del timestamp en `updateForceRecordTimestamp`, delegando la responsabilidad al bucle principal del centinela.

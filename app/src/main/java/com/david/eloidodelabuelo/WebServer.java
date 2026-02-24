@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 
-import android.media.MediaMetadataRetriever;
 import android.os.BatteryManager;
 import android.os.Environment;
 
@@ -235,22 +234,8 @@ public class WebServer extends NanoHTTPD {
                     } catch (Exception ignored) {
                     }
 
-                    // Fallback EXCEPCIONAL solo para archivos muy antiguos sin JSON o JSON antiguo
-                    if (durationMs == 0) {
-                        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-                        try {
-                            mmr.setDataSource(file.getAbsolutePath());
-                            String durStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-                            if (durStr != null)
-                                durationMs = Long.parseLong(durStr);
-                        } catch (Exception ignored) {
-                        } finally {
-                            try {
-                                mmr.release();
-                            } catch (Exception ignored) {
-                            }
-                        }
-                    }
+                    // Se ha eliminado el fallback de MediaMetadataRetriever (V56)
+                    // Confiamos exclusivamente en el JSON generado por AudioSentinel.
 
                     obj.put("durationMs", durationMs);
                     if (peaksArray != null)

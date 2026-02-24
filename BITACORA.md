@@ -771,6 +771,26 @@ Eliminación de la limpieza redundante y prematura:
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.55 | ⬜ |
 
+## 🚀 Limpieza V56: Extirpación de MediaMetadataRetriever | 24-Feb-2026
+### 📜 El Problema
+Aunque en V54 introdujimos el patrón de Metadatos Estáticos, mantuvimos `MediaMetadataRetriever` como un "paracaídas" para grabaciones antiguas. Sin embargo, mantener esta dependencia implica arrastrar una API pesada y propensa a bloqueos (ANRs) si no se libera correctamente. Tras validar que el sistema JSON es estable, el fallback es ahora deuda técnica prescindible.
+
+### 🛠️ La Solución
+Extirpación total de la dependencia en `WebServer.java`:
+1. **Limpieza Quirúrgica**: Eliminación del import `android.media.MediaMetadataRetriever`.
+2. **Consolidación del Modelo**: Eliminación del bloque de fallback en `/api/recordings`. El servidor ahora confía al 100% en la presencia del `.json`. Las grabaciones pre-V54 simplemente mostrarán 0ms, priorizando la estabilidad y simplicidad del código actual sobre la retrocompatibilidad total con versiones experimentales antiguas.
+
+### 🎓 Lecciones Aprendidas
+- **Quemar las naves**: Una vez que un nuevo patrón arquitectónico (Metadatos Estáticos) demuestra ser superior y estable, es más sano para el proyecto eliminar las rutas de código heredadas (`legacy`) que intentar mantener una compatibilidad infinita que ensucia la lógica de negocio.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V56) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.56 | ⬜ |
+
+
 
 
 
