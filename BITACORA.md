@@ -809,6 +809,29 @@ Implementación de un sistema de interceptación asíncrona:
 | 2. Actualización BITACORA.md | ✅ |
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.57 | ⬜ |
+
+## 🚀 Mejora V58: Cuantificación Visual del Vúmetro | 24-Feb-2026
+### 📜 El Problema
+El vúmetro original era puramente cualitativo: una barra azul que se movía sin referencias numéricas claras. Además, la marca del umbral (threshold) era una línea blanca sin etiqueta, lo que dificultaba saber qué valor exacto de amplitud configurada representaba en cada momento.
+
+### 🛠️ La Solución
+Implementación de un sistema de referencia graduada en el eje X:
+1. **Graduación Escalar**: Se añadió una escala numérica debajo del vúmetro con marcas en 0, 8k, 16k, 24k y 32k (el máximo de amplitud PCM).
+2. **Etiquetado Dinámico**: La marca de umbral ahora cuenta con una etiqueta `#thresholdLabel` que muestra en tiempo real el valor de `SPIKE_THRESHOLD`.
+3. **Refactor UI**: Se ajustó el CSS para que la escala y las etiquetas sean legibles sin saturar la interfaz, utilizando tipografía monospace para los números.
+
+### 🎓 Lecciones Aprendidas
+- **Data over Vibes**: En herramientas de monitoreo y seguridad, la información cuantitativa (números) siempre supera a la cualitativa (barras vacías). Proporcionar una escala graduada transforma un "indicador de actividad" en un "instrumento de medición".
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V58) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.58 | ⬜ |
+| 5. Escala Graduada (0-32k) | ✅ |
+| 6. Umbral Numérico Dinámico | ✅ |
+
 | 5. Lógica de Aborto Backend | ✅ |
 | 6. Interfaz Abortar Frontend | ✅ |
 

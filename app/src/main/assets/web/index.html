@@ -99,19 +99,57 @@
             top: 0;
             bottom: 0;
             width: 2px;
-            background-color: rgba(255, 255, 255, 0.3);
+            background-color: rgba(255, 255, 255, 0.4);
             left: calc((10000 / 32767) * 100%);
-            /* 10000 is default SPIKE_THRESHOLD */
             z-index: 10;
         }
 
         .threshold-marker::after {
             content: "Umbral";
             position: absolute;
-            top: -20px;
-            left: -20px;
+            top: -16px;
+            left: -15px;
+            font-size: 0.65rem;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: bold;
+        }
+
+        #thresholdLabel {
+            position: absolute;
+            bottom: -18px;
+            left: 50%;
+            transform: translateX(-50%);
             font-size: 0.7rem;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--status-yellow);
+            font-family: monospace;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .meter-scale {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+            padding: 0 2px;
+            font-size: 0.65rem;
+            color: #888;
+            font-family: monospace;
+            letter-spacing: -0.5px;
+        }
+
+        .scale-mark {
+            position: relative;
+            text-align: center;
+        }
+
+        .scale-mark::before {
+            content: "";
+            position: absolute;
+            top: -4px;
+            left: 50%;
+            width: 1px;
+            height: 4px;
+            background-color: #444;
         }
 
         .settings-btn {
@@ -414,9 +452,18 @@
                 <span>Amplitud de Micrófono</span>
                 <span id="amplitudeValue">0</span>
             </div>
-            <div class="meter-bg">
-                <div id="vumeter" class="meter-fill"></div>
-                <div class="threshold-marker"></div>
+            <div class="meter-bg" style="overflow: visible; margin-bottom: 25px;">
+                <div id="vumeter" class="meter-fill" style="border-radius: 6px;"></div>
+                <div class="threshold-marker">
+                    <span id="thresholdLabel">10000</span>
+                </div>
+                <div class="meter-scale" style="position: absolute; bottom: -22px; width: 100%; padding: 0;">
+                    <span class="scale-mark">0</span>
+                    <span class="scale-mark">8k</span>
+                    <span class="scale-mark">16k</span>
+                    <span class="scale-mark">24k</span>
+                    <span class="scale-mark">32k</span>
+                </div>
             </div>
         </div>
     </div>
@@ -633,9 +680,11 @@
 
                     // Ajustar UI del threshold-marker
                     const marker = document.querySelector('.threshold-marker');
+                    const thresholdLabel = document.getElementById('thresholdLabel');
                     if (marker) {
                         let currentSpikeThreshold = (data.SPIKE_THRESHOLD !== undefined) ? data.SPIKE_THRESHOLD : 10000;
                         marker.style.left = `calc((${currentSpikeThreshold} / 32767) * 100%)`;
+                        if (thresholdLabel) thresholdLabel.textContent = currentSpikeThreshold;
                     }
 
                     // Actualizar texto numérico

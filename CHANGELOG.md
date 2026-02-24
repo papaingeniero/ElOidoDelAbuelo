@@ -1,3 +1,8 @@
+## [v1.0-dev.58] - 2026-02-24
+### Added
+- **Mejora del Vúmetro**: Añadida una escala numérica graduada (0, 8k, 16k, 24k, 32k) en el eje X del vúmetro.
+- **Etiqueta de Umbral Dinámica**: La marca del umbral ahora muestra el valor numérico exacto configurado, facilitando la calibración visual de la sensibilidad.
+
 ## [v1.0-dev.57] - 2026-02-24
 ### Added
 - **Kill Switch de Grabación**: El botón principal de REC ahora actúa como un botón de "Abortar" cuando el sistema está en medio de una grabación automática. Esto permite al usuario detener detecciones falsas o grabaciones no deseadas instantáneamente sin esperar a que termine el temporizador. Implementado mediante intercepción de hilo en `AudioSentinel`.
