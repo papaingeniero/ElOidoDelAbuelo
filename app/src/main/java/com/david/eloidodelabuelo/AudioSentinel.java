@@ -335,6 +335,9 @@ public class AudioSentinel {
                     } else if (!wantToRecord && isRecording) {
                         isRecording = false;
                         isRecordingStatus = false;
+                        long finalDurationMs = (recordingStartTimestamp != null)
+                                ? (System.currentTimeMillis() - recordingStartTimestamp)
+                                : 0;
                         recordingStartTimestamp = null; // Liberar timestamp al terminar
                         if (codec != null) {
                             try {
@@ -354,18 +357,19 @@ public class AudioSentinel {
                             fos = null;
                         }
 
-                        // Chivato JSON: Guardar picos diezmados (1 de cada 2) como archivo .json (V49)
+                        // Chivato JSON: Guardar picos diezmados (1 de cada 2) como archivo .json (V54)
                         if (currentAacFile != null && !wavePeaks.isEmpty()) {
                             try {
                                 String jsonName = currentAacFile.getName().replaceAll("\\.[^.]+$", ".json");
                                 File jsonFile = new File(currentAacFile.getParentFile(), jsonName);
-                                StringBuilder sb = new StringBuilder("[");
+                                StringBuilder sb = new StringBuilder("{\"durationMs\":").append(finalDurationMs)
+                                        .append(",\"peaks\":[");
                                 for (int pi = 0; pi < wavePeaks.size(); pi += 2) {
                                     if (pi > 0)
                                         sb.append(",");
                                     sb.append(wavePeaks.get(pi));
                                 }
-                                sb.append("]");
+                                sb.append("]}");
                                 FileWriter fw = new FileWriter(jsonFile);
                                 fw.write(sb.toString());
                                 fw.close();

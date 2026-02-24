@@ -731,4 +731,27 @@ Re-inyección quirúrgica de las marcas visuales sin alterar la lógica de norma
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.53 | ⬜ |
 
+## 🚀 Optimización V54: Patrón de Metadatos Estáticos | 24-Feb-2026
+### 📜 El Problema
+Cada vez que el navegador solicitaba el historial (`/api/recordings`), el servidor tenía que instanciar `MediaMetadataRetriever` para cada archivo de audio para extraer su duración. Esta operación es costosa en CPU, latencia de I/O y, por ende, en consumo de batería del Xiaomi. Con cientos de grabaciones, el listado se volvía lento y el dispositivo sufría estrés innecesario.
+
+### 🛠️ La Solución
+Implementación de un patrón de **Metadatos Estáticos** que persiste la información inmutable en el momento del cierre del archivo:
+1. **AudioSentinel.java**: Al finalizar la grabación, se calcula `finalDurationMs` usando el `recordingStartTimestamp`. El JSON de chivato (antes solo un array) evoluciona a un objeto estructurado: `{"durationMs": 15000, "peaks": [12, 45, ...]}`.
+2. **WebServer.java**: El endpoint `/api/recordings` ahora busca el archivo `.json`. Si es un objeto, extrae directamente la duración. Si no existe o es el formato antiguo (solo array), usa un fallback a `MediaMetadataRetriever` para asegurar que el historial antiguo no se rompa.
+
+### 🎓 Lecciones Aprendidas
+- **Coste del Listado**: En sistemas con persistencia masiva, el coste de listar metadatos no debe ser O(N * OperaciónCara). Persistir metadatos en el momento de creación transforma una operación cara en una simple lectura de string.
+- **Retrocompatibilidad quirúrgica**: Detectar si el JSON empieza por `{` o `[` es una forma ligera de manejar versiones de esquemas sin necesidad de campos de versión complejos.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V54) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.54 | ⬜ |
+| 5. AudioSentinel V54 (Duration in JSON) | ✅ |
+| 6. WebServer V54 (Metadata Priority) | ✅ |
+
+
 

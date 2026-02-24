@@ -208,22 +208,8 @@ public class WebServer extends NanoHTTPD {
 
                     // Extraer duración del audio (MediaMetadataRetriever)
                     long durationMs = 0;
-                    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-                    try {
-                        mmr.setDataSource(file.getAbsolutePath());
-                        String durStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-                        if (durStr != null)
-                            durationMs = Long.parseLong(durStr);
-                    } catch (Exception ignored) {
-                    } finally {
-                        try {
-                            mmr.release();
-                        } catch (Exception ignored) {
-                        }
-                    }
-                    obj.put("durationMs", durationMs);
+                    JSONArray peaksArray = null;
 
-                    // Chivato JSON: Inyectar picos de onda si existe el archivo .json (V49)
                     try {
                         String jsonName = file.getName().replaceAll("\\.[^.]+$", ".json");
                         File jsonFile = new File(file.getParentFile(), jsonName);
@@ -234,10 +220,41 @@ public class WebServer extends NanoHTTPD {
                             while ((line = br.readLine()) != null)
                                 sb.append(line);
                             br.close();
-                            obj.put("peaks", new JSONArray(sb.toString()));
+
+                            String jsonString = sb.toString();
+                            if (jsonString.startsWith("{")) {
+                                // Formato V54: Objeto con duración y picos
+                                JSONObject jsonObj = new JSONObject(jsonString);
+                                durationMs = jsonObj.optLong("durationMs", 0);
+                                peaksArray = jsonObj.optJSONArray("peaks");
+                            } else if (jsonString.startsWith("[")) {
+                                // Formato antiguo: Solo array de picos
+                                peaksArray = new JSONArray(jsonString);
+                            }
                         }
                     } catch (Exception ignored) {
                     }
+
+                    // Fallback EXCEPCIONAL solo para archivos muy antiguos sin JSON o JSON antiguo
+                    if (durationMs == 0) {
+                        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                        try {
+                            mmr.setDataSource(file.getAbsolutePath());
+                            String durStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                            if (durStr != null)
+                                durationMs = Long.parseLong(durStr);
+                        } catch (Exception ignored) {
+                        } finally {
+                            try {
+                                mmr.release();
+                            } catch (Exception ignored) {
+                            }
+                        }
+                    }
+
+                    obj.put("durationMs", durationMs);
+                    if (peaksArray != null)
+                        obj.put("peaks", peaksArray);
 
                     jsonArray.put(obj);
                 }

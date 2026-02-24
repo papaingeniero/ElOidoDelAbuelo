@@ -1,3 +1,7 @@
+## [v1.0-dev.54] - 2026-02-24
+### Optimized
+- **Patrón de Metadatos Estáticos**: Ahora la duración del audio se guarda en el mismo archivo `.json` que los picos de onda. El `WebServer` prioriza la lectura desde el JSON, evitando el uso intensivo de `MediaMetadataRetriever` en el listado del historial, lo que mejora drásticamente el rendimiento y reduce el consumo de batería del Xiaomi. Mantiene retrocompatibilidad con grabaciones antiguas.
+
 ## [v1.0-dev.53] - 2026-02-24
 ### Added
 - **Escala de Amplitud Restaurada**: Re-inyectadas las marcas de referencia visual perdidas en V52: `Pico: N` en mini-ondas del historial, y líneas guía horizontales con etiquetas PCM (`±maxPcm`, `0`) en el analizador forense. La normalización pura se mantiene intacta.
