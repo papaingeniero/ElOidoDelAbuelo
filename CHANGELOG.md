@@ -1,3 +1,7 @@
+## [v1.0-dev.46] - 2026-02-24
+### Changed
+- **Rollback Arquitectónico (Retirada de Cloudflare)**: Se ha revertido el código a la versión v1.0-dev.42 para limpiar el proyecto de la integración fallida de `cloudflared`. Aunque logramos empaquetar y ejecutar el binario estático de Linux sorteando el bloqueo de seguridad `W^X` de SELinux en Android 10 mediante un camuflaje de librería JNI compartida (`libcloudflared.so`), el proceso moría internamente por una limitación fundamental de su ecosistema subyacente (Golang). En sistemas Android estándar y Go (< Android 11), el lenguaje Go busca `/etc/resolv.conf` para la resolución de DNS, archivo que no existe nativamente en Android (que usa `netd`). Al no poder resolver las rutas DNS de Cloudflare, el túnel entraba en pánico. El experimento completo ha sido archivado en la rama `experiment/cloudflare` de GitHub para estudio futuro o una potencial re-implementación usando un bypass DNS explícito.
+
 ## [v1.0-dev.42] - 2026-02-23
 ### Fixed
 - **Aniquilación de Nodo Fantasma**: Solucionado el bug crítico donde los saltos de audio de `+5s` y `-5s` desplazaban el cabezal visual pero la pista seguía sonando desde el tiempo anterior. Se implementó una función centralizada `killCurrentAudio()` que fuerza la desconexión física (`disconnect()`) y parada inmediata del `AudioBufferSourceNode` antiguo.

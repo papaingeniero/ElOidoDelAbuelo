@@ -561,3 +561,23 @@ Al presionar los botones de +5s y -5s durante la reproducción de la onda, el ca
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.42 | ✅ |
 | 5. Aniquilación de Nodo Fantasma | ✅ |
+
+## 🚀 Decision v1.0-dev.46: Rollback Architectónico de Túneles (Go vs Android) | 24-Feb-2026
+### 📜 El Problema
+A lo largo de las versiones v43, v44 y v45, intentamos integrar el binario nativo oficial en C/Go `cloudflared` dentro de los *assets* del código base de Android para levantar una vía remota Zero Trust encapsulada. 
+A pesar de librar con éxito dos batallas faraónicas (Encontrar un binario compatible con la JVM y saltar las restricciones W^X de SELinux en Android 10 mediante la extracción forzada por JNI de `libcloudflared.so`), el proceso moría al instante tras iniciar con `Connection Refused` sobre puertos UDP/53.
+
+### 🛠️ La Solución (Retirada Táctica)
+La investigación determinó que la red subyacente de Golang (lenguaje en el que está escrito Cloudflare) asume la existencia de la configuración clásica de Linux `/etc/resolv.conf` para inicializar sus *resolvers* de DNS (`1.1.1.1` u `8.8.8.8`). **Android no utiliza `/etc/resolv.conf`, sino que la resolución de red pasa por su propio demonio interno protegido (`netd`)**.
+Por tanto, el contenedor del túnel estaba "ciego" y el proceso terminaba abruptamente. Para mantener la base de código estable, las integraciones Cloudflare han sido movidas a la rama paralela paralela aislada `experiment/cloudflare` para análisis forense, y `main` se ha revertido forzosamente y limpiado a su estado puro (v42 → v46).
+
+### 🎓 Lecciones Aprendidas
+- **La Ceguera de Go en la Máquina Virtual Dalvik**: Cualquier binario de Golang importado "en crudo" a Android que requiera una salida al mundo exterior de Internet (TCP/UDP) se estrellará internamente contra el Muro de Piedra del DNS, salvo que tenga *flags* o código inyectado específicamente diseñado para conectarse explícitamente a un DNS por Socket puro eludiendo el estándar Linux base. El hardware físico en Android no obedece al POSIX de GNU/Linux normal.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V46) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.46 | ✅ |
+| 5. Rollback Purificado | ✅ |
