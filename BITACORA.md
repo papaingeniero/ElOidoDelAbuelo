@@ -712,4 +712,23 @@ Las versiones V49-V51 de las funciones de onda usaban trucos de amplificación a
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.52 | ⬜ |
 
+## 🚀 Refinamiento V53: Escala de Amplitud Restaurada | 24-Feb-2026
+### 📜 El Problema
+La purificación de normalización en V52 eliminó accidentalmente las etiquetas de escala añadidas en V51. Las ondas eran fieles pero sin referencia numérica: el usuario perdía el contexto de si un pico representaba 500 o 25.000 en la escala PCM.
+
+### 🛠️ La Solución
+Re-inyección quirúrgica de las marcas visuales sin alterar la lógica de normalización pura:
+1. **`drawMiniWaveform()`**: Tras el bucle de barras, `ctx.fillText('Pico: ' + localMax, 4, 12)` en blanco semitransparente.
+2. **`drawWaveform()`**: `maxPcm = Math.round(globalMax * 32767)`, 3 líneas guía (`strokeStyle: 0.15 alpha`) y 3 etiquetas (`+maxPcm`, `0`, `-maxPcm`) antes del bucle de pintado.
+
+### 🎓 Lecciones Aprendidas
+- **Refactoring sin regresión**: Al reescribir funciones completas, es fácil perder adornos visuales que no forman parte de la "lógica core". Las etiquetas deben tratarse como parte integral del contrato visual, no como decoración prescindible.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V53) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.53 | ⬜ |
+
 

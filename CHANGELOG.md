@@ -1,3 +1,7 @@
+## [v1.0-dev.53] - 2026-02-24
+### Added
+- **Escala de Amplitud Restaurada**: Re-inyectadas las marcas de referencia visual perdidas en V52: `Pico: N` en mini-ondas del historial, y líneas guía horizontales con etiquetas PCM (`±maxPcm`, `0`) en el analizador forense. La normalización pura se mantiene intacta.
+
 ## [v1.0-dev.52] - 2026-02-24
 ### Changed
 - **Normalización Absoluta 100%**: Reescritas `drawMiniWaveform()` y `drawWaveform()`. Eliminados boost artificial (x1.5, x5) y techo visual arbitrario (8000). Ahora el pico más alto de cada grabación SIEMPRE toca el borde del canvas, maximizando la resolución visual de las diferencias de amplitud.
