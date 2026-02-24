@@ -1,3 +1,7 @@
+## [v1.0-dev.51] - 2026-02-24
+### Added
+- **Escala de Amplitud en Waveforms**: Las mini-ondas del historial muestran `Pico: N` (amplitud máxima PCM) en la esquina superior izquierda. El analizador forense ahora incluye líneas guía horizontales (centro, techo, suelo) y etiquetas de amplitud PCM (`±maxPcm`, `0`) para contexto visual del volumen real.
+
 ## [v1.0-dev.50] - 2026-02-24
 ### Changed
 - **Boost Visual de Mini Waveforms**: Reescrita `drawMiniWaveform()` con normalización dinámica (`localMax` vs techo visual de 8000), boost `x1.5` y centrado vertical estilo analizador de audio. Las ondas se ven altas y claras incluso en grabaciones de bajo volumen.

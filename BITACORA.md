@@ -675,4 +675,22 @@ Reescritura de la función con tres mejoras:
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.50 | ⬜ |
 
+## 🚀 Refinamiento V51: Escala de Amplitud en Waveforms | 24-Feb-2026
+### 📜 El Problema
+Las ondas miniatura y el analizador forense mostraban la forma de la señal de audio, pero sin ninguna referencia numérica. El operador no podía saber si un pico representaba 500 o 25.000 en la escala PCM de 16 bits. Faltaba contexto visual del volumen real.
+
+### 🛠️ La Solución
+1. **`drawMiniWaveform()`**: Tras dibujar todas las barras teal, se pinta `'Pico: N'` (donde N = `localMax`) en la esquina superior izquierda con fuente monospace 11px, color blanco semitransparente (`rgba(255,255,255,0.8)`). Se añade floor de 100 al `localMax` para evitar divisiones por valores extremadamente bajos.
+2. **`drawWaveform()` (Analizador Forense)**: Se escanea `globalMax` (0.0 a 1.0) del buffer decodificado, se multiplica por 32767 para obtener `maxPcm`. Antes del bucle de pintado se dibujan 3 líneas guía horizontales sutiles (`rgba(255,255,255,0.15)`) y 3 etiquetas: `+maxPcm` (arriba), `0` (centro), `-maxPcm` (abajo).
+
+### 🎓 Lecciones Aprendidas
+- **Contexto vs Datos**: Un gráfico sin escala es arte, no información. Las etiquetas transforman la onda de una representación decorativa a una herramienta de diagnóstico real.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V51) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.51 | ⬜ |
+
 
