@@ -272,6 +272,19 @@
             background-color: var(--item-active);
         }
 
+        /* Tarjeta VISITADA — azul medianoche suave */
+        .history-card.visited {
+            background-color: #1a2a3a;
+            border-left-color: #4a90d9;
+        }
+
+        /* Tarjeta DESTACADA — ámbar/dorado por long-press */
+        .history-card.highlighted {
+            background-color: #3a2f1a;
+            border-left-color: #f5a623;
+            box-shadow: 0 0 12px rgba(245, 166, 35, 0.25);
+        }
+
         .history-card-header {
             display: flex;
             justify-content: space-between;
@@ -860,9 +873,15 @@
                     files.forEach(f => {
                         const card = document.createElement('div');
                         card.className = 'history-card';
+                        card.dataset.filename = f.name;
 
-                        // Todo es rojo carmesí base ya que WebServer no envía maxAmplitude
-                        card.style.borderLeftColor = 'var(--status-red)';
+                        // Estado VISITADA (sessionStorage)
+                        if (sessionStorage.getItem('visited_' + f.name)) {
+                            card.classList.add('visited');
+                        } else {
+                            // Color rojo carmesí base solo si no está visitada
+                            card.style.borderLeftColor = 'var(--status-red)';
+                        }
 
                         const dateObj = new Date(f.timestamp);
                         const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString();
@@ -878,6 +897,35 @@
                             </div>
                             <button class="settings-btn" style="display: block; width: 100%; margin-top: 10px; background: #333; padding: 12px; font-size: 1.05rem;" onclick="openWaveform('${f.name}')">👁️ Analizar Pista Auditiva</button>
                         `;
+
+                        // Long-press HIGHLIGHT (toggle ámbar/dorado)
+                        let longPressTimer = null;
+                        let longPressTriggered = false;
+
+                        function startLongPress(e) {
+                            longPressTriggered = false;
+                            longPressTimer = setTimeout(function() {
+                                longPressTriggered = true;
+                                card.classList.toggle('highlighted');
+                            }, 600);
+                        }
+
+                        function cancelLongPress(e) {
+                            if (longPressTimer) {
+                                clearTimeout(longPressTimer);
+                                longPressTimer = null;
+                            }
+                        }
+
+                        // Touch events (móvil)
+                        card.addEventListener('touchstart', startLongPress, { passive: true });
+                        card.addEventListener('touchend', cancelLongPress);
+                        card.addEventListener('touchmove', cancelLongPress);
+                        // Mouse events (desktop)
+                        card.addEventListener('mousedown', startLongPress);
+                        card.addEventListener('mouseup', cancelLongPress);
+                        card.addEventListener('mouseleave', cancelLongPress);
+
                         list.appendChild(card);
                     });
                 })
@@ -959,6 +1007,14 @@
         const wavePlayBtn = document.getElementById('wavePlayBtn');
 
         function openWaveform(fileName) {
+            // Marcar tarjeta como visitada
+            sessionStorage.setItem('visited_' + fileName, '1');
+            const targetCard = document.querySelector('.history-card[data-filename="' + fileName + '"]');
+            if (targetCard) {
+                targetCard.classList.add('visited');
+                // Limpiar borderLeftColor inline para que el CSS de .visited tome control
+                targetCard.style.borderLeftColor = '';
+            }
             // Pausar cualquier otro audio sonando
             document.querySelectorAll('audio').forEach(a => a.pause());
             if (liveAudioElement) stopLiveStream();

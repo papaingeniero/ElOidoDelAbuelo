@@ -1,3 +1,8 @@
+## [v1.0-dev.47] - 2026-02-24
+### Added
+- **Estado Visual "Visitada" (Azul Medianoche)**: Las tarjetas del historial de alertas que han sido abiertas para análisis se colorean con un fondo azul oscuro (`#1a2a3a`) y borde azul suave (`#4a90d9`), diferenciándose claramente de las no revisadas. El estado se mantiene via `sessionStorage` (persiste durante la sesión del navegador).
+- **Highlight por Long-Press (Ámbar/Dorado)**: Mantener el dedo pulsado ~600ms sobre cualquier tarjeta la ilumina con un fondo ámbar cálido (`#3a2f1a`), borde dorado (`#f5a623`) y un sutil resplandor (`box-shadow`). Toggle: una segunda pulsación larga desactiva el highlight. No persistente entre recargas.
+
 ## [v1.0-dev.46] - 2026-02-24
 ### Changed
 - **Rollback Arquitectónico (Retirada de Cloudflare)**: Se ha revertido el código a la versión v1.0-dev.42 para limpiar el proyecto de la integración fallida de `cloudflared`. Aunque logramos empaquetar y ejecutar el binario estático de Linux sorteando el bloqueo de seguridad `W^X` de SELinux en Android 10 mediante un camuflaje de librería JNI compartida (`libcloudflared.so`), el proceso moría internamente por una limitación fundamental de su ecosistema subyacente (Golang). En sistemas Android estándar y Go (< Android 11), el lenguaje Go busca `/etc/resolv.conf` para la resolución de DNS, archivo que no existe nativamente en Android (que usa `netd`). Al no poder resolver las rutas DNS de Cloudflare, el túnel entraba en pánico. El experimento completo ha sido archivado en la rama `experiment/cloudflare` de GitHub para estudio futuro o una potencial re-implementación usando un bypass DNS explícito.

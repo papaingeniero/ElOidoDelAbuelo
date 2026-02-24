@@ -581,3 +581,28 @@ Por tanto, el contenedor del túnel estaba "ciego" y el proceso terminaba abrupt
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.46 | ✅ |
 | 5. Rollback Purificado | ✅ |
+
+## 🚀 UX Feature v1.0-dev.47: Tarjetas Inteligentes (Visitada + Highlight) | 24-Feb-2026
+### 📜 El Problema
+El historial de alertas del Dashboard Web tenía todas las tarjetas visualmente idénticas (fondo gris `#2c2c2c`). Tras revisar varias alertas, el operador no podía distinguir cuáles ya había analizado y cuáles eran nuevas. Además, no existía forma de "marcar" una tarjeta como interesante para revisarla después sin abrir un bloc de notas externo.
+
+### 🛠️ La Solución
+Dos intervenciones quirúrgicas en el CSS y JavaScript de `index.html`:
+
+1. **Estado "Visitada" (Azul Medianoche)**: Al abrir el waveform de una tarjeta mediante `openWaveform()`, se guarda el nombre del archivo en `sessionStorage` y se aplica la clase CSS `.visited`. El fondo muta a un azul oscuro profundo (`#1a2a3a`) con borde lateral azul suave (`#4a90d9`), transmitiendo visualmente "ya revisado". Al recargar el historial con `loadHistory()`, cada tarjeta consulta `sessionStorage` para restaurar su estado visual.
+
+2. **Highlight por Long-Press (Ámbar/Dorado)**: Se registran listeners `touchstart`/`touchend` (móvil) y `mousedown`/`mouseup` (desktop) en cada tarjeta. Un `setTimeout` de 600ms detecta la pulsación prolongada y hace toggle de la clase `.highlighted`. El fondo se ilumina en ámbar cálido (`#3a2f1a`) con borde dorado (`#f5a623`) y un resplandor sutil (`box-shadow: 0 0 12px rgba(245, 166, 35, 0.25)`). El estado es efímero (solo in-memory).
+
+### 🎓 Lecciones Aprendidas
+- **`sessionStorage` vs `localStorage`**: Para estados de "sesión de revisión", `sessionStorage` es el punto óptimo: sobrevive a navegación interna (F5) pero muere al cerrar la pestaña, evitando acumulación de datos obsoletos en dispositivos IoT de almacenamiento limitado.
+- **Detección de Long-Press sin librerías**: La combinación `touchstart` + `setTimeout` + cancelación en `touchmove` es el patrón estándar para detectar pulsaciones largas en Vanilla JS sin arrastrar dependencias de Hammer.js o similares.
+- **Paleta Intencional**: Azul medianoche para "procesado" (frío, neutro) y Ámbar para "destacado" (cálido, urgente) siguen las convenciones universales de semáforo visual que el cerebro humano procesa instintivamente.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V47) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.47 | ⬜ |
+| 5. CSS Visitada Funcional | ✅ |
+| 6. Long-Press Highlight Toggle | ✅ |
