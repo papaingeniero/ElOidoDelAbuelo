@@ -1,3 +1,7 @@
+## [v1.0-dev.61] - 2026-02-24
+### Fixed
+- **Anti-Overscroll Safari iOS**: Eliminado el desplazamiento elástico horizontal nativo de WebKit que permitía arrastrar toda la página con el dedo. Inyectadas reglas CSS `overflow-x: hidden` y `overscroll-behavior: none` en `html` y `body` para petrificar la vista.
+
 ## [v1.0-dev.60] - 2026-02-24
 ### Added
 - **Separación de Responsabilidades UX**: Implementación de un panel luminoso estático (`system-state-badge`) para el estado del sistema, desacoplándolo del botón de grabación manual.

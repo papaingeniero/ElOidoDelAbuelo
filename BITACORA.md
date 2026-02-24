@@ -1,5 +1,18 @@
 # Bitácora de Desarrollo: El Oído del Abuelo
 
+## 🚀 Hotfix v1.0-dev.61: Anti-Overscroll Safari iOS | 24-Feb-2026
+### 📜 El Problema
+En Safari de iPhone, al mantener el dedo sobre la página y arrastrarlo horizontalmente, toda la interfaz se desplazaba lateralmente con un efecto de "rebote elástico" (Elastic Overscroll), generando una experiencia desagradable e innecesaria en una SPA de panel de control que no tiene contenido fuera del viewport.
+
+### 🛠️ La Solución
+Inyección de dos reglas CSS defensivas en los selectores `html` y `body` de `index.html`:
+1. **`overflow-x: hidden`**: Prohíbe cualquier desbordamiento horizontal, eliminando la posibilidad de que el navegador interprete gestos laterales como scroll.
+2. **`overscroll-behavior: none`**: Desactiva el comportamiento elástico nativo de WebKit que permite al usuario "jalar" la página más allá de sus límites. El scroll vertical legítimo permanece intacto.
+
+### 🎓 Lecciones Aprendidas
+- **WebKit Elastic Scrolling**: Safari iOS aplica por defecto un overscroll elástico en *todas* las direcciones, incluso cuando no hay contenido desbordante. La propiedad `overscroll-behavior: none` es el antídoto moderno y limpio (sin necesidad de hacks con `touchmove.preventDefault`).
+
+
 ## 🚀 Fase 60: Separación de Responsabilidades UX (Dicotomía Badge-Botón) | 24-Feb-2026
 ### 📜 El Problema
 La interfaz del Dashboard presentaba una sobrecarga cognitiva en el botón de grabación maestro (`btnRecMaster`). El botón cumplía una doble función confusa: informar del estado del sistema (ej: "VIGILANDO") y actuar como disparador. Esto limitaba la claridad visual sobre si el micrófono estaba realmente activo o en qué modo operativo se encontraba el centinela.

@@ -22,6 +22,11 @@
             --max-amplitude: 32767;
         }
 
+        html {
+            overflow-x: hidden;
+            overscroll-behavior: none;
+        }
+
         body {
             background-color: var(--bg-color);
             color: var(--text-color);
@@ -31,6 +36,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            overflow-x: hidden;
+            overscroll-behavior: none;
         }
 
         .dashboard {
