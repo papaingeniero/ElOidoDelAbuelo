@@ -561,3 +561,25 @@ Al presionar los botones de +5s y -5s durante la reproducción de la onda, el ca
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.42 | ✅ |
 | 5. Aniquilación de Nodo Fantasma | ✅ |
+
+## 🚀 Feature v1.0-dev.43: Cloudflare Zero Trust Access | 24-Feb-2026
+### 📜 El Problema
+La exposición del "Oído del Abuelo" al mundo exterior (WAN/Internet) para vigilancia remota mediante Port Forwarding o Proxys Públicos (`ngrok`, `bore`) dejaba el panel Web expuesto sin autenticación (Cero Auth), permitiendo a bots o atacantes espiar el micrófono o borrar las pruebas forenses de las grabaciones mediante un simple escaneo de IP.
+
+### 🛠️ La Solución
+Se ha orquestado la integración de un **Gateway de Seguridad B2B (MFA)** empotrando el binario empresarial de red de Cloudflare directamente en el APK de la aplicación, convirtiendo el hardware Android en un túnel autónomo *Zero Trust*.
+1. **Inyección Binaria**: Se ha descargado el CLI Oficial de `cloudflared` (Linux `arm64-v8a`) optimizado para el chipset MediaTek Helio G35 del Xiaomi Redmi 9C, inyectándolo como Asset crudo en la compilación.
+2. **Ciclo de Vida Automático**: En `OidoService.onCreate()`, Java clona físicamente el binario al almacenamiento privado de la app (`getFilesDir()`), le inyecta banderas de ejecución Linux (`chmod +x`), y lo levanta silenciosamente acoplado a un `ProcessBuilder`.
+3. **Escudo Anti-Fugas**: El demonio de red es asesinado implacablemente mediante `process.destroy()` en el `onDestroy()` del Android Service para prevenir Fugas de RAM.
+4. **Token Estático Inyectable**: El `OidoService` levanta la conexión Outbound cifrada usando el Token largo proporcionado por el *Cloudflare Access Dashboard*, blindando el acceso al `NanoHTTPD` localhost:8080 bajo la protección de "PIN-por-Email".
+
+### 🎓 Lecciones Aprendidas
+- **ProcessBuilder como Caballo de Troya Local**: Android permite ejecutar scripts bash y demonios enrutadores sin requerir C/C++ NDK ni permisos Root, siempre que se transfieran primero a una carpeta propiedad exclusiva del paquete (app) y se arranquen mediante subprocesos Unix. Esto otorga poderes de contenedor Docker a apps primitivas.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V43) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.43 | ✅ |
+| 5. Despliegue Cloudflared Local | ✅ |

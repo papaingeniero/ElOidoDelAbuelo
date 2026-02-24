@@ -1,3 +1,8 @@
+## [v1.0-dev.43] - 2026-02-24
+### Added
+- **Cloudflare Zero Trust Access (Túnel Inverso VPN)**: Integración total del binario oficial `cloudflared` (arm64) como un subproceso estático nativo. La aplicación ahora establece un canal encriptado bidireccional directamente con los servidores de Cloudflare esquivando restricciones de operadora (CGNAT) y la necesidad de abrir puertos.
+- **Micro-Contenedor Docker-like**: `OidoService` extrae y gestiona el ciclo de vida del ejecutable binario de red dentro del almacenamiento protegido de Android usando `ProcessBuilder`, sin requerir ser Root ni instalar apps de terceros.
+
 ## [v1.0-dev.42] - 2026-02-23
 ### Fixed
 - **Aniquilación de Nodo Fantasma**: Solucionado el bug crítico donde los saltos de audio de `+5s` y `-5s` desplazaban el cabezal visual pero la pista seguía sonando desde el tiempo anterior. Se implementó una función centralizada `killCurrentAudio()` que fuerza la desconexión física (`disconnect()`) y parada inmediata del `AudioBufferSourceNode` antiguo.
