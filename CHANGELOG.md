@@ -1,3 +1,7 @@
+## [v1.0-dev.62] - 2026-02-25
+### Changed
+- **Motor Forense Ligero (Anti-OOM)**: Reescritura total del reproductor de onda forense. Sustituido `AudioContext.decodeAudioData()` (que cargaba el archivo completo en RAM) por un `<audio>` nativo con streaming HTTP y `preload="metadata"`. La forma de onda ahora se dibuja exclusivamente a partir de los picos del Chivato JSON (V49), eliminando por completo el riesgo de Out-Of-Memory en grabaciones largas (>3h). Se declaró `globalHistoryFiles` para compartir datos entre historial y motor forense. Eliminadas ~117 líneas de código muerto (`AudioContext`, `BufferSource`, `requestAnimationFrame`). El display de tiempo ahora soporta formato `h:mm:ss`.
+
 ## [v1.0-dev.61] - 2026-02-24
 ### Fixed
 - **Anti-Overscroll Safari iOS**: Eliminado el desplazamiento elástico horizontal nativo de WebKit que permitía arrastrar toda la página con el dedo. Inyectadas reglas CSS `overflow-x: hidden` y `overscroll-behavior: none` en `html` y `body` para petrificar la vista.

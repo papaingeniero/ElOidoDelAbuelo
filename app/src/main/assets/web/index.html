@@ -1001,12 +1001,15 @@
             ctx.fillText('Pico: ' + localMax, 4, 12);
         }
 
+        let globalHistoryFiles = [];
+
         function loadHistory() {
             fetch('/api/recordings')
                 .then(r => r.json())
                 .then(files => {
                     const list = document.getElementById('historyContainer');
                     list.innerHTML = '';
+                    globalHistoryFiles = files;
                     if (files.length === 0) {
                         list.innerHTML = '<div style="text-align:center; color:#888;">No hay grabaciones todavía.</div>';
                         return;
@@ -1145,15 +1148,11 @@
             }
         }
 
-        // --- REPRODUCTOR DE ONDA FORENSE ---
-        let waveAudioContext = null;
-        let waveAudioBuffer = null;
-        let waveAudioSource = null;
-        let waveStartTime = 0;
-        let wavePauseTime = 0;
+        // --- REPRODUCTOR DE ONDA FORENSE (LIGHTWEIGHT STREAMING ENGINE) ---
+        let forensicAudio = null;
+        let forensicPeaks = [];
+        let forensicDuration = 0;
         let isWavePlaying = false;
-        let waveCurrentTime = 0;
-        let waveAnimationId = null;
         let waveFileName = "";
 
         const canvas = document.getElementById('waveCanvas');
@@ -1164,17 +1163,14 @@
         const wavePlayBtn = document.getElementById('wavePlayBtn');
 
         function openWaveform(fileName) {
-            // Marcar tarjeta como visitada
             sessionStorage.setItem('visited_' + fileName, '1');
             const targetCard = document.querySelector('.history-card[data-filename="' + fileName + '"]');
             if (targetCard) {
                 targetCard.classList.add('visited');
-                // Limpiar borderLeftColor inline para que el CSS de .visited tome control
                 targetCard.style.borderLeftColor = '';
             }
-            // Pausar cualquier otro audio sonando
             document.querySelectorAll('audio').forEach(a => a.pause());
-            if (liveAudioElement) stopLiveStream();
+            if (typeof liveAudioElement !== 'undefined' && liveAudioElement) stopLiveStream();
 
             waveFileName = fileName;
             waveTitle.innerText = "Analizando: " + decodeURIComponent(fileName);
@@ -1182,68 +1178,76 @@
             document.getElementById('waveformModal').style.display = 'flex';
             document.body.classList.add('modal-open');
 
-            // Iniciar o reanudar AudioContext (necesario por politicas de navegadores)
-            if (!waveAudioContext) {
-                waveAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (waveAudioContext.state === 'suspended') {
-                waveAudioContext.resume();
+            // Recuperar datos del JSON ya cargados en memoria
+            const fileObj = globalHistoryFiles.find(f => f.name === fileName);
+            if (fileObj && fileObj.peaks && fileObj.peaks.length > 0) {
+                forensicPeaks = fileObj.peaks;
+                forensicDuration = (fileObj.durationMs || 0) / 1000;
+            } else {
+                forensicPeaks = [0]; // Fallback si es un archivo muy antiguo sin JSON
+                forensicDuration = 1;
             }
 
-            // Descargar y Decodificar
-            fetch('/api/audio?file=' + encodeURIComponent(fileName))
-                .then(response => response.arrayBuffer())
-                .then(arrayBuffer => waveAudioContext.decodeAudioData(arrayBuffer))
-                .then(audioBuffer => {
-                    waveAudioBuffer = audioBuffer;
-                    waveLoading.style.display = 'none';
-                    waveCurrentTime = 0;
-                    drawWaveform();
+            if (forensicAudio) {
+                forensicAudio.pause();
+                forensicAudio.src = '';
+            }
+
+            // Reproductor nativo en Streaming (Cero consumo de RAM)
+            forensicAudio = new Audio('/api/audio?file=' + encodeURIComponent(fileName));
+            forensicAudio.preload = "metadata";
+
+            forensicAudio.onloadedmetadata = () => {
+                if (forensicDuration === 0 || isNaN(forensicDuration)) {
+                    forensicDuration = forensicAudio.duration;
+                }
+                waveLoading.style.display = 'none';
+                drawForensicWaveform();
+                updateWaveTimeDisplay();
+            };
+
+            forensicAudio.ontimeupdate = () => {
+                if (!isDragging) {
+                    drawForensicWaveform();
                     updateWaveTimeDisplay();
-                })
-                .catch(e => {
-                    console.error("Error decodificando audio", e);
-                    waveLoading.innerText = "❌ Error al decodificar pista";
-                });
+                }
+            };
+
+            forensicAudio.onended = () => {
+                isWavePlaying = false;
+                wavePlayBtn.innerHTML = "▶️ PLAY";
+                drawForensicWaveform();
+            };
         }
 
         function closeWaveform() {
-            stopWaveform();
+            if (forensicAudio) {
+                forensicAudio.pause();
+                forensicAudio.src = '';
+            }
+            isWavePlaying = false;
+            wavePlayBtn.innerHTML = "▶️ PLAY";
             document.getElementById('waveformModal').style.display = 'none';
             document.body.classList.remove('modal-open');
-            waveAudioBuffer = null;
         }
 
-        function drawWaveform() {
-            if (!waveAudioBuffer) return;
+        function drawForensicWaveform() {
+            if (!forensicPeaks || forensicPeaks.length === 0) return;
             const width = canvas.width;
             const height = canvas.height;
             ctx.clearRect(0, 0, width, height);
 
-            const data = waveAudioBuffer.getChannelData(0);
-            const step = Math.ceil(data.length / width);
+            const localMax = Math.max(...forensicPeaks, 100);
+            const maxPcm = localMax;
 
-            // 1. Escaneo previo para encontrar el pico global de TODO el archivo
-            let globalMax = 0.01; // Mínimo para evitar div/0
-            for (let k = 0; k < data.length; k++) {
-                const absVal = Math.abs(data[k]);
-                if (absVal > globalMax) globalMax = absVal;
-            }
-
-            const duration = waveAudioBuffer.duration;
-            const playHeadX = (waveCurrentTime / duration) * width;
-
-            const maxPcm = Math.round(globalMax * 32767);
-
-            // Líneas guía (Grid) (V53)
+            // Grid (Centro, Techo, Suelo)
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
             ctx.beginPath();
-            ctx.moveTo(0, height / 2); ctx.lineTo(width, height / 2); // Centro (0)
-            ctx.moveTo(0, 0); ctx.lineTo(width, 0); // Techo
-            ctx.moveTo(0, height); ctx.lineTo(width, height); // Suelo
+            ctx.moveTo(0, height / 2); ctx.lineTo(width, height / 2);
+            ctx.moveTo(0, 0); ctx.lineTo(width, 0);
+            ctx.moveTo(0, height); ctx.lineTo(width, height);
             ctx.stroke();
 
-            // Etiquetas de texto
             ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
             ctx.font = '10px monospace';
             ctx.textAlign = 'left';
@@ -1251,207 +1255,86 @@
             ctx.fillText('0', 2, (height / 2) - 2);
             ctx.fillText('-' + maxPcm, 2, height - 2);
 
-            for (let i = 0; i < width; i++) {
-                let min = 1.0;
-                let max = -1.0;
-                for (let j = 0; j < step; j++) {
-                    const datum = data[(i * step) + j];
-                    if (datum < min) min = datum;
-                    if (datum > max) max = datum;
-                }
+            const step = width / forensicPeaks.length;
+            const currentPlayX = (forensicAudio && forensicDuration > 0) ? (forensicAudio.currentTime / forensicDuration) * width : 0;
 
-                const diff = max - min;
-                // Normalización Pura contra el pico global (multiplicado por 2 porque diff cubre de min a max)
-                const normalized = diff / (globalMax * 2);
-                const drawHeight = Math.max(1, normalized * height);
-                const drawY = (height - drawHeight) / 2;
+            for (let i = 0; i < forensicPeaks.length; i++) {
+                const normalized = forensicPeaks[i] / localMax;
+                const barHeight = Math.max(1, normalized * height);
+                const x = i * step;
+                const y = (height - barHeight) / 2;
 
-                ctx.fillStyle = i <= playHeadX ? '#d32f2f' : '#4caf50';
-                ctx.fillRect(i, drawY, 1, drawHeight);
+                ctx.fillStyle = x <= currentPlayX ? '#d32f2f' : '#4caf50';
+                ctx.fillRect(x, y, Math.max(1, step - 0.5), barHeight);
             }
 
             ctx.fillStyle = 'white';
-            ctx.fillRect(playHeadX - 1, 0, 3, 10);
-            ctx.fillRect(playHeadX - 1, height - 10, 3, 10);
-        }
-
-        function killCurrentAudio() {
-            if (waveAudioSource) {
-                waveAudioSource.onended = null;
-                try { waveAudioSource.stop(0); } catch (e) { }
-                try { waveAudioSource.disconnect(); } catch (e) { }
-                waveAudioSource = null;
-            }
-        }
-
-        function playFromWaveTime(time) {
-            if (!waveAudioBuffer) return;
-
-            killCurrentAudio();
-
-            waveAudioSource = waveAudioContext.createBufferSource();
-            waveAudioSource.buffer = waveAudioBuffer;
-            waveAudioSource.connect(waveAudioContext.destination);
-            try {
-                waveAudioSource.start(0, time);
-            } catch (e) {
-                console.warn("AudioContext Start Error", e);
-            }
-            waveStartTime = waveAudioContext.currentTime - time;
-
-            waveAudioSource.onended = () => {
-                // Solo detener el estado de juego si NO estamos arrastrando
-                // Si estamos arrastrando, el 'stop' es manual y temporal
-                if (isWavePlaying && !isDragging) {
-                    isWavePlaying = false;
-                    waveCurrentTime = waveAudioBuffer.duration;
-                    wavePlayBtn.innerHTML = "▶️ PLAY";
-                    cancelAnimationFrame(waveAnimationId);
-                    drawWaveform();
-                    updateWaveTimeDisplay();
-                }
-            };
+            ctx.fillRect(currentPlayX - 1, 0, 3, 10);
+            ctx.fillRect(currentPlayX - 1, height - 10, 3, 10);
         }
 
         function toggleWaveformPlay() {
-            if (!waveAudioBuffer) return;
-
+            if (!forensicAudio) return;
             if (isWavePlaying) {
-                // PAUSE
-                killCurrentAudio();
-                wavePauseTime = waveCurrentTime;
+                forensicAudio.pause();
                 isWavePlaying = false;
                 wavePlayBtn.innerHTML = "▶️ PLAY";
-                cancelAnimationFrame(waveAnimationId);
             } else {
-                // PLAY
-                if (waveCurrentTime >= waveAudioBuffer.duration) {
-                    waveCurrentTime = 0; // Restart if at end
-                }
-                playFromWaveTime(waveCurrentTime);
+                forensicAudio.play().catch(e => console.error("Play error", e));
                 isWavePlaying = true;
                 wavePlayBtn.innerHTML = "⏸ PAUSE";
-                waveAnimationId = requestAnimationFrame(updateWaveformAnim);
             }
         }
 
         function seekWaveform(seconds) {
-            if (!waveAudioBuffer) return;
-            let newTime = waveCurrentTime + seconds;
+            if (!forensicAudio) return;
+            let newTime = forensicAudio.currentTime + seconds;
             if (newTime < 0) newTime = 0;
-            if (newTime > waveAudioBuffer.duration) newTime = waveAudioBuffer.duration;
-
-            setWaveformTime(newTime);
-        }
-
-        function setWaveformTime(newTime) {
-            waveCurrentTime = newTime;
-            if (isWavePlaying) {
-                killCurrentAudio();
-                playFromWaveTime(waveCurrentTime);
-            } else {
-                wavePauseTime = waveCurrentTime;
-            }
-            drawWaveform();
+            if (newTime > forensicDuration) newTime = forensicDuration;
+            forensicAudio.currentTime = newTime;
+            drawForensicWaveform();
             updateWaveTimeDisplay();
-        }
-
-        function stopWaveform() {
-            killCurrentAudio();
-            isWavePlaying = false;
-            wavePlayBtn.innerHTML = "▶️ PLAY";
-            cancelAnimationFrame(waveAnimationId);
-        }
-
-        function updateWaveformAnim() {
-            // V35 GUARDIAN: Si estamos arrastrando, NO actualizamos el tiempo desde el reloj.
-            // Esto evita que el cabezal pegue saltos erráticos compitiendo con el dedo.
-            if (isWavePlaying && !isDragging) {
-                waveCurrentTime = waveAudioContext.currentTime - waveStartTime;
-                if (waveCurrentTime > waveAudioBuffer.duration) {
-                    waveCurrentTime = waveAudioBuffer.duration;
-                }
-                drawWaveform();
-                updateWaveTimeDisplay();
-                requestAnimationFrame(updateWaveformAnim);
-            } else if (isWavePlaying && isDragging) {
-                // Si estamos arrastrando pero "Play" está activo, seguimos pidiendo frames
-                // para que el dibujo sea fluido, pero sin calcular waveCurrentTime desde el reloj.
-                requestAnimationFrame(updateWaveformAnim);
-            }
         }
 
         function updateWaveTimeDisplay() {
-            if (!waveAudioBuffer) return;
+            if (!forensicAudio) return;
             const formatTime = (time) => {
-                const mins = Math.floor(time / 60).toString().padStart(2, '0');
-                const secs = Math.floor(time % 60).toString().padStart(2, '0');
-                return `${mins}:${secs}`;
+                const h = Math.floor(time / 3600);
+                const m = Math.floor((time % 3600) / 60).toString().padStart(2, '0');
+                const s = Math.floor(time % 60).toString().padStart(2, '0');
+                return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
             };
-            waveTimeDisplay.innerText = `${formatTime(waveCurrentTime)} / ${formatTime(waveAudioBuffer.duration)}`;
+            waveTimeDisplay.innerText = `${formatTime(forensicAudio.currentTime)} / ${formatTime(forensicDuration)}`;
         }
 
-        // --- LÓGICA DE SCRUBBING (DRAG-TO-SEEK) ---
+        // --- LÓGICA DE SCRUBBING ---
         let isDragging = false;
-
         function handlePointerDown(e) {
-            if (!waveAudioBuffer) return;
+            if (!forensicAudio) return;
             isDragging = true;
-            // Opcional: pausar temporalmente sin perder el control de Play
-            if (isWavePlaying) waveAudioSource.stop();
-            handlePointerMove(e); // Procesar el salto inicial instantáneo
+            handlePointerMove(e);
         }
-
         function handlePointerMove(e) {
-            if (!isDragging || !waveAudioBuffer) return;
+            if (!isDragging || !forensicAudio || forensicDuration === 0) return;
             const rect = canvas.getBoundingClientRect();
-            // Soporte para Mouse (clientX) y Touch (touches[0].clientX)
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const x = clientX - rect.left;
-            let ratio = x / rect.width;
+            let ratio = (clientX - rect.left) / rect.width;
+            ratio = Math.max(0, Math.min(ratio, 1));
 
-            // Delimitar márgenes de seguridad matemáticos
-            if (ratio < 0) ratio = 0;
-            if (ratio > 1) ratio = 1;
-
-            const newTime = ratio * waveAudioBuffer.duration;
-
-            // Actualización fantasma-fluida de los visuales mientras se arrastra (Sin disparar AudioContext pesado)
-            waveCurrentTime = newTime;
-            // Si estaba jugando y lo paramos, ajustamos wavePauseTime.
-            wavePauseTime = waveCurrentTime;
-            drawWaveform();
+            forensicAudio.currentTime = ratio * forensicDuration;
+            drawForensicWaveform();
             updateWaveTimeDisplay();
         }
-
         function handlePointerUp() {
-            if (!isDragging || !waveAudioBuffer) return;
             isDragging = false;
-            // El dedo se ha levantado. Consolidar la orden real al motor de sonido
-            // Solo ordenamos reproducir de nuevo si ya estaba el play activo antes de arrastrar
-            if (isWavePlaying) {
-                // Reanudamos la reproducción real en el nuevo tiempo
-                playFromWaveTime(waveCurrentTime);
-            }
         }
 
-        // Oyentes para Ratón (Desktop Mac/PC)
         canvas.addEventListener('mousedown', handlePointerDown);
         canvas.addEventListener('mousemove', handlePointerMove);
         canvas.addEventListener('mouseup', handlePointerUp);
         canvas.addEventListener('mouseleave', handlePointerUp);
-
-        // Oyentes para Táctil Nativo (Xiaomi/iPhone)
-        canvas.addEventListener('touchstart', (e) => {
-            // e.preventDefault(); // Opcional, evitar scroll del modal si pulsas en el canvas
-            handlePointerDown(e);
-        }, { passive: false });
-
-        canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault(); // Obligatorio para evitar el scroll "Banda Goma" del navegador en Y
-            handlePointerMove(e);
-        }, { passive: false });
-
+        canvas.addEventListener('touchstart', handlePointerDown, { passive: true });
+        canvas.addEventListener('touchmove', handlePointerMove, { passive: true });
         canvas.addEventListener('touchend', handlePointerUp);
 
         // --- Lógica de Arrastre de Umbral (V59) ---

@@ -904,3 +904,34 @@ Inyección de dos reglas CSS defensivas en los selectores `html` y `body` de `in
 | 5. Anti-Overscroll CSS | ✅ |
 
 
+## 🚀 Arquitectura V62: Motor Forense Ligero (Anti-OOM Streaming) | 25-Feb-2026
+### 📜 El Problema
+El reproductor forense de ondas (v32-v42) descargaba el archivo de audio completo en un `ArrayBuffer` y lo decodificaba con `AudioContext.decodeAudioData()`. Para grabaciones cortas (<5 min), esto funcionaba perfectamente. Sin embargo, al abrir archivos de grabación continua de >3 horas, el navegador (Chrome/Safari) agotaba la memoria RAM del cliente (Out-Of-Memory), provocando un crash instantáneo del tab o un cuelgue total de la página. El problema era doble: (1) `fetch().arrayBuffer()` cargaba cientos de MB en RAM de golpe, y (2) `decodeAudioData()` generaba un `AudioBuffer` de `Float32Array` que ocupaba aún más memoria que el archivo original comprimido.
+
+### 🛠️ La Solución
+Reescritura total del motor forense con filosofía **Zero-RAM**:
+1. **Variable Global `globalHistoryFiles`**: Se declara antes de `loadHistory()` y se asigna dentro de ella. Esto permite que el motor forense acceda directamente a los datos del JSON (picos y duración) ya cargados en memoria desde el endpoint `/api/recordings`, sin necesidad de hacer un segundo fetch ni decodificar audio.
+
+2. **Reproductor Nativo `<audio>` con Streaming**: Se reemplaza `AudioContext + BufferSource` por un simple `new Audio('/api/audio?file=...')` con `preload="metadata"`. El navegador gestiona internamente el streaming del archivo de forma incremental (Range Requests), sin cargar nunca el archivo completo en memoria. Esto elimina por completo el OOM.
+
+3. **Reutilización de Picos del Chivato JSON**: La forma de onda ahora se dibuja exclusivamente a partir del array `peaks[]` del JSON generado por `AudioSentinel` en V49, en lugar de procesar el buffer PCM decodificado. El array de picos pesa kilobytes vs los megabytes del audio real.
+
+4. **Eliminación de Código Muerto**: Se extirparon ~117 líneas de funciones obsoletas: `killCurrentAudio()`, `playFromWaveTime()`, `setWaveformTime()`, `stopWaveform()`, `updateWaveformAnim()`, `drawWaveform()`, y todas las variables de estado del `AudioContext` (`waveAudioContext`, `waveAudioBuffer`, `waveAudioSource`, `waveStartTime`, `wavePauseTime`, `waveCurrentTime`, `waveAnimationId`).
+
+5. **Formato de Tiempo con Horas**: El display de tiempo (`updateWaveTimeDisplay`) ahora soporta el formato `h:mm:ss` para grabaciones largas, en lugar del antiguo `mm:ss` que se desbordaba visualmente tras los 59:59.
+
+### 🎓 Lecciones Aprendidas
+- **El patrón Browser-as-Decoder es un antipatrón para archivos grandes**: Delegar la decodificación de audio al cliente vía `decodeAudioData()` funciona bien para clips cortos, pero es letal para grabaciones de vigilancia continua. El navegador no tiene control sobre la memoria que consume el `AudioBuffer` decodificado, y Android/iOS no perdonan los picos de RAM.
+- **Streaming Nativo > Decodificación Manual**: Un `<audio>` con Range Requests es infinitamente más eficiente que cualquier solución basada en `AudioContext` para reproducción simple. La API `ontimeupdate` proporciona suficiente resolución temporal para animar el cabezal sin `requestAnimationFrame`.
+- **Metadatos precomputados son oro**: El patrón Chivato JSON (V49) demostró ser la inversión arquitectónica más rentable del proyecto. Los picos capturados durante la grabación permiten dibujar la onda forense sin tocar el audio, eliminando una dependencia crítica de RAM.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V62) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.62 | ⬜ |
+| 5. Motor Forense Reescrito (Zero-RAM) | ✅ |
+| 6. globalHistoryFiles Inyectado | ✅ |
+| 7. Código Muerto Eliminado (−117 líneas) | ✅ |
+
