@@ -186,6 +186,9 @@ public class WebServer extends NanoHTTPD {
                             }
                             if (durationUs > 0) {
                                 generatingProgress = (int) ((presentationTimeUs * 100) / durationUs);
+                                if (generatingProgress % 5 == 0) { // Log cada 5% para no saturar
+                                    Log.d("WebServer", "Reconstrucción: " + generatingProgress + "%");
+                                }
                             }
                             codec.releaseOutputBuffer(outIndex, false);
                             if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0)
@@ -198,12 +201,12 @@ public class WebServer extends NanoHTTPD {
                             }
                         }
 
-                        // Turbo-Polite V71: Procesar 100 iteraciones a toda velocidad y descansar 1ms
+                        // Safe-Turbo V72: Procesar 50 iteraciones (burst) y descansar 2ms
                         burstCounter++;
-                        if (burstCounter >= 100) {
+                        if (burstCounter >= 50) {
                             burstCounter = 0;
                             try {
-                                Thread.sleep(1);
+                                Thread.sleep(2);
                             } catch (Exception ignored) {
                             }
                         }

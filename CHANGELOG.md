@@ -1,3 +1,8 @@
+## [v1.0-dev.72] - 2026-02-25
+### Changed
+- **Motor de Reconstrucción JSON**: Implementado modo 'Safe-Turbo' (Burst 50 / Sleep 2ms) para evitar cierres por Low Memory Killer en MIUI 12.
+- **Depuración**: Añadidos logs de progreso cada 5% en el motor nativo.
+
 ## [v1.0-dev.71] - 2026-02-25
 ### Optimized
 - **Motor de Reconstrucción JSON**: Implementado modo 'Turbo-Polite'. Ahora procesa ráfagas de 100 frames y descansa solo 1ms, recuperando la velocidad de proceso (~30x) sin sacrificar la estabilidad.

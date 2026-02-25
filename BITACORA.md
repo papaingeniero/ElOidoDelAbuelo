@@ -1111,6 +1111,23 @@ El throttling fijo de 10ms (V69/V70) resultó ser excesivamente lento para graba
 | 3. Velocidad Reconstrucción | ✅ |
 | 4. Despliegue v1.0-dev.71 | ✅ |
 
+## 🚀 Hotfix V72: Modo Safe-Turbo (Anti-LMK) | 25-Feb-2026
+### 📜 El Problema
+El Modo Turbo V71 (Burst 100 / Sleep 1ms) causaba que Android matara la app mediante el **Low Memory Killer (LMK)** al alcanzar aproximadamente el 14% de progreso.
+**Diagnóstico**: La intensidad del proceso nativo (`MediaCodec` + `Burst 100`) generaba sospechas en MIUI 12, que interpretaba la presión sobre los buffers nativos como una señal de inestabilidad bajo condiciones de RAM crítica.
+
+### 🛠️ La Solución
+1.  **Safe-Turbo**: Ajustado el balance a **Burst 50** y **Sleep 2ms**. Esto reduce la frecuencia de ráfagas intensas, dando más tiempo al kernel para gestionar la RAM nativa.
+2.  **Telemetría de Log**: Añadido `Log.d` cada 5% de progreso para rastrear exactamente dónde muere si vuelve a suceder.
+3.  **Mem-Friendly**: Se mantiene la eficiencia en Heap Java pero se modera la "presión de ráfaga".
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Safe-Burst (50 frames) | ✅ |
+| 2. Sleep 2ms Tuning | ✅ |
+| 3. Progress Log (Modulo 5) | ✅ |
+| 4. Despliegue v1.0-dev.72 | ✅ |
+
 ## 🚀 Hotfix V69: Motor 'Polite' (CPU Throttling) | 25-Feb-2026
 ### 📜 El Problema
 El motor de reconstrucción MediaCodec (V67/V68) era demasiado agresivo. Al procesar archivos de 4 horas, consumía el 100% de un núcleo de CPU de forma sostenida, provocando:
