@@ -1134,16 +1134,22 @@ El LMK (Low Memory Killer) de MIUI seguía matando la app a pesar del Safe-Turbo
 **Diagnóstico (Gemini 3 Pro + Arqueología)**: La creación masiva de objetos `ShortBuffer` en cada iteración del bucle de decodificación saturaba el Garbage Collector (GC). El GC entraba en pánico al no poder limpiar la basura tan rápido como se generaba, provocando que Android interpretara el proceso como inestable o agotador de recursos.
 
 ### 🛠️ La Solución
-1.  **Zero-Allocation Pattern**: Eliminada la instanciación de `shortBuf` mediante `asShortBuffer()`. Ahora se accede directamente a los bytes nativos del `ByteBuffer` mediante `getShort()`. Cero basura creada en el bucle principal.
-2.  **Thermal Breath (Reloj Térmico)**: Implementada una válvula de respiración que duerme el hilo 5ms por cada 5 segundos de audio procesado. Esto es mucho más preciso que el burst genérico, ya que se basa en la carga de trabajo real del codec.
-3.  **Prioridad Nativa**: Al no generar basura Java, el motor puede correr a máxima velocidad teórica sin disparar el recolector de basura.
+- **Motor de Reconstrucción JSON (Zero-Allocation)**: Sustituido el uso de `ShortBuffer` por acceso directo a bytes nativos para eliminar la generación de basura de objetos Java.
+- **Estabilidad térmica**: Implementada válvula de respiración de 5ms cada 5 segundos de audio para reducir la presión sobre la CPU y evitar el LMK de MIUI.
+- **Hito de Resistencia**: Verificada la reconstrucción exitosa de un archivo de 4 horas, superando la barrera histórica de caída del 14% en MIUI 12.
 
-| Punto de Verificación | Estado |
-| :--- | :--- |
 | 1. Patrón Zero-Allocation | ✅ |
 | 2. Valve Breath (5s Audio) | ✅ |
-| 3. Eliminación ShordBuf GC | ✅ |
+| 3. Eliminación ShortBuf GC | ✅ |
 | 4. Despliegue v1.0-dev.73 | ✅ |
+
+### 🏆 Hito Alcanzado: La Barrera de las 4 Horas
+**Resultado**: Éxito Absoluto.
+Se ha verificado la reconstrucción íntegra de un archivo de **4 horas (14.400 segundos)**. El motor superó la barrera crítica del 14% (donde fallaban versiones anteriores) y completó el proceso al 100% manteniendo el mismo PID (9853).
+**Lecciones Aprendidas**:
+- La presión sobre el Garbage Collector es el enemigo nº 1 en dispositivos con poca RAM y capas agresivas como MIUI 12.
+- El acceso directo a memoria nativa (`ByteBuffer.getShort()`) es órdenes de magnitud más estable que el uso de wrappers de Java (`ShortBuffer`) en bucles de alta frecuencia.
+- La "respiración térmica" (micro-sleeps) es vital para que el kernel no marque la tarea como abusiva.
 
 ## 🚀 Hotfix V69: Motor 'Polite' (CPU Throttling) | 25-Feb-2026
 ### 📜 El Problema
