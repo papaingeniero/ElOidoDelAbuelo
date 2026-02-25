@@ -935,3 +935,36 @@ Reescritura total del motor forense con filosofía **Zero-RAM**:
 | 6. globalHistoryFiles Inyectado | ✅ |
 | 7. Código Muerto Eliminado (−117 líneas) | ✅ |
 
+## 🚀 Hotfix V63: Compatibilidad Safari iOS + Render Inmediato | 25-Feb-2026
+### 📜 El Problema
+Dos bugs descubiertos tras la reescritura del motor forense en V62:
+1. **Bug 1 (Chrome + Safari)**: El modal se quedaba en "Analizando..." infinitamente porque el renderizado de la onda estaba atrapado dentro de `onloadedmetadata`, que depende de una respuesta HTTP exitosa del servidor.
+2. **Bug 2 (Solo Safari iOS)**: Al pulsar PLAY, Safari lanzaba `NotSupportedError: The operation is not supported`. Nuestros archivos `.m4a` son **ADTS-AAC crudo** (grabados con cabeceras ADTS de 7 bytes desde V28), pero el servidor los servía con MIME `audio/mp4`. Safari intentaba parsearlos como contenedores MP4 (buscando átomos `ftyp`, `moov`, `mdat`), encontraba frames ADTS desnudos, y los rechazaba. Chrome, más tolerante, auto-detectaba el formato sin quejarse.
+
+### 🛠️ La Solución
+Triple intervención quirúrgica:
+1. **MIME Type Correction** (`WebServer.java`): Cambiado el MIME de `audio/mp4` a `audio/aac` para archivos `.m4a` y `.aac`. Este era el **fix crítico** que desbloqueó Safari.
+2. **Render Inmediato** (`index.html`): Si los picos del JSON están disponibles (`forensicPeaks.length > 1`), la onda se dibuja INMEDIATAMENTE al abrir el modal, sin crear `<audio>` ni esperar a `onloadedmetadata`.
+3. **Lazy Audio Init** (`index.html`): El elemento `<audio>` ya NO se crea en `openWaveform()`. Se crea SOLO al pulsar PLAY via `initForensicAudio()`, dentro del gesto directo del usuario. Esto garantiza la cadena de gesto que Safari iOS exige para `.play()`.
+
+### ❌ Intentos Fallidos
+- **Intento 1**: `oncanplay` callback → Rompía la cadena de gesto de Safari iOS.
+- **Intento 2**: `.play()` directo con `new Audio()` pre-creado → `NotSupportedError` por MIME incorrecto.
+- **Intento 3**: Lazy init sin corregir MIME → Mismo `NotSupportedError`.
+- **Intento 4 (Diagnóstico)**: Error visible en botón → Reveló `NotSupportedError` → Pista para detectar el MIME como causa raíz.
+
+### 🎓 Lecciones Aprendidas
+- **El MIME type es un contrato sagrado**: Si dices `audio/mp4`, Safari buscará un contenedor MP4. Si el contenido es ADTS raw, debes decir `audio/aac`. Chrome perdona; Safari no.
+- **Diagnóstico visible > console.log**: En dispositivos iOS sin acceso a DevTools, mostrar el error en la propia UI es la única forma de diagnosticar. La inversión de 2 minutos en un `catch` visual ahorró horas de especulación.
+- **Nunca bloquees la UI en un evento de red**: Si tienes datos locales suficientes para renderizar, hazlo primero.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V63) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.63 | ⬜ |
+| 5. Render Inmediato Verificado (Chrome) | ✅ |
+| 6. MIME Fix Verificado (Safari iOS) | ✅ |
+| 7. Lazy Audio Init (Safari iOS) | ✅ |
+

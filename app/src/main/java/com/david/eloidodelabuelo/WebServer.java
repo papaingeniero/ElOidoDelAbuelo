@@ -277,9 +277,9 @@ public class WebServer extends NanoHTTPD {
                 String range = session.getHeaders().get("range");
                 long fileLen = audioFile.length();
                 String mime = "audio/wav";
-                if (fileName.endsWith(".m4a"))
-                    mime = "audio/mp4";
-                else if (fileName.endsWith(".aac"))
+                // Nuestros .m4a son ADTS-AAC crudo (v28), NO contenedores MP4.
+                // Safari iOS rechaza audio/mp4 si el contenido es ADTS puro.
+                if (fileName.endsWith(".m4a") || fileName.endsWith(".aac"))
                     mime = "audio/aac";
 
                 if (range != null && range.startsWith("bytes=")) {

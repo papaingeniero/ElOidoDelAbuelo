@@ -1,3 +1,10 @@
+## [v1.0-dev.63] - 2026-02-25
+### Fixed
+- **Compatibilidad Safari iOS (NotSupportedError)**: Corregido MIME type de `audio/mp4` a `audio/aac` en `WebServer.java` para archivos `.m4a` que son ADTS-AAC crudo (no contenedores MP4). Safari rechazaba la reproducción al no poder parsear frames ADTS como átomos MP4.
+- **Render Inmediato de Onda Forense**: Eliminada la dependencia de `onloadedmetadata` para dibujar la onda. Ahora se dibuja instantáneamente a partir de los picos del JSON.
+- **Lazy Audio Init**: El elemento `<audio>` se crea solo al pulsar PLAY (dentro del gesto del usuario), garantizando compatibilidad con la política de autoplay de Safari iOS.
+- **Scroll Chrome Desktop**: Movidas reglas `overflow-x: hidden` y `overscroll-behavior: none` de `body` a `html`. Chrome propagaba el overflow del body al viewport, bloqueando el scroll vertical con trackpad/wheel.
+
 ## [v1.0-dev.62] - 2026-02-25
 ### Changed
 - **Motor Forense Ligero (Anti-OOM)**: Reescritura total del reproductor de onda forense. Sustituido `AudioContext.decodeAudioData()` (que cargaba el archivo completo en RAM) por un `<audio>` nativo con streaming HTTP y `preload="metadata"`. La forma de onda ahora se dibuja exclusivamente a partir de los picos del Chivato JSON (V49), eliminando por completo el riesgo de Out-Of-Memory en grabaciones largas (>3h). Se declaró `globalHistoryFiles` para compartir datos entre historial y motor forense. Eliminadas ~117 líneas de código muerto (`AudioContext`, `BufferSource`, `requestAnimationFrame`). El display de tiempo ahora soporta formato `h:mm:ss`.

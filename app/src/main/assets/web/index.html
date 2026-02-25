@@ -24,6 +24,7 @@
 
         html {
             overflow-x: hidden;
+            overflow-y: auto;
             overscroll-behavior: none;
         }
 
@@ -36,8 +37,6 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            overflow-x: hidden;
-            overscroll-behavior: none;
         }
 
         .dashboard {
@@ -1150,6 +1149,7 @@
 
         // --- REPRODUCTOR DE ONDA FORENSE (LIGHTWEIGHT STREAMING ENGINE) ---
         let forensicAudio = null;
+        let forensicAudioUrl = ''; // URL para crear el Audio solo en PLAY
         let forensicPeaks = [];
         let forensicDuration = 0;
         let isWavePlaying = false;
@@ -1191,40 +1191,29 @@
             if (forensicAudio) {
                 forensicAudio.pause();
                 forensicAudio.src = '';
+                forensicAudio = null;
             }
 
-            // Reproductor nativo en Streaming (Cero consumo de RAM)
-            forensicAudio = new Audio('/api/audio?file=' + encodeURIComponent(fileName));
-            forensicAudio.preload = "metadata";
+            // Guardar URL para crear el Audio SOLO al pulsar PLAY (Safari iOS)
+            forensicAudioUrl = '/api/audio?file=' + encodeURIComponent(fileName);
 
-            forensicAudio.onloadedmetadata = () => {
-                if (forensicDuration === 0 || isNaN(forensicDuration)) {
-                    forensicDuration = forensicAudio.duration;
-                }
+            // Si ya tenemos picos del JSON: dibujar la onda INMEDIATAMENTE
+            if (forensicPeaks.length > 1 && forensicDuration > 0) {
                 waveLoading.style.display = 'none';
                 drawForensicWaveform();
                 updateWaveTimeDisplay();
-            };
-
-            forensicAudio.ontimeupdate = () => {
-                if (!isDragging) {
-                    drawForensicWaveform();
-                    updateWaveTimeDisplay();
-                }
-            };
-
-            forensicAudio.onended = () => {
-                isWavePlaying = false;
-                wavePlayBtn.innerHTML = "▶️ PLAY";
-                drawForensicWaveform();
-            };
+            } else {
+                waveLoading.style.display = 'flex';
+            }
         }
 
         function closeWaveform() {
             if (forensicAudio) {
                 forensicAudio.pause();
                 forensicAudio.src = '';
+                forensicAudio = null;
             }
+            forensicAudioUrl = '';
             isWavePlaying = false;
             wavePlayBtn.innerHTML = "▶️ PLAY";
             document.getElementById('waveformModal').style.display = 'none';
@@ -1256,7 +1245,7 @@
             ctx.fillText('-' + maxPcm, 2, height - 2);
 
             const step = width / forensicPeaks.length;
-            const currentPlayX = (forensicAudio && forensicDuration > 0) ? (forensicAudio.currentTime / forensicDuration) * width : 0;
+            const currentPlayX = (forensicAudio && forensicDuration > 0 && !isNaN(forensicAudio.currentTime)) ? (forensicAudio.currentTime / forensicDuration) * width : 0;
 
             for (let i = 0; i < forensicPeaks.length; i++) {
                 const normalized = forensicPeaks[i] / localMax;
@@ -1273,16 +1262,63 @@
             ctx.fillRect(currentPlayX - 1, height - 10, 3, 10);
         }
 
-        function toggleWaveformPlay() {
-            if (!forensicAudio) return;
-            if (isWavePlaying) {
-                forensicAudio.pause();
+        function initForensicAudio() {
+            // Crear el <audio> con sus listeners (llamar SOLO dentro de gesto de usuario)
+            forensicAudio = new Audio(forensicAudioUrl);
+            forensicAudio.setAttribute('playsinline', '');
+            forensicAudio.ontimeupdate = function () {
+                if (!isDragging) {
+                    drawForensicWaveform();
+                    updateWaveTimeDisplay();
+                }
+            };
+            forensicAudio.onended = function () {
                 isWavePlaying = false;
-                wavePlayBtn.innerHTML = "▶️ PLAY";
+                wavePlayBtn.innerHTML = '▶️ PLAY';
+                drawForensicWaveform();
+            };
+            forensicAudio.onloadedmetadata = function () {
+                if (forensicDuration === 0 || isNaN(forensicDuration)) {
+                    forensicDuration = forensicAudio.duration;
+                    drawForensicWaveform();
+                    updateWaveTimeDisplay();
+                }
+                waveLoading.style.display = 'none';
+            };
+            forensicAudio.onerror = function () {
+                console.error('Error audio forense');
+                waveLoading.style.display = 'none';
+            };
+        }
+
+        function toggleWaveformPlay() {
+            if (!forensicAudioUrl) return;
+            if (isWavePlaying) {
+                if (forensicAudio) forensicAudio.pause();
+                isWavePlaying = false;
+                wavePlayBtn.innerHTML = '▶️ PLAY';
             } else {
-                forensicAudio.play().catch(e => console.error("Play error", e));
-                isWavePlaying = true;
-                wavePlayBtn.innerHTML = "⏸ PAUSE";
+                // Safari iOS: crear Audio + play() en un UNICO gesto atómico
+                if (!forensicAudio) initForensicAudio();
+                wavePlayBtn.innerHTML = '⏳ CARGANDO...';
+                try {
+                    var p = forensicAudio.play();
+                    if (p && p.then) {
+                        p.then(function () {
+                            isWavePlaying = true;
+                            wavePlayBtn.innerHTML = '⏸ PAUSE';
+                        }).catch(function (e) {
+                            console.error('Play error:', e.name, e.message);
+                            wavePlayBtn.innerHTML = '▶️ PLAY';
+                        });
+                    } else {
+                        isWavePlaying = true;
+                        wavePlayBtn.innerHTML = '⏸ PAUSE';
+                    }
+                } catch (ex) {
+                    console.error('Play exception:', ex);
+                    wavePlayBtn.innerHTML = '▶️ PLAY';
+                }
             }
         }
 
@@ -1304,7 +1340,7 @@
                 const s = Math.floor(time % 60).toString().padStart(2, '0');
                 return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
             };
-            waveTimeDisplay.innerText = `${formatTime(forensicAudio.currentTime)} / ${formatTime(forensicDuration)}`;
+            waveTimeDisplay.innerText = `${formatTime(forensicAudio ? forensicAudio.currentTime : 0)} / ${formatTime(forensicDuration)}`;
         }
 
         // --- LÓGICA DE SCRUBBING ---
