@@ -1,3 +1,7 @@
+## [v1.0-dev.68] - 2026-02-25
+### Fixed
+- **Motor de Reconstrucción JSON**: Corregido problema de progreso estancado en 0%. Ahora utiliza múltiples métodos de detección de duración (MediaMetadataRetriever + File Size) y posee un sistema de escape si el codec se bloquea.
+
 ## [v1.0-dev.67] - 2026-02-25
 ### Added
 - **Motor de Reconstrucción Nativa de JSON**: Ahora es posible regenerar la forma de onda (peaks) para grabaciones que no tienen archivo `.json` (p. ej. por corte de batería). Utiliza decodificación nativa `MediaCodec` en segundo plano con seguimiento de progreso real.

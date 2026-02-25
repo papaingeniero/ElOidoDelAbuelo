@@ -1061,3 +1061,20 @@ Se ha implementado un sistema de **Recuperación de Desastres** nativo:
 | 5. Motor MediaCodec Verificado | ✅ |
 | 6. UI de Progreso Verificada | ✅ |
 
+## 🚀 Hotfix V68: Debugging Motor de Reconstrucción | 25-Feb-2026
+### 📜 El Problema
+El motor de reconstrucción JSON se quedaba estancado en 0% en ciertos archivos. 
+**Hipótesis**: Los archivos no finalizados (por corte de batería) no tienen metadatos de duración, lo que causaba un `windowUs` inválido o que el progreso no se calculara adecuadamente (`durationUs = 0`).
+
+### 🛠️ La Solución
+1. **Fallback de Duración**: Uso de `MediaMetadataRetriever` si el extractor falla, y estimación por tamaño de archivo (basado en bitrate AAC de 32KB/s) como último recurso.
+2. **Loop Escape**: Añadido un contador de seguridad que aborta el bucle si el codec no genera salida durante 500 iteraciones (evitando bloqueos del hilo).
+3. **Logs Detallados**: Inyección de logs para monitorear el estado real del proceso desde ADB.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Fallback Duración Implementado | ✅ |
+| 2. Escape de Bucle (500 iters) | ✅ |
+| 3. Logs ADB Activados | ✅ |
+| 4. Install & Launch (V68) | ✅ |
+

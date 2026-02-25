@@ -87,6 +87,7 @@ public class WebServer extends NanoHTTPD {
                 generatingProgress = 0;
                 MediaExtractor extractor = new MediaExtractor();
                 MediaCodec codec = null;
+                Log.d("WebServer", "Iniciando reconstrucción para: " + audioFile.getName());
                 try {
                     extractor.setDataSource(audioFile.getAbsolutePath());
                     int trackIndex = -1;
@@ -98,18 +99,43 @@ public class WebServer extends NanoHTTPD {
                             break;
                         }
                     }
-                    if (trackIndex < 0)
+                    if (trackIndex < 0) {
+                        Log.e("WebServer", "No se encontró pista de audio en: " + audioFile.getName());
                         return;
+                    }
                     extractor.selectTrack(trackIndex);
                     MediaFormat format = extractor.getTrackFormat(trackIndex);
-                    long durationUs = format.containsKey(MediaFormat.KEY_DURATION)
-                            ? format.getLong(MediaFormat.KEY_DURATION)
-                            : 0;
+
+                    long durationUs = 0;
+                    if (format.containsKey(MediaFormat.KEY_DURATION)) {
+                        durationUs = format.getLong(MediaFormat.KEY_DURATION);
+                    } else {
+                        // Fallback V68: MediaMetadataRetriever para archivos no finalizados
+                        try {
+                            android.media.MediaMetadataRetriever mmr = new android.media.MediaMetadataRetriever();
+                            mmr.setDataSource(audioFile.getAbsolutePath());
+                            String durStr = mmr
+                                    .extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION);
+                            if (durStr != null)
+                                durationUs = Long.parseLong(durStr) * 1000;
+                            mmr.release();
+                        } catch (Exception mmrErr) {
+                            Log.w("WebServer", "Fallo mmr fallback: " + mmrErr.getMessage());
+                        }
+                    }
+
+                    if (durationUs <= 0) {
+                        Log.w("WebServer", "Duración no detectada, usando estimación por tamaño");
+                        durationUs = (audioFile.length() / 32000) * 1000000; // Est. bruta (32KB/s)
+                    }
+
                     long durationMs = durationUs / 1000;
                     String mime = format.getString(MediaFormat.KEY_MIME);
                     codec = MediaCodec.createDecoderByType(mime);
                     codec.configure(format, null, null, 0);
                     codec.start();
+                    Log.d("WebServer", "Codec iniciado: " + mime + " Duración: " + durationMs + "ms");
+
                     MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
                     boolean isEOS = false;
                     int TARGET_PEAKS = 400;
@@ -120,6 +146,8 @@ public class WebServer extends NanoHTTPD {
                     int currentPeakMax = 0;
                     long currentWindowEnd = windowUs;
                     long presentationTimeUs = 0;
+                    int iterationsWithoutOutput = 0;
+
                     while (!isEOS) {
                         int inIndex = codec.dequeueInputBuffer(10000);
                         if (inIndex >= 0) {
@@ -133,8 +161,10 @@ public class WebServer extends NanoHTTPD {
                                 extractor.advance();
                             }
                         }
+
                         int outIndex = codec.dequeueOutputBuffer(info, 10000);
                         if (outIndex >= 0) {
+                            iterationsWithoutOutput = 0;
                             java.nio.ByteBuffer outBuffer = codec.getOutputBuffer(outIndex);
                             if (info.size > 0 && outBuffer != null) {
                                 outBuffer.position(info.offset);
@@ -159,6 +189,12 @@ public class WebServer extends NanoHTTPD {
                             codec.releaseOutputBuffer(outIndex, false);
                             if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0)
                                 isEOS = true;
+                        } else {
+                            iterationsWithoutOutput++;
+                            if (iterationsWithoutOutput > 500) { // Mayor margen
+                                Log.e("WebServer", "Codec stuck (500 iterations), abortando.");
+                                break;
+                            }
                         }
                     }
                     while (peaks.size() < TARGET_PEAKS)
