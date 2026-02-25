@@ -1,3 +1,7 @@
+## [v1.0-dev.67] - 2026-02-25
+### Added
+- **Motor de Reconstrucción Nativa de JSON**: Ahora es posible regenerar la forma de onda (peaks) para grabaciones que no tienen archivo `.json` (p. ej. por corte de batería). Utiliza decodificación nativa `MediaCodec` en segundo plano con seguimiento de progreso real.
+
 ## [v1.0-dev.66] - 2026-02-25
 ### Changed
 - **Snapshot Deployment**: Versión de consolidación con mejoras en exportación híbrida y robustez del analizador forense.

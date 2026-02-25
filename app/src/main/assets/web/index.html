@@ -597,6 +597,22 @@
                     style="position: absolute; top:0; left:0; right:0; bottom:0; display:flex; justify-content:center; align-items:center; background: rgba(0,0,0,0.7); border-radius: 8px; font-weight: bold; color: var(--status-green);">
                     🔄 Procesando Audio...
                 </div>
+                <!-- V67: Motor de Reconstrucción Nativa -->
+                <div id="jsonGenOverlay"
+                    style="position: absolute; top:0; left:0; right:0; bottom:0; display:none; flex-direction:column; justify-content:center; align-items:center; background: rgba(0,0,0,0.85); border-radius: 8px; z-index: 20;">
+                    <p style="color: white; font-weight: bold; margin-bottom: 10px;">Archivo sin analizar</p>
+                    <button id="btnGenJson" class="settings-btn"
+                        style="background: var(--primary-color); font-size: 1.1rem; padding: 10px 20px;">⚙️ Reconstruir
+                        JSON</button>
+                    <div id="jsonProgressBar"
+                        style="display:none; width: 80%; background: #333; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 15px;">
+                        <div id="jsonProgressFill"
+                            style="width: 0%; height: 100%; background: var(--status-green); transition: width 0.3s;">
+                        </div>
+                    </div>
+                    <p id="jsonProgressText"
+                        style="color: var(--status-green); font-size: 0.9rem; margin-top: 10px; display:none;">0%</p>
+                </div>
             </div>
 
             <div style="text-align: center; margin-bottom: 15px; font-family: monospace; font-size: 1.2rem; color: #ccc;"
@@ -1203,17 +1219,24 @@
             // Si ya tenemos picos del JSON: dibujar la onda INMEDIATAMENTE
             if (forensicPeaks.length > 1 && forensicDuration > 0) {
                 waveLoading.style.display = 'none';
+                document.getElementById('jsonGenOverlay').style.display = 'none';
                 drawForensicWaveform();
                 updateWaveTimeDisplay();
             } else {
                 // Archivo sin JSON (grabación antigua o larga sin Chivato)
                 waveLoading.style.display = 'none';
+                document.getElementById('jsonGenOverlay').style.display = 'flex';
+                document.getElementById('btnGenJson').style.display = 'block';
+                document.getElementById('jsonProgressBar').style.display = 'none';
+                document.getElementById('jsonProgressText').style.display = 'none';
+                document.getElementById('btnGenJson').onclick = () => startJsonGeneration(fileName);
                 drawForensicWaveform();
                 updateWaveTimeDisplay();
             }
         }
 
         function closeWaveform() {
+            if (typeof jsonGenTimer !== 'undefined' && jsonGenTimer) clearInterval(jsonGenTimer);
             if (forensicAudio) {
                 forensicAudio.pause();
                 forensicAudio.src = '';
@@ -1498,6 +1521,41 @@
 
         // Cargar historial al iniciar
         loadHistory();
+
+        // --- LÓGICA DE RECONSTRUCCIÓN JSON (V67) ---
+        let jsonGenTimer = null;
+        function startJsonGeneration(fileName) {
+            document.getElementById('btnGenJson').style.display = 'none';
+            document.getElementById('jsonProgressBar').style.display = 'block';
+            document.getElementById('jsonProgressText').style.display = 'block';
+            fetch('/api/generate-json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file: fileName })
+            }).then(() => {
+                if (jsonGenTimer) clearInterval(jsonGenTimer);
+                jsonGenTimer = setInterval(() => pollJsonProgress(fileName), 1000);
+            });
+        }
+        function pollJsonProgress(fileName) {
+            fetch('/api/generate-progress').then(r => r.json()).then(data => {
+                const fill = document.getElementById('jsonProgressFill');
+                const txt = document.getElementById('jsonProgressText');
+                if (data.isGenerating && data.file === fileName) {
+                    fill.style.width = data.progress + '%';
+                    txt.innerText = "Decodificando audio... " + data.progress + '%';
+                } else if (!data.isGenerating) {
+                    clearInterval(jsonGenTimer);
+                    fill.style.width = '100%';
+                    txt.innerText = "¡Completado! Recargando...";
+                    setTimeout(() => {
+                        closeWaveform();
+                        loadHistory();
+                        setTimeout(() => openWaveform(fileName), 500);
+                    }, 1000);
+                }
+            });
+        }
     </script>
 
 </body>

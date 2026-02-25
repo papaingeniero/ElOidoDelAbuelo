@@ -7,6 +7,9 @@ import android.content.SharedPreferences;
 
 import android.os.BatteryManager;
 import android.os.Environment;
+import android.media.MediaCodec;
+import android.media.MediaExtractor;
+import android.media.MediaFormat;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -36,6 +39,10 @@ public class WebServer extends NanoHTTPD {
     private float cachedBatteryPct = -1;
     private boolean cachedIsCharging = false;
     private int cachedTempCelsiusFull = 0; // Guardado en décimas de grado (int)
+
+    private volatile boolean isGeneratingJson = false;
+    private volatile String generatingFileName = "";
+    private volatile int generatingProgress = 0;
 
     private void refreshHardwareTelemetry() {
         long now = System.currentTimeMillis();
@@ -69,6 +76,131 @@ public class WebServer extends NanoHTTPD {
         super(8080);
         this.context = context.getApplicationContext();
         this.sentinel = sentinel;
+    }
+
+    private void generateJsonForAudio(final File audioFile) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                isGeneratingJson = true;
+                generatingFileName = audioFile.getName();
+                generatingProgress = 0;
+                MediaExtractor extractor = new MediaExtractor();
+                MediaCodec codec = null;
+                try {
+                    extractor.setDataSource(audioFile.getAbsolutePath());
+                    int trackIndex = -1;
+                    for (int i = 0; i < extractor.getTrackCount(); i++) {
+                        MediaFormat f = extractor.getTrackFormat(i);
+                        String mime = f.getString(MediaFormat.KEY_MIME);
+                        if (mime != null && mime.startsWith("audio/")) {
+                            trackIndex = i;
+                            break;
+                        }
+                    }
+                    if (trackIndex < 0)
+                        return;
+                    extractor.selectTrack(trackIndex);
+                    MediaFormat format = extractor.getTrackFormat(trackIndex);
+                    long durationUs = format.containsKey(MediaFormat.KEY_DURATION)
+                            ? format.getLong(MediaFormat.KEY_DURATION)
+                            : 0;
+                    long durationMs = durationUs / 1000;
+                    String mime = format.getString(MediaFormat.KEY_MIME);
+                    codec = MediaCodec.createDecoderByType(mime);
+                    codec.configure(format, null, null, 0);
+                    codec.start();
+                    MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+                    boolean isEOS = false;
+                    int TARGET_PEAKS = 400;
+                    long windowUs = durationUs / TARGET_PEAKS;
+                    if (windowUs <= 0)
+                        windowUs = 100000;
+                    java.util.List<Integer> peaks = new java.util.ArrayList<>();
+                    int currentPeakMax = 0;
+                    long currentWindowEnd = windowUs;
+                    long presentationTimeUs = 0;
+                    while (!isEOS) {
+                        int inIndex = codec.dequeueInputBuffer(10000);
+                        if (inIndex >= 0) {
+                            java.nio.ByteBuffer buffer = codec.getInputBuffer(inIndex);
+                            int sampleSize = extractor.readSampleData(buffer, 0);
+                            if (sampleSize < 0) {
+                                codec.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                            } else {
+                                long pts = extractor.getSampleTime();
+                                codec.queueInputBuffer(inIndex, 0, sampleSize, pts, 0);
+                                extractor.advance();
+                            }
+                        }
+                        int outIndex = codec.dequeueOutputBuffer(info, 10000);
+                        if (outIndex >= 0) {
+                            java.nio.ByteBuffer outBuffer = codec.getOutputBuffer(outIndex);
+                            if (info.size > 0 && outBuffer != null) {
+                                outBuffer.position(info.offset);
+                                outBuffer.limit(info.offset + info.size);
+                                java.nio.ShortBuffer shortBuf = outBuffer.asShortBuffer();
+                                while (shortBuf.hasRemaining()) {
+                                    short sample = shortBuf.get();
+                                    int absVal = Math.abs(sample);
+                                    if (absVal > currentPeakMax)
+                                        currentPeakMax = absVal;
+                                }
+                            }
+                            presentationTimeUs = info.presentationTimeUs;
+                            while (presentationTimeUs > currentWindowEnd && peaks.size() < TARGET_PEAKS) {
+                                peaks.add(currentPeakMax);
+                                currentPeakMax = 0;
+                                currentWindowEnd += windowUs;
+                            }
+                            if (durationUs > 0) {
+                                generatingProgress = (int) ((presentationTimeUs * 100) / durationUs);
+                            }
+                            codec.releaseOutputBuffer(outIndex, false);
+                            if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0)
+                                isEOS = true;
+                        }
+                    }
+                    while (peaks.size() < TARGET_PEAKS)
+                        peaks.add(currentPeakMax);
+
+                    String jsonName = audioFile.getName().replaceAll("\\.[^.]+$", ".json");
+                    File jsonFile = new File(audioFile.getParentFile(), jsonName);
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("{\"durationMs\":").append(durationMs).append(",\"peaks\":[");
+                    for (int i = 0; i < peaks.size(); i++) {
+                        if (i > 0)
+                            sb.append(",");
+                        sb.append(peaks.get(i));
+                    }
+                    sb.append("]}");
+                    java.io.FileWriter fw = new java.io.FileWriter(jsonFile);
+                    fw.write(sb.toString());
+                    fw.close();
+                } catch (Exception e) {
+                    Log.e("WebServer", "Error JSON gen", e);
+                } finally {
+                    if (codec != null) {
+                        try {
+                            codec.stop();
+                            codec.release();
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    try {
+                        extractor.release();
+                    } catch (Exception ignored) {
+                    }
+                    generatingProgress = 100;
+                    try {
+                        Thread.sleep(500);
+                    } catch (Exception ignored) {
+                    }
+                    isGeneratingJson = false;
+                    generatingFileName = "";
+                }
+            }
+        }).start();
     }
 
     @Override
@@ -237,9 +369,6 @@ public class WebServer extends NanoHTTPD {
                     } catch (Exception ignored) {
                     }
 
-                    // Se ha eliminado el fallback de MediaMetadataRetriever (V56)
-                    // Confiamos exclusivamente en el JSON generado por AudioSentinel.
-
                     obj.put("durationMs", durationMs);
                     if (peaksArray != null)
                         obj.put("peaks", peaksArray);
@@ -256,7 +385,46 @@ public class WebServer extends NanoHTTPD {
             }
         }
 
-        if ("/api/audio".equals(uri)) {
+        if ("/api/generate-json".equals(uri) && Method.POST.equals(session.getMethod())) {
+            try {
+                Map<String, String> filesMap = new HashMap<>();
+                session.parseBody(filesMap);
+                String postData = filesMap.get("postData");
+                if (postData != null) {
+                    JSONObject json = new JSONObject(postData);
+                    String fName = json.getString("file");
+                    if (!isGeneratingJson) {
+                        File dir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
+                        File audioFile = new File(dir, fName);
+                        if (audioFile.exists())
+                            generateJsonForAudio(audioFile);
+                    }
+                }
+                JSONObject res = new JSONObject();
+                res.put("status", "ok");
+                return newFixedLengthResponse(Response.Status.OK, "application/json", res.toString());
+            } catch (Exception e) {
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "Error");
+            }
+        }
+
+        if ("/api/generate-progress".equals(uri)) {
+            try {
+                JSONObject res = new JSONObject();
+                res.put("isGenerating", isGeneratingJson);
+                res.put("file", generatingFileName);
+                res.put("progress", generatingProgress);
+                Response r = newFixedLengthResponse(Response.Status.OK, "application/json", res.toString());
+                r.addHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+                return r;
+            } catch (Exception e) {
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "Error");
+            }
+        }
+
+        if ("/api/audio".equals(uri))
+
+        {
             Map<String, String> parms = session.getParms();
             String fileName = parms.get("file");
 
@@ -375,6 +543,8 @@ public class WebServer extends NanoHTTPD {
             }
         }
 
-        return newFixedLengthResponse(Response.Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "404 Not Found");
+        return
+
+        newFixedLengthResponse(Response.Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "404 Not Found");
     }
 }

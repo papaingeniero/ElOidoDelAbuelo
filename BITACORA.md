@@ -1036,5 +1036,28 @@ La "Exportación Híbrida" demuestra que una buena arquitectura front-end debe s
 | 4. Install & Launch (ADB) | ✅ |
 | 5. Bitácora (APPEND) | ✅ |
 | 6. Changelog (PREPEND) | ✅ |
-| 7. Commit & Push (Snapshot) | ⬜ |
+| 7. Commit & Push (Snapshot) | ✅ |
+
+## 🚀 Hotfix V67: Motor de Reconstrucción Nativa de JSON | 25-Feb-2026
+### 📜 El Problema
+Archivos de audio "huérfanos" de telemetría (sin archivo `.json` de picos) debido a cortes inesperados (batería agotada, crash del servicio). Estos archivos, aunque reproducibles, no mostraban forma de onda ni duración correcta en el historial, perdiendo la ventaja del análisis forense.
+
+### 🛠️ La Solución
+Se ha implementado un sistema de **Recuperación de Desastres** nativo:
+1. **Backend** (`WebServer.java`): Motor asíncrono que utiliza `MediaExtractor` y `MediaCodec` para decodificar el audio bit-a-bit y calcular los picos reales (400 puntos) sin cargar todo el archivo en memoria.
+2. **Frontend** (`index.html`): Detección automática de archivos sin picos. Se muestra un overlay de "Reconstrucción" con barra de progreso en tiempo real mediante polling.
+3. **Persistencia**: El JSON generado se guarda físicamente en el Xiaomi con el mismo estándar que el AudioSentinel original.
+
+### 🎓 Lecciones Aprendidas
+- **MediaCodec es Eficiente**: Decodificar un audio de 3 horas para generar picos toma segundos en el Redmi 9C, demostrando que es mejor procesar bajo demanda que dejar archivos sin datos.
+- **Volatilidad de Threads**: Al ser un servidor web (NanoHTTPD), el motor de reconstrucción debe ser `volatile` y gestionar su propio ciclo de vida para evitar fugas si se cierran múltiples sesiones.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V67) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.67 | ⬜ |
+| 5. Motor MediaCodec Verificado | ✅ |
+| 6. UI de Progreso Verificada | ✅ |
 
