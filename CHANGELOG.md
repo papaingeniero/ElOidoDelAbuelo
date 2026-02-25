@@ -1,3 +1,7 @@
+## [v1.0-dev.66] - 2026-02-25
+### Changed
+- **Snapshot Deployment**: Versión de consolidación con mejoras en exportación híbrida y robustez del analizador forense.
+
 ## [v1.0-dev.65] - 2026-02-25
 ### Added
 - **Exportación Híbrida**: Añadido botón "Exportar" en el historial que permite compartir grabaciones usando la Web Share API nativa (iOS/Android) o descargar el archivo directamente en PC.

@@ -1015,3 +1015,26 @@ Se implementó un **Motor de Exportación Híbrido**:
 | 5. Layout Flexbox (Botones) Verificado | ✅ |
 | 6. Lógica de Exportación (JS) Inyectada | ✅ |
 
+## 🚀 Snapshot v1.0-dev.66: Consolidación de Exportación e Historial | 25-Feb-2026
+### 📜 El Problema
+Consolidación de las últimas mejoras críticas en la interfaz de usuario y herramientas forenses para una versión de prueba estable. Se busca validar el flujo completo de exportación y la robustez del analizador en grabaciones de larga duración.
+
+### 🛠️ La Solución
+1. **Identidad**: Incremento a `v1.0-dev.66` (Snapshot).
+2. **Historial de Alertas**: Se consolida el diseño de doble botón (Análisis y Exportación).
+3. **Robustez Forense**: Soporte definitivo para archivos sin picos (fallback visual y actualización de duración dinámica).
+4. **Despliegue**: Clean build y despliegue por ADB WiFi exitoso.
+
+### 🎓 Lección del Día
+La "Exportación Híbrida" demuestra que una buena arquitectura front-end debe ser resiliente al entorno: tratar los archivos como `Blob` y delegar en la `Web Share API` permite que la app se sienta nativa en iOS sin perder funcionalidad en escritorio.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V66) | ✅ |
+| 2. Purity (Git Status Limpio) | ✅ |
+| 3. Build (`assembleDebug`) | ✅ |
+| 4. Install & Launch (ADB) | ✅ |
+| 5. Bitácora (APPEND) | ✅ |
+| 6. Changelog (PREPEND) | ✅ |
+| 7. Commit & Push (Snapshot) | ⬜ |
+
