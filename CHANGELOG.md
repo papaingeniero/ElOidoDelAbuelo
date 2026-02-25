@@ -1,3 +1,7 @@
+## [v1.0-dev.71] - 2026-02-25
+### Optimized
+- **Motor de Reconstrucción JSON**: Implementado modo 'Turbo-Polite'. Ahora procesa ráfagas de 100 frames y descansa solo 1ms, recuperando la velocidad de proceso (~30x) sin sacrificar la estabilidad.
+
 ## [v1.0-dev.70] - 2026-02-25
 ### Fixed
 - **Servidor Web**: Migrada la entrega del Dashboard (`index.html`) a respuestas de longitud fija (Fixed-Length) para garantizar la visualización correcta bajo carga de CPU.

@@ -147,6 +147,7 @@ public class WebServer extends NanoHTTPD {
                     long currentWindowEnd = windowUs;
                     long presentationTimeUs = 0;
                     int iterationsWithoutOutput = 0;
+                    int burstCounter = 0;
 
                     while (!isEOS) {
                         int inIndex = codec.dequeueInputBuffer(10000);
@@ -196,10 +197,15 @@ public class WebServer extends NanoHTTPD {
                                 break;
                             }
                         }
-                        // Throttling V69: Pequeña pausa para dejar que el sistema respire (MIUI Safe)
-                        try {
-                            Thread.sleep(10);
-                        } catch (Exception ignored) {
+
+                        // Turbo-Polite V71: Procesar 100 iteraciones a toda velocidad y descansar 1ms
+                        burstCounter++;
+                        if (burstCounter >= 100) {
+                            burstCounter = 0;
+                            try {
+                                Thread.sleep(1);
+                            } catch (Exception ignored) {
+                            }
                         }
                     }
                     while (peaks.size() < TARGET_PEAKS)

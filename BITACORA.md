@@ -1095,6 +1095,22 @@ Tras implementar el throttling en V69, el Dashboard presentaba problemas de carg
 | 3. Verificación de Carga (Root) | ✅ |
 | 4. Despliegue v1.0-dev.70 | ✅ |
 
+## 🚀 Hotfix V71: Modo Turbo-Polite (Optimización CPU) | 25-Feb-2026
+### 📜 El Problema
+El throttling fijo de 10ms (V69/V70) resultó ser excesivamente lento para grabaciones largas, reduciendo la velocidad de reconstrucción a niveles inaceptables.
+
+### 🛠️ La Solución
+1.  **Turbo-Polite**: Implementado un contador de ráfaga (*burst*) que permite al MediaCodec procesar 100 iteraciones a máxima velocidad sostenida.
+2.  **Pausa Micro**: Tras cada ráfaga de 100, el hilo duerme solo **1ms** (antes eran 10ms en cada iteración).
+3.  **Resultado**: Se recupera la velocidad de ~30x-40x tiempo real pero manteniendo los "huecos" de CPU necesarios para que NanoHTTPD y MIUI operen sin problemas.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Burst Logic (100 iters) | ✅ |
+| 2. Sleep 1ms Optimization | ✅ |
+| 3. Velocidad Reconstrucción | ✅ |
+| 4. Despliegue v1.0-dev.71 | ✅ |
+
 ## 🚀 Hotfix V69: Motor 'Polite' (CPU Throttling) | 25-Feb-2026
 ### 📜 El Problema
 El motor de reconstrucción MediaCodec (V67/V68) era demasiado agresivo. Al procesar archivos de 4 horas, consumía el 100% de un núcleo de CPU de forma sostenida, provocando:
