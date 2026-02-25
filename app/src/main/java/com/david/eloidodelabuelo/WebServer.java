@@ -147,7 +147,7 @@ public class WebServer extends NanoHTTPD {
                     long currentWindowEnd = windowUs;
                     long presentationTimeUs = 0;
                     int iterationsWithoutOutput = 0;
-                    int burstCounter = 0;
+                    long lastBreathUs = 0;
 
                     while (!isEOS) {
                         int inIndex = codec.dequeueInputBuffer(10000);
@@ -170,9 +170,11 @@ public class WebServer extends NanoHTTPD {
                             if (info.size > 0 && outBuffer != null) {
                                 outBuffer.position(info.offset);
                                 outBuffer.limit(info.offset + info.size);
-                                java.nio.ShortBuffer shortBuf = outBuffer.asShortBuffer();
-                                while (shortBuf.hasRemaining()) {
-                                    short sample = shortBuf.get();
+
+                                // Zero-Allocation Pattern: Acceso directo a bytes nativos
+                                outBuffer.order(java.nio.ByteOrder.nativeOrder());
+                                while (outBuffer.remaining() >= 2) {
+                                    short sample = outBuffer.getShort();
                                     int absVal = Math.abs(sample);
                                     if (absVal > currentPeakMax)
                                         currentPeakMax = absVal;
@@ -186,28 +188,27 @@ public class WebServer extends NanoHTTPD {
                             }
                             if (durationUs > 0) {
                                 generatingProgress = (int) ((presentationTimeUs * 100) / durationUs);
-                                if (generatingProgress % 5 == 0) { // Log cada 5% para no saturar
+                                if (generatingProgress % 5 == 0) {
                                     Log.d("WebServer", "Reconstrucción: " + generatingProgress + "%");
                                 }
                             }
                             codec.releaseOutputBuffer(outIndex, false);
                             if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0)
                                 isEOS = true;
+
+                            // Anti-Watchdog (MIUI LowMem Killer): Válvula de respiración de CPU
+                            if (info.presentationTimeUs - lastBreathUs > 5000000L) {
+                                lastBreathUs = info.presentationTimeUs;
+                                try {
+                                    Thread.sleep(5);
+                                } catch (Exception ignored) {
+                                }
+                            }
                         } else {
                             iterationsWithoutOutput++;
                             if (iterationsWithoutOutput > 500) {
                                 Log.e("WebServer", "Codec stuck (500 iterations), abortando.");
                                 break;
-                            }
-                        }
-
-                        // Safe-Turbo V72: Procesar 50 iteraciones (burst) y descansar 2ms
-                        burstCounter++;
-                        if (burstCounter >= 50) {
-                            burstCounter = 0;
-                            try {
-                                Thread.sleep(2);
-                            } catch (Exception ignored) {
                             }
                         }
                     }

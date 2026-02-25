@@ -1,3 +1,8 @@
+## [v1.0-dev.73] - 2026-02-25
+### Fixed
+- **Motor de Reconstrucción JSON (Zero-Allocation)**: Sustituido el uso de `ShortBuffer` por acceso directo a bytes nativos para eliminar la generación de basura de objetos Java.
+- **Estabilidad térmica**: Implementada válvula de respiración de 5ms cada 5 segundos de audio para reducir la presión sobre la CPU y evitar el LMK de MIUI.
+
 ## [v1.0-dev.72] - 2026-02-25
 ### Changed
 - **Motor de Reconstrucción JSON**: Implementado modo 'Safe-Turbo' (Burst 50 / Sleep 2ms) para evitar cierres por Low Memory Killer en MIUI 12.

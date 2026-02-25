@@ -1128,6 +1128,23 @@ El Modo Turbo V71 (Burst 100 / Sleep 1ms) causaba que Android matara la app medi
 | 3. Progress Log (Modulo 5) | ✅ |
 | 4. Despliegue v1.0-dev.72 | ✅ |
 
+## 🚀 Hotfix V73: Zero-Allocation & Thermal Breath | 25-Feb-2026
+### 📜 El Problema
+El LMK (Low Memory Killer) de MIUI seguía matando la app a pesar del Safe-Turbo (v72).
+**Diagnóstico (Gemini 3 Pro + Arqueología)**: La creación masiva de objetos `ShortBuffer` en cada iteración del bucle de decodificación saturaba el Garbage Collector (GC). El GC entraba en pánico al no poder limpiar la basura tan rápido como se generaba, provocando que Android interpretara el proceso como inestable o agotador de recursos.
+
+### 🛠️ La Solución
+1.  **Zero-Allocation Pattern**: Eliminada la instanciación de `shortBuf` mediante `asShortBuffer()`. Ahora se accede directamente a los bytes nativos del `ByteBuffer` mediante `getShort()`. Cero basura creada en el bucle principal.
+2.  **Thermal Breath (Reloj Térmico)**: Implementada una válvula de respiración que duerme el hilo 5ms por cada 5 segundos de audio procesado. Esto es mucho más preciso que el burst genérico, ya que se basa en la carga de trabajo real del codec.
+3.  **Prioridad Nativa**: Al no generar basura Java, el motor puede correr a máxima velocidad teórica sin disparar el recolector de basura.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Patrón Zero-Allocation | ✅ |
+| 2. Valve Breath (5s Audio) | ✅ |
+| 3. Eliminación ShordBuf GC | ✅ |
+| 4. Despliegue v1.0-dev.73 | ✅ |
+
 ## 🚀 Hotfix V69: Motor 'Polite' (CPU Throttling) | 25-Feb-2026
 ### 📜 El Problema
 El motor de reconstrucción MediaCodec (V67/V68) era demasiado agresivo. Al procesar archivos de 4 horas, consumía el 100% de un núcleo de CPU de forma sostenida, provocando:
