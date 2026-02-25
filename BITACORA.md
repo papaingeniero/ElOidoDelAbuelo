@@ -968,3 +968,27 @@ Triple intervención quirúrgica:
 | 6. MIME Fix Verificado (Safari iOS) | ✅ |
 | 7. Lazy Audio Init (Safari iOS) | ✅ |
 
+## 🚀 Hotfix V64: Soporte para Grabaciones Largas sin Chivato | 25-Feb-2026
+### 📜 El Problema
+Se detectó que grabaciones de larga duración (p. ej. >3 horas) que terminaban de forma anómala (sin cerrar el Chivato) no generaban el archivo `.json` de picos. 
+1. **Listado**: La tarjeta mostraba `--:--` para la duración.
+2. **Analizador**: El modal se quedaba bloqueado perpetuamente en "Procesando Audio..." porque el renderizado dependía de picos que no existían. Además, no se actualizaba la duración real desde el archivo de audio.
+
+### 🛠️ La Solución
+1. **Fallback Visual** (`index.html`): Si no hay picos en el JSON, el modal ahora muestra el mensaje *"Sin datos de onda — Pulsa PLAY para reproducir"* y oculta el spinner de carga inmediatamente.
+2. **Refresco de Duración Dinámica**: Se ajustó `onloadedmetadata` para que, en ausencia de picos, fuerce la actualización de `forensicDuration` desde los metadatos reales del audio cuando el usuario pulsa PLAY.
+3. **Persistencia de Gestión de Gesto**: Se mantiene la compatibilidad con Safari iOS (Lazy Audio Init).
+
+### 🎓 Lecciones Aprendidas
+- **La robustez requiere fallbacks**: No podemos confiar al 100% en que el post-procesado (Chivato) siempre termine. El frontend debe ser capaz de reproducir el audio base incluso si falla la telemetría visual.
+- **Cache de Assets**: El sistema de build de Android a veces no detecta cambios en assets si no se fuerza un clean build (`assembleDebug` ignoraba cambios menores en `index.html`).
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V64) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.64 | ⬜ |
+| 5. Fallback Modal Verificado (Chrome) | ✅ |
+| 6. Refresco de Duración Verificado (3h 55m) | ✅ |
+

@@ -1203,7 +1203,10 @@
                 drawForensicWaveform();
                 updateWaveTimeDisplay();
             } else {
-                waveLoading.style.display = 'flex';
+                // Archivo sin JSON (grabación antigua o larga sin Chivato)
+                waveLoading.style.display = 'none';
+                drawForensicWaveform();
+                updateWaveTimeDisplay();
             }
         }
 
@@ -1221,9 +1224,28 @@
         }
 
         function drawForensicWaveform() {
-            if (!forensicPeaks || forensicPeaks.length === 0) return;
+            if (!canvas) return;
             const width = canvas.width;
             const height = canvas.height;
+
+            if (!forensicPeaks || forensicPeaks.length <= 1) {
+                // Fallback: No hay picos, dibujar solo el mensaje y la línea de tiempo si está reproduciendo
+                ctx.clearRect(0, 0, width, height);
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.font = '14px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('Sin datos de onda — Pulsa PLAY para reproducir', width / 2, height / 2 + 5);
+                ctx.textAlign = 'left';
+
+                if (forensicAudio && forensicDuration > 0 && !isNaN(forensicAudio.currentTime)) {
+                    const currentPlayX = (forensicAudio.currentTime / forensicDuration) * width;
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(currentPlayX - 1, 0, 3, 10);
+                    ctx.fillRect(currentPlayX - 1, height - 10, 3, 10);
+                }
+                return;
+            }
+
             ctx.clearRect(0, 0, width, height);
 
             const localMax = Math.max(...forensicPeaks, 100);
@@ -1278,7 +1300,8 @@
                 drawForensicWaveform();
             };
             forensicAudio.onloadedmetadata = function () {
-                if (forensicDuration === 0 || isNaN(forensicDuration)) {
+                // Actualizar duración si venimos de un fallback (peaks.length <= 1 o duration <= 1)
+                if (forensicDuration <= 1 || isNaN(forensicDuration) || forensicPeaks.length <= 1) {
                     forensicDuration = forensicAudio.duration;
                     drawForensicWaveform();
                     updateWaveTimeDisplay();
