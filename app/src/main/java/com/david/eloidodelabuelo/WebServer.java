@@ -79,7 +79,7 @@ public class WebServer extends NanoHTTPD {
     }
 
     private void generateJsonForAudio(final File audioFile) {
-        new Thread(new Runnable() {
+        Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
                 isGeneratingJson = true;
@@ -191,10 +191,15 @@ public class WebServer extends NanoHTTPD {
                                 isEOS = true;
                         } else {
                             iterationsWithoutOutput++;
-                            if (iterationsWithoutOutput > 500) { // Mayor margen
+                            if (iterationsWithoutOutput > 500) {
                                 Log.e("WebServer", "Codec stuck (500 iterations), abortando.");
                                 break;
                             }
+                        }
+                        // Throttling V69: Pequeña pausa para dejar que el sistema respire (MIUI Safe)
+                        try {
+                            Thread.sleep(10);
+                        } catch (Exception ignored) {
                         }
                     }
                     while (peaks.size() < TARGET_PEAKS)
@@ -236,7 +241,9 @@ public class WebServer extends NanoHTTPD {
                     generatingFileName = "";
                 }
             }
-        }).start();
+        });
+        t.setPriority(Thread.MIN_PRIORITY);
+        t.start();
     }
 
     @Override

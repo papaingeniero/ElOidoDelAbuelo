@@ -1,3 +1,7 @@
+## [v1.0-dev.69] - 2026-02-25
+### Fixed
+- **Motor de Reconstrucción JSON**: Implementado modo 'polite' con throttling de CPU (10ms sleep) y prioridad mínima de hilo para evitar que MIUI mate la app durante procesos largos.
+
 ## [v1.0-dev.68] - 2026-02-25
 ### Fixed
 - **Motor de Reconstrucción JSON**: Corregido problema de progreso estancado en 0%. Ahora utiliza múltiples métodos de detección de duración (MediaMetadataRetriever + File Size) y posee un sistema de escape si el codec se bloquea.

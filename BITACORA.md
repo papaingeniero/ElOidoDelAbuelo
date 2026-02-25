@@ -1078,3 +1078,21 @@ El motor de reconstrucción JSON se quedaba estancado en 0% en ciertos archivos.
 | 3. Logs ADB Activados | ✅ |
 | 4. Install & Launch (V68) | ✅ |
 
+## 🚀 Hotfix V69: Motor 'Polite' (CPU Throttling) | 25-Feb-2026
+### 📜 El Problema
+El motor de reconstrucción MediaCodec (V67/V68) era demasiado agresivo. Al procesar archivos de 4 horas, consumía el 100% de un núcleo de CPU de forma sostenida, provocando:
+1.  **NanoHTTPD Timeout**: El servidor web no tenía ciclos suficientes para responder al polling de progreso.
+2.  **MIUI Kill**: El sistema Xiaomi detectaba el abuso de CPU y mataba el proceso de El Oído del Abuelo por seguridad térmica/batería.
+
+### 🛠️ La Solución
+1.  **CPU Throttling**: Inyectado un `Thread.sleep(10)` en cada iteración del bucle de decodificación. Esto reduce la velocidad de proceso pero permite que el sistema "respire".
+2.  **Baja Prioridad**: El hilo de reconstrucción ahora se lanza con `Thread.MIN_PRIORITY`.
+3.  **Estabilidad**: Se asegura que el servidor web responda siempre, incluso durante reconstrucciones pesadas.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Thread.MIN_PRIORITY | ✅ |
+| 2. Thread.sleep(10) Throttling | ✅ |
+| 3. Verificación de No-Bloqueo HTTP | ✅ |
+| 4. Install & Launch (V69) | ✅ |
+
