@@ -992,3 +992,26 @@ Se detectó que grabaciones de larga duración (p. ej. >3 horas) que terminaban 
 | 5. Fallback Modal Verificado (Chrome) | ✅ |
 | 6. Refresco de Duración Verificado (3h 55m) | ✅ |
 
+## 🚀 Hotfix V65: Exportación Híbrida (Web Share API) | 25-Feb-2026
+### 📜 El Problema
+No existía una forma sencilla de sacar los archivos de audio del Xiaomi directamente desde la interfaz web, obligando al usuario a usar ADB o File Explores externos. Se necesitaba una solución nativa para compartir archivos desde el iPhone (Safari) y descargar en PC (Chrome/Desktop).
+
+### 🛠️ La Solución
+Se implementó un **Motor de Exportación Híbrido**:
+1. **Interfaz**: Cada tarjeta ahora tiene dos botones ("Analizar" y "📤 Exportar") usando un layout flexbox.
+2. **Web Share API**: Si el navegador lo soporta (iOS/Android), el archivo se descarga como Blob y se pasa al menú nativo de compartir.
+3. **Fallback Automático**: Si el navegador no soporta Share (Desktop), se genera una descarga forzada (`a.download`).
+
+### 🎓 Lecciones Aprendidas
+- **Blob handling**: Para compartir archivos con la Web Share API, es necesario convertirlos primero a un objeto `File` a partir de un `Blob` descargado via `fetch`.
+- **MIME exactitud**: Safari es estricto; exportar con `type: 'audio/aac'` asegura que el archivo se identifique correctamente en el ecosistema Apple.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V65) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.65 | ⬜ |
+| 5. Layout Flexbox (Botones) Verificado | ✅ |
+| 6. Lógica de Exportación (JS) Inyectada | ✅ |
+

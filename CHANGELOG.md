@@ -1,3 +1,7 @@
+## [v1.0-dev.65] - 2026-02-25
+### Added
+- **Exportación Híbrida**: Añadido botón "Exportar" en el historial que permite compartir grabaciones usando la Web Share API nativa (iOS/Android) o descargar el archivo directamente en PC.
+
 ## [v1.0-dev.64] - 2026-02-25
 ### Fixed
 - **Soporte para Grabaciones Largas sin Chivato**: Se ha corregido el bloqueo del modal de análisis cuando un archivo de audio no tiene el archivo `.json` de picos (forma de onda). Ahora muestra un mensaje informativo y actualiza la duración real (p. ej. archivos de >3h) al iniciar la reproducción.

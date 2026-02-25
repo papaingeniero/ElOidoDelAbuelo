@@ -1049,7 +1049,10 @@
                                 <span class="history-size">⏱️ ${durStr} · 📁 ${sizeStr}</span>
                             </div>
                             <canvas id="${canvasId}" width="400" height="40" style="width:100%; height:40px; display:${f.peaks ? 'block' : 'none'}; margin-top:8px; border-radius:6px; background:#1a1a1a;"></canvas>
-                            <button class="settings-btn" style="display: block; width: 100%; margin-top: 10px; background: #333; padding: 12px; font-size: 1.05rem;" onclick="openWaveform('${f.name}')">👁️ Analizar Pista Auditiva</button>
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <button class="settings-btn" style="flex: 1; margin: 0; background: #333; padding: 12px; font-size: 1.05rem;" onclick="openWaveform('${f.name}')">👁️ Analizar Pista</button>
+                                <button class="settings-btn export-btn" style="flex: 0 0 auto; margin: 0; background: #283593; padding: 12px; font-size: 1.05rem;" onclick="exportAudio('${f.name}', this)">📤 Exportar</button>
+                            </div>
                         `;
 
                         // Long-press HIGHLIGHT (toggle ámbar/dorado)
@@ -1440,6 +1443,54 @@
                     updateDashboard();
                 }).catch(err => console.error("Error guardando umbral", err));
             });
+        }
+
+        // --- MOTOR DE EXPORTACIÓN HÍBRIDO ---
+        async function exportAudio(fileName, btnElement) {
+            const url = '/api/audio?file=' + encodeURIComponent(fileName);
+            const oldText = btnElement.innerHTML;
+            btnElement.innerHTML = '⏳...';
+            btnElement.disabled = true;
+
+            try {
+                // 1. Descargar el archivo al navegador como Blob
+                const response = await fetch(url);
+                const blob = await response.blob();
+                let shared = false;
+
+                // 2. Intentar Web Share API (Nativo en iOS)
+                if (navigator.canShare) {
+                    const file = new File([blob], fileName, { type: 'audio/aac' }); // Usar MIME aac para coincidir con WebServer
+                    if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            title: 'Grabación de El Oído del Abuelo',
+                            files: [file]
+                        });
+                        shared = true;
+                    }
+                }
+
+                // 3. Fallback: Descarga clásica si el navegador no soporta Share
+                if (!shared) {
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = downloadUrl;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(downloadUrl);
+                    document.body.removeChild(a);
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError' && err.name !== 'NotAllowedError') { // Ignorar cancelaciones de usuario
+                    console.error("Error exportando audio", err);
+                    alert("No se pudo exportar el archivo.");
+                }
+            } finally {
+                btnElement.innerHTML = oldText;
+                btnElement.disabled = false;
+            }
         }
 
         // Polling agresivo para sensación de tiempo real fluido en Dashboard general
