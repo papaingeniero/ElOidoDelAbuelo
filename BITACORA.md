@@ -1076,7 +1076,24 @@ El motor de reconstrucción JSON se quedaba estancado en 0% en ciertos archivos.
 | 1. Fallback Duración Implementado | ✅ |
 | 2. Escape de Bucle (500 iters) | ✅ |
 | 3. Logs ADB Activados | ✅ |
-| 4. Install & Launch (V68) | ✅ |
+| 4. Install & Launch (V69) | ✅ |
+
+## 🚀 Hotfix V70: Entrega de Activos de Longitud Fija | 25-Feb-2026
+### 📜 El Problema
+Tras implementar el throttling en V69, el Dashboard presentaba problemas de carga (pantalla en blanco o carga infinita) a pesar de que la API de telemetría funcionaba.
+**Diagnóstico**: El uso de `newChunkedResponse` para el `index.html` (desde Assets) bajo condiciones de saturación de CPU o red inestable puede causar que el navegador no cierre la conexión correctamente si el InputStream no reporta el final de forma síncrona con el buffer de NanoHTTPD.
+
+### 🛠️ La Solución
+1.  **Fixed-Length Response**: Se lee el `index.html` completo a un buffer de bytes en memoria antes de servirlo.
+2.  **MIME & Length**: Se utiliza `newFixedLengthResponse` proporcionando el tamaño exacto, lo que facilita al navegador saber cuándo ha terminado la descarga.
+3.  **Logs de Acceso**: Añadido log específico cada vez que se sirve el Dashboard para trazabilidad.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Mem-Buffer para Assets | ✅ |
+| 2. Fixed-Length Header | ✅ |
+| 3. Verificación de Carga (Root) | ✅ |
+| 4. Despliegue v1.0-dev.70 | ✅ |
 
 ## 🚀 Hotfix V69: Motor 'Polite' (CPU Throttling) | 25-Feb-2026
 ### 📜 El Problema

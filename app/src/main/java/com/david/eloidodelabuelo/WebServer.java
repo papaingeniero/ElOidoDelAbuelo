@@ -575,12 +575,23 @@ public class WebServer extends NanoHTTPD {
 
         if ("/".equals(uri)) {
             try {
+                Log.d("WebServer", "Sirviendo Dashboard (root)");
                 InputStream is = context.getAssets().open("web/index.html");
-                Response r = newChunkedResponse(Response.Status.OK, "text/html", is);
+                java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+                int nRead;
+                byte[] data = new byte[16384];
+                while ((nRead = is.read(data, 0, data.length)) != -1) {
+                    buffer.write(data, 0, nRead);
+                }
+                is.close();
+                byte[] bytes = buffer.toByteArray();
+                Response r = newFixedLengthResponse(Response.Status.OK, "text/html",
+                        new java.io.ByteArrayInputStream(bytes), bytes.length);
                 r.addHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
                 r.addHeader("Pragma", "no-cache");
                 return r;
             } catch (IOException e) {
+                Log.e("WebServer", "Error cargando Dashboard", e);
                 return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
                         "No se pudo cargar el Dashboard: " + e.getMessage());
             }

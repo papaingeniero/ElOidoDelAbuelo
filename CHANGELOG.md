@@ -1,3 +1,7 @@
+## [v1.0-dev.70] - 2026-02-25
+### Fixed
+- **Servidor Web**: Migrada la entrega del Dashboard (`index.html`) a respuestas de longitud fija (Fixed-Length) para garantizar la visualización correcta bajo carga de CPU.
+
 ## [v1.0-dev.69] - 2026-02-25
 ### Fixed
 - **Motor de Reconstrucción JSON**: Implementado modo 'polite' con throttling de CPU (10ms sleep) y prioridad mínima de hilo para evitar que MIUI mate la app durante procesos largos.
