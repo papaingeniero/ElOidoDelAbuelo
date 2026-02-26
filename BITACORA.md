@@ -334,10 +334,12 @@ Se ha realizado una cirugía de bajo consumo en el núcleo de la aplicación:
 1. **Buffering Táctico**: Se ha cuadruplicado el tamaño del buffer de `AudioRecord`. Al procesar ráfagas de audio más grandes, la CPU puede "dormir" más tiempo entre ciclos, reduciendo drásticamente los Wake-ups del procesador.
 2. **Cache RAM de Preferencias**: Se ha implementado un `OnSharedPreferenceChangeListener`. El hilo de audio ya no consulta el disco; ahora lee constantes volátiles en RAM que se actualizan solo cuando el usuario cambia algo en el Dashboard. Esto elimina miles de accesos a archivos XML por minuto.
 3. **Proxy de Telemetría**: El servidor web ya no interroga al hardware de batería en cada petición GET. Se ha implementado una caché con refresco de 60 segundos, minimizando el impacto de tener el Dashboard web abierto.
-
-
 ### 🎓 Lecciones Aprendidas
 - En sistemas embebidos/Android 10, es preferible procesar datos en ráfagas (Batch processing) que en flujo continuo mínimo, ya que permite que los estados de bajo consumo del núcleo (C-States) se activen de forma efectiva.
+
+## [v1.0-dev.75] - 2026-02-26
+### Changed
+- **Consolidación de Camuflaje**: Despliegue formal de la identidad "Android System Listener" para asegurar su persistencia en el ciclo de vida del desarrollo.
 
 ## 🚀 v1.0-dev.28 (2026-02-22) - El Salto del Oído: AAC Universal y Modo Tri-Estado
 
@@ -1190,3 +1192,20 @@ El usuario solicita camuflar la aplicación para que pase desapercibida en el di
 | 2. Nombre: Android System Listener | ✅ |
 | 3. AndroidManifest linkage | ✅ |
 | 4. Despliegue v1.0-dev.74 | ✅ |
+
+## 🚀 Snapshot v75: Consolidación de Camuflaje | 26-Feb-2026
+### 📜 El Problema
+Tras la implementación de la "Operación Android System Listener" (V74), se requiere realizar un despliegue formal de snapshot para congelar el estado de camuflaje y asegurar la persistencia de la nueva identidad visual en el flujo de desarrollo.
+
+### 🛠️ La Solución
+1.  **Fase de Congelación**: Empaquetado de todos los recursos mipmap y configuraciones del Manifest bajo una nueva Snapshot de desarrollo.
+2.  **Validación de Identidad**: Confirmación de que el `MainActivity` Headless y el nombre de sistema operan correctamente en conjunto.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Persistencia de Nombre | ✅ |
+| 2. Persistencia de Iconos | ✅ |
+| 3. Despliegue v1.0-dev.75 | ✅ |
+
+### 🎓 Lección del Día
+En proyectos de camuflaje o "Stealth", el versionado incremental frecuente es el mejor aliado de la seguridad. Cada snapshot asegura que si MIUI decide revertir algún cambio o si el sistema requiere un reset, la identidad camuflada es la base estructural y no un parche volátil.

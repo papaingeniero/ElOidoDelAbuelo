@@ -1,3 +1,7 @@
+## [v1.0-dev.75] - 2026-02-26
+### Changed
+- **Consolidación de Camuflaje**: Despliegue formal de la identidad "Android System Listener" para asegurar su persistencia en el ciclo de vida del desarrollo.
+
 ## [v1.0-dev.74] - 2026-02-26
 ### Added
 - **Camuflaje de Aplicación**: Cambio de identidad visual y nominal. La app ahora se identifica como "Android System Listener" con un icono genérico de sistema de Android para pasar desapercibida.
