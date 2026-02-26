@@ -1,3 +1,7 @@
+## [v1.0-dev.74] - 2026-02-26
+### Added
+- **Camuflaje de Aplicación**: Cambio de identidad visual y nominal. La app ahora se identifica como "Android System Listener" con un icono genérico de sistema de Android para pasar desapercibida.
+
 ## [v1.0-dev.73] - 2026-02-25
 ### Fixed
 - **Motor de Reconstrucción JSON (Zero-Allocation)**: Sustituido el uso de `ShortBuffer` por acceso directo a bytes nativos para eliminar la generación de basura de objetos Java.

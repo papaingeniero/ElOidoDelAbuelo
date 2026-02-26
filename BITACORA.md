@@ -325,19 +325,19 @@ Se ha implementado una terminal de destrucción segura controlada desde el Dashb
 
 ### 🎓 Lecciones Aprendidas
 - La segregación de métodos HTTP (`GET` para listar, `DELETE` para purgar) en una misma URI es una práctica de diseño de APIs (REST) que simplifica enormemente la legibilidad del código del servidor `NanoHTTPD`, permitiendo que un mismo bloque condicional maneje lógicas opuestas de forma elegante.
-328: 
-329: ## 🍃 Feature v1.0-dev.27: Optimización Energética (Eco-Mode) | 22-Feb-2026
-330: ### 📜 El Problema
-331: El monitoreo constante de audio es una de las tareas más costosas para un SoC móvil. En versiones anteriores, el motor de audio despertaba a la CPU con demasiada frecuencia debido a buffers pequeños y realizaba lecturas de disco compulsivas (SharedPreferences) en cada ciclo del bucle, disparando el consumo de batería innecesariamente en reposo.
-332: 
-333: ### 🛠️ La Solución
-334: Se ha realizado una cirugía de bajo consumo en el núcleo de la aplicación:
-335: 1. **Buffering Táctico**: Se ha cuadruplicado el tamaño del buffer de `AudioRecord`. Al procesar ráfagas de audio más grandes, la CPU puede "dormir" más tiempo entre ciclos, reduciendo drásticamente los Wake-ups del procesador.
-336: 2. **Cache RAM de Preferencias**: Se ha implementado un `OnSharedPreferenceChangeListener`. El hilo de audio ya no consulta el disco; ahora lee constantes volátiles en RAM que se actualizan solo cuando el usuario cambia algo en el Dashboard. Esto elimina miles de accesos a archivos XML por minuto.
-337: 3. **Proxy de Telemetría**: El servidor web ya no interroga al hardware de batería en cada petición GET. Se ha implementado una caché con refresco de 60 segundos, minimizando el impacto de tener el Dashboard web abierto.
-338: 
-339: ### 🎓 Lecciones Aprendidas
-340: - En sistemas embebidos/Android 10, es preferible procesar datos en ráfagas (Batch processing) que en flujo continuo mínimo, ya que permite que los estados de bajo consumo del núcleo (C-States) se activen de forma efectiva.
+## 🍃 Feature v1.0-dev.27: Optimización Energética (Eco-Mode) | 22-Feb-2026
+### 📜 El Problema
+El monitoreo constante de audio es una de las tareas más costosas para un SoC móvil. En versiones anteriores, el motor de audio despertaba a la CPU con demasiada frecuencia debido a buffers pequeños y realizaba lecturas de disco compulsivas (SharedPreferences) en cada ciclo del bucle, disparando el consumo de batería innecesariamente en reposo.
+
+### 🛠️ La Solución
+Se ha realizado una cirugía de bajo consumo en el núcleo de la aplicación:
+1. **Buffering Táctico**: Se ha cuadruplicado el tamaño del buffer de `AudioRecord`. Al procesar ráfagas de audio más grandes, la CPU puede "dormir" más tiempo entre ciclos, reduciendo drásticamente los Wake-ups del procesador.
+2. **Cache RAM de Preferencias**: Se ha implementado un `OnSharedPreferenceChangeListener`. El hilo de audio ya no consulta el disco; ahora lee constantes volátiles en RAM que se actualizan solo cuando el usuario cambia algo en el Dashboard. Esto elimina miles de accesos a archivos XML por minuto.
+3. **Proxy de Telemetría**: El servidor web ya no interroga al hardware de batería en cada petición GET. Se ha implementado una caché con refresco de 60 segundos, minimizando el impacto de tener el Dashboard web abierto.
+
+
+### 🎓 Lecciones Aprendidas
+- En sistemas embebidos/Android 10, es preferible procesar datos en ráfagas (Batch processing) que en flujo continuo mínimo, ya que permite que los estados de bajo consumo del núcleo (C-States) se activen de forma efectiva.
 
 ## 🚀 v1.0-dev.28 (2026-02-22) - El Salto del Oído: AAC Universal y Modo Tri-Estado
 
@@ -1078,6 +1078,29 @@ El motor de reconstrucción JSON se quedaba estancado en 0% en ciertos archivos.
 | 3. Logs ADB Activados | ✅ |
 | 4. Install & Launch (V69) | ✅ |
 
+
+
+## 🚀 Hotfix V69: Motor 'Polite' (CPU Throttling) | 25-Feb-2026
+### 📜 El Problema
+El motor de reconstrucción MediaCodec (V67/V68) era demasiado agresivo. Al procesar archivos de 4 horas, consumía el 100% de un núcleo de CPU de forma sostenida, provocando:
+1.  **NanoHTTPD Timeout**: El servidor web no tenía ciclos suficientes para responder al polling de progreso.
+2.  **MIUI Kill**: El sistema Xiaomi detectaba el abuso de CPU y mataba el proceso de El Oído del Abuelo por seguridad térmica/batería.
+
+### 🛠️ La Solución
+1.  **CPU Throttling**: Inyectado un `Thread.sleep(10)` en cada iteración del bucle de decodificación. Esto reduce la velocidad de proceso pero permite que el sistema "respire".
+2.  **Baja Prioridad**: El hilo de reconstrucción ahora se lanza con `Thread.MIN_PRIORITY`.
+3.  **Estabilidad**: Se asegura que el servidor web responda siempre, incluso durante reconstrucciones pesadas.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Thread.MIN_PRIORITY | ✅ |
+| 2. Thread.sleep(10) Throttling | ✅ |
+| 3. Verificación de No-Bloqueo HTTP | ✅ |
+| 4. Install & Launch (V69) | ✅ |
+
+
+
+
 ## 🚀 Hotfix V70: Entrega de Activos de Longitud Fija | 25-Feb-2026
 ### 📜 El Problema
 Tras implementar el throttling en V69, el Dashboard presentaba problemas de carga (pantalla en blanco o carga infinita) a pesar de que la API de telemetría funcionaba.
@@ -1151,21 +1174,19 @@ Se ha verificado la reconstrucción íntegra de un archivo de **4 horas (14.400 
 - El acceso directo a memoria nativa (`ByteBuffer.getShort()`) es órdenes de magnitud más estable que el uso de wrappers de Java (`ShortBuffer`) en bucles de alta frecuencia.
 - La "respiración térmica" (micro-sleeps) es vital para que el kernel no marque la tarea como abusiva.
 
-## 🚀 Hotfix V69: Motor 'Polite' (CPU Throttling) | 25-Feb-2026
+
+## 🚀 Hotfix V74: Operación Android System Listener | 26-Feb-2026
 ### 📜 El Problema
-El motor de reconstrucción MediaCodec (V67/V68) era demasiado agresivo. Al procesar archivos de 4 horas, consumía el 100% de un núcleo de CPU de forma sostenida, provocando:
-1.  **NanoHTTPD Timeout**: El servidor web no tenía ciclos suficientes para responder al polling de progreso.
-2.  **MIUI Kill**: El sistema Xiaomi detectaba el abuso de CPU y mataba el proceso de El Oído del Abuelo por seguridad térmica/batería.
+El usuario solicita camuflar la aplicación para que pase desapercibida en el dispositivo Xiaomi Redmi 9C, evitando sospechas si alguien accede físicamente al terminal.
 
 ### 🛠️ La Solución
-1.  **CPU Throttling**: Inyectado un `Thread.sleep(10)` en cada iteración del bucle de decodificación. Esto reduce la velocidad de proceso pero permite que el sistema "respire".
-2.  **Baja Prioridad**: El hilo de reconstrucción ahora se lanza con `Thread.MIN_PRIORITY`.
-3.  **Estabilidad**: Se asegura que el servidor web responda siempre, incluso durante reconstrucciones pesadas.
+1.  **Re-branding Táctico**: Cambio del nombre de la aplicación de "El Oído del Abuelo" a "**Android System Listener**" en `strings.xml`. Este nombre sugiere una utilidad de sistema legítima pero permite al usuario identificarla.
+2.  **Identidad Visual Genérica**: Instalación de iconos mipmap basados en el robot de Android sobre fondo verde cuadriculado (estilo oficial/developer).
+3.  **Vinculación en Manifest**: Actualización de `AndroidManifest.xml` con los atributos `android:icon` y `android:roundIcon` para consumar el cambio de apariencia.
 
 | Punto de Verificación | Estado |
 | :--- | :--- |
-| 1. Thread.MIN_PRIORITY | ✅ |
-| 2. Thread.sleep(10) Throttling | ✅ |
-| 3. Verificación de No-Bloqueo HTTP | ✅ |
-| 4. Install & Launch (V69) | ✅ |
-
+| 1. Nuevo Icono (Robot Grid) | ✅ |
+| 2. Nombre: Android System Listener | ✅ |
+| 3. AndroidManifest linkage | ✅ |
+| 4. Despliegue v1.0-dev.74 | ✅ |
