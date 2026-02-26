@@ -32,6 +32,7 @@ public class WebServer extends NanoHTTPD {
 
     private final Context context;
     private final AudioSentinel sentinel;
+    private final long appStartTime = System.currentTimeMillis();
 
     // Cache de telemetría (Eco-Mode V27)
     private long lastHardwarePollTime = 0;
@@ -266,12 +267,17 @@ public class WebServer extends NanoHTTPD {
                 json.put("currentAmplitude", sentinel.getCurrentAmplitude());
                 json.put("isRecording", sentinel.isCurrentlyRecording());
                 json.put("version", BuildConfig.VERSION_NAME);
+                json.put("appStartTime", appStartTime);
 
                 // Telemetría con Cache (Eco-Mode V27)
                 refreshHardwareTelemetry();
                 json.put("batteryPct", Math.round(cachedBatteryPct));
                 json.put("isCharging", cachedIsCharging);
                 json.put("tempCelsius", cachedTempCelsiusFull / 10.0f);
+
+                File musicDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
+                long freeSpace = (musicDir != null) ? musicDir.getUsableSpace() : 0;
+                json.put("freeSpaceBytes", freeSpace);
 
                 SharedPreferences prefs = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE);
                 json.put("micEnabled", prefs.getBoolean("MIC_ENABLED", true));

@@ -1209,3 +1209,29 @@ Tras la implementación de la "Operación Android System Listener" (V74), se req
 
 ### 🎓 Lección del Día
 En proyectos de camuflaje o "Stealth", el versionado incremental frecuente es el mejor aliado de la seguridad. Cada snapshot asegura que si MIUI decide revertir algún cambio o si el sistema requiere un reset, la identidad camuflada es la base estructural y no un parche volátil.
+
+---
+
+## 🚀 Snapshot v76: Telemetría Extendida (Uptime & Almacenamiento)
+**Fecha**: 2026-02-26 | **Versión**: `v1.0-dev.76`
+
+### 📜 El Problema
+Tras consolidar el camuflaje, surge la necesidad de monitorizar la salud del proceso servidor:
+1.  **Incertidumbre de Vida**: No hay forma de saber si MIUI ha matado el proceso y éste ha reiniciado, o si lleva días vivo.
+2.  **Gestión de Almacenamiento**: Las grabaciones en API 29 pueden llenar el disco sin aviso, provocando fallos en la persistencia de audio.
+3.  **Estética Visual**: El número de versión ensucia el título principal, restando impacto al camuflaje.
+
+### 🛠️ La Solución
+1.  **Monitor de Uptime**: Implementación de un timestamp inmutable (`appStartTime`) en `WebServer.java` que el Front-End usa para calcular el tiempo de vida en tiempo real (d, h, m).
+2.  **Monitor de Espacio Libre**: Integración del cálculo de `getUsableSpace()` en el directorio de música, con alerta visual roja en el Front-End si el espacio baja de 500MB.
+3.  **Rediseño del Dashboard**: Desplazamiento del número de versión a una ubicación subordinada bajo el título, mejorando la jerarquía visual y la legibilidad.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Contador de Uptime JS | ✅ |
+| 2. Cálculo Disk Space Java | ✅ |
+| 3. Layout Centrado Título | ✅ |
+| 4. Despliegue v1.0-dev.76 | ✅ |
+
+### 🎓 Lección del Día
+La telemetría no es solo "datos"; es la consciencia del sistema. En un entorno hostil como MIUI, saber cuánto tiempo ha sobrevivido el proceso (Uptime) es el KPI más importante para validar el éxito de las estrategias de persistencia y servicios en primer plano.

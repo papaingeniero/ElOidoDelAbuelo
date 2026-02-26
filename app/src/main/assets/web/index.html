@@ -440,7 +440,9 @@
 <body>
 
     <div class="dashboard">
-        <h1>El Oído del Abuelo <span id="appVersion" style="font-size: 0.8rem; color: var(--status-gray);"></span></h1>
+        <h1>El Oído del Abuelo</h1>
+        <div id="appVersion"
+            style="font-size: 0.8rem; color: var(--status-gray); margin-top: -10px; margin-bottom: 20px;"></div>
         <div id="statusBadge" class="status-badge">Vigilando</div>
         <button class="settings-btn" onclick="openSettings()">⚙️ Ajustes</button>
 
@@ -455,6 +457,16 @@
             <div style="display: flex; align-items: center; gap: 5px;">
                 <span id="tempIcon" style="transition: color 0.3s; font-size: 1.1rem;">🌡️</span>
                 <span id="tempText" style="transition: color 0.3s; color: #fff;">--°C</span>
+            </div>
+            <div style="width: 1px; height: 15px; background: rgba(255,255,255,0.2);"></div>
+            <div style="display: flex; align-items: center; gap: 5px;" title="Tiempo de actividad del servidor">
+                <span style="font-size: 1.1rem;">⏱️</span>
+                <span id="uptimeText" style="color: #fff; font-family: monospace;">--:--</span>
+            </div>
+            <div style="width: 1px; height: 15px; background: rgba(255,255,255,0.2);"></div>
+            <div style="display: flex; align-items: center; gap: 5px;" title="Espacio libre de almacenamiento">
+                <span style="font-size: 1.1rem;">💾</span>
+                <span id="storageText" style="color: #fff; font-family: monospace;">--</span>
             </div>
         </div>
 
@@ -715,6 +727,39 @@
                             } else {
                                 tempText.style.color = "#fff";
                                 tempIcon.style.color = "inherit";
+                            }
+                        }
+                    }
+
+                    // Uptime Calculation
+                    if (data.appStartTime) {
+                        const uptimeText = document.getElementById('uptimeText');
+                        if (uptimeText) {
+                            const diffMs = Date.now() - data.appStartTime;
+                            const diffSec = Math.floor(diffMs / 1000);
+                            const d = Math.floor(diffSec / (3600 * 24));
+                            const h = Math.floor((diffSec % (3600 * 24)) / 3600);
+                            const m = Math.floor((diffSec % 3600) / 60);
+
+                            let uptimeStr = "";
+                            if (d > 0) uptimeStr += d + "d ";
+                            uptimeStr += String(h).padStart(2, '0') + "h " + String(m).padStart(2, '0') + "m";
+                            uptimeText.textContent = uptimeStr;
+                        }
+                    }
+
+                    // Storage Calculation
+                    if (data.freeSpaceBytes !== undefined) {
+                        const storageText = document.getElementById('storageText');
+                        if (storageText) {
+                            storageText.textContent = formatBytes(data.freeSpaceBytes);
+                            // Alerta visual si queda menos de 500 MB
+                            if (data.freeSpaceBytes < 500 * 1024 * 1024) {
+                                storageText.style.color = "var(--status-red)";
+                                storageText.style.fontWeight = "bold";
+                            } else {
+                                storageText.style.color = "#fff";
+                                storageText.style.fontWeight = "normal";
                             }
                         }
                     }

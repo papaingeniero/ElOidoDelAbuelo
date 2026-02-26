@@ -1,3 +1,12 @@
+# Changelog
+
+## [v1.0-dev.76] - 2026-02-26
+### Añadido
+- Monitor de **Uptime** (Tiempo de Actividad) en el Dashboard.
+- Monitor de **Espacio Libre** en disco con alerta visual (<500MB).
+### Cambiado
+- Rediseño del Dashboard: El número de versión ahora se muestra bajo el título para centrar la visual y limpiar la interfaz de camuflaje.
+
 ## [v1.0-dev.75] - 2026-02-26
 ### Changed
 - **Consolidación de Camuflaje**: Despliegue formal de la identidad "Android System Listener" para asegurar su persistencia en el ciclo de vida del desarrollo.
