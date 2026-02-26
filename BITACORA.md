@@ -1259,3 +1259,29 @@ La experiencia de usuario en dispositivos iOS (Safari) era deficiente debido a c
 
 ### 🎓 Lección del Día
 Un Arquitecto Front-End no solo diseña para que algo "se vea bien", sino para que "se sienta bien". En aplicaciones de control en tiempo real, la latencia táctil o las interrupciones del navegador (como el zoom forzado) son fallos de ingeniería que deben ser blindados preventivamente.
+
+---
+
+## 🚀 Snapshot v78: Blindaje Anti-Deep Sleep (CPU & Wi-Fi)
+**Fecha**: 2026-02-26 | **Versión**: `v1.0-dev.78`
+
+### 📜 El Problema
+En dispositivos Xiaomi con MIUI, el modo Doze/Deep Sleep es implacable. Pasados unos minutos de pantalla apagada:
+1.  **Narcolepsia de CPU**: El sistema suspende el proceso de grabación aunque esté en primer plano.
+2.  **Desconexión de Red**: El Wi-Fi o los datos móviles se "congelan" para ahorrar batería, haciendo inaccesible el WebServer.
+3.  **Lapses de Escucha**: El `AudioRecord` deja de recibir muestras de audio, rompiendo la vigilancia.
+
+### 🛠️ La Solución
+1.  **CPU WakeLock**: Adquisición de un `PARTIAL_WAKE_LOCK` en el `onCreate` del servicio para garantizar que el procesador siga ejecutando hilos de audio.
+2.  **Wi-Fi High Performance Lock**: Implementación de `WIFI_MODE_FULL_HIGH_PERF` para forzar al driver de red a mantenerse activo y con baja latencia.
+3.  **Gestión de Ciclo de Vida**: Liberación segura de ambos bloqueos en `onDestroy` para respetar la salud de la batería cuando el usuario detiene el servicio manualmente.
+
+| Punto de Verificación | Estado |
+| :--- | :---: |
+| 1. Permiso WAKE_LOCK en Manifest | ✅ |
+| 2. Adquisición WakeLock CPU | ✅ |
+| 3. Adquisición WifiLock HP | ✅ |
+| 4. Despliegue v1.0-dev.78 | ✅ |
+
+### 🎓 Lección del Día
+En Android, estar en "Foreground" no es suficiente para sobrevivir a la optimización extrema de algunos fabricantes. Los WakeLocks son el "seguro de vida" necesario para aplicaciones de misión crítica que dependen de la red y el procesamiento continuo.

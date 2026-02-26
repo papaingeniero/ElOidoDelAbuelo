@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.78] - 2026-02-26
+### Añadido
+- Blindaje **Anti-Deep Sleep**: Implementación de `WakeLock` (CPU) y `WifiLock` (Red de alto rendimiento) para evitar desconexiones y suspensiones de MIUI cuando el dispositivo entra en reposo profundo.
+
 ## [v1.0-dev.77] - 2026-02-26
 ### Añadido
 - Blindaje táctil para iOS Safari: Desactivado "double-tap to zoom", selección accidental de texto en botones y destellos de pulsación.

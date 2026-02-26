@@ -1,0 +1,13 @@
+Snapshot v78: Blindaje Anti-Deep Sleep (CPU & Wi-Fi)
+
+### EL PROBLEMA
+En dispositivos Xiaomi con MIUI, el modo Doze/Deep Sleep es implacable. Pasados unos minutos de pantalla apagada:
+1. Narcolepsia de CPU: El sistema suspende el proceso de grabación aunque esté en primer plano.
+2. Desconexión de Red: El Wi-Fi o los datos móviles se congelan para ahorrar batería, haciendo inaccesible el WebServer.
+
+### LA SOLUCION
+1. CPU WakeLock: Adquisición de un PARTIAL_WAKE_LOCK en el onCreate del servicio.
+2. Wi-Fi High Performance Lock: Implementación de WIFI_MODE_FULL_HIGH_PERF para forzar al driver de red a mantenerse activo.
+
+### LECCION DEL DIA
+Los WakeLocks son el seguro de vida necesario para aplicaciones de misión crítica que dependen de la red y el procesamiento continuo en Android.
