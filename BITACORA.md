@@ -1235,3 +1235,27 @@ Tras consolidar el camuflaje, surge la necesidad de monitorizar la salud del pro
 
 ### 🎓 Lección del Día
 La telemetría no es solo "datos"; es la consciencia del sistema. En un entorno hostil como MIUI, saber cuánto tiempo ha sobrevivido el proceso (Uptime) es el KPI más importante para validar el éxito de las estrategias de persistencia y servicios en primer plano.
+
+---
+
+## 🚀 Snapshot v77: Blindaje Táctil iOS
+**Fecha**: 2026-02-26 | **Versión**: `v1.0-dev.77`
+
+### 📜 El Problema
+La experiencia de usuario en dispositivos iOS (Safari) era deficiente debido a comportamientos nativos del navegador:
+1.  **Doble-tap to Zoom**: Al pulsar rápidamente botones (como el Vúmetro o Ajustes), Safari interpreta zoom, descolocando la interfaz.
+2.  **Selección Fantasma**: El texto de los botones se seleccionaba accidentalmente durante interacciones rápidas.
+3.  **Feedback Visual**: Destellos grises al pulsar botones que rompen la estética "Premium" del dashboard.
+
+### 🛠️ La Solución
+1.  **Inyección de Blindaje CSS**: Aplicación de reglas globales `touch-action: manipulation` y `user-select: none` para todos los botones.
+2.  **Limpieza Visual**: Desactivación de `-webkit-tap-highlight-color` para eliminar los destellos de Safari.
+3.  **Optimización Estructural**: Mejora de la responsividad táctil sin comprometer la accesibilidad del scroll.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. CSS Blindaje Inyectado | ✅ |
+| 2. Despliegue v1.0-dev.77 | ✅ |
+
+### 🎓 Lección del Día
+Un Arquitecto Front-End no solo diseña para que algo "se vea bien", sino para que "se sienta bien". En aplicaciones de control en tiempo real, la latencia táctil o las interrupciones del navegador (como el zoom forzado) son fallos de ingeniería que deben ser blindados preventivamente.

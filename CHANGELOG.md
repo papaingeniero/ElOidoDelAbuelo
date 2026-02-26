@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.77] - 2026-02-26
+### Añadido
+- Blindaje táctil para iOS Safari: Desactivado "double-tap to zoom", selección accidental de texto en botones y destellos de pulsación.
+
 ## [v1.0-dev.76] - 2026-02-26
 ### Añadido
 - Monitor de **Uptime** (Tiempo de Actividad) en el Dashboard.
