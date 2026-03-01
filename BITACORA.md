@@ -1297,3 +1297,17 @@ El repositorio acumulaba "ruido" técnico (logs de telemetría, archivos de sist
 
 ### 🎓 Lecciones Aprendidas
 La higiene del repositorio es fundamental en proyectos de "Arqueología Técnica". Mantener un entorno libre de escombros facilita el uso de herramientas de automatización y asegura que solo el ADN del proyecto (código y docs) se comparta en la nube.
+
+---
+
+## 🚀 Fix Typo Gitignore y Semáforo Rojo v1.0-dev.80 | 01-Mar-2026
+
+### 📜 El Problema
+Existía un pequeño error tipográfico en la regla de exclusión de macOS en el `.gitignore` (`**/ .DS_Store` en lugar de `**/.DS_Store`), lo que invalidaba el patrón recursivo de ignorado, abriendo la puerta a que futuros archivos del sistema ensucien el historial.
+
+### 🛠️ La Solución
+1. **Corrección Quirúrgica**: Eliminado el espacio en blanco de la regla recursiva.
+2. **Incremento de Versión**: Subimos la versión a `v1.0-dev.80` aplicando el protocolo de integridad del repositorio en todos los ficheros rastreadores (`build.gradle`, `CHANGELOG.md`, `BITACORA.md`).
+
+### 🎓 Lecciones Aprendidas
+En archivos de configuración global como el `.gitignore`, un simple espacio en blanco puede invalidar completamente un patrón *glob*. La revisión constante y el mantenimiento preventivo aseguran la barrera (el escudo) entre lo local y el repositorio limpio.

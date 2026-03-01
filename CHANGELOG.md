@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.80] - 2026-03-01
+### Fixed
+- Corregido error de sintaxis en `.gitignore` que invalidaba el patrón de exclusión recursiva para archivos `.DS_Store` de macOS.
+
 ## [v1.0-dev.79] - 2026-03-01
 ### Añadido
 - Blindaje definitivo de Git: Reglas de exclusión para macOS (`.DS_Store`) y archivos de telemetría (`*.txt`, `*.aac`).
