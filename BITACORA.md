@@ -1285,3 +1285,15 @@ En dispositivos Xiaomi con MIUI, el modo Doze/Deep Sleep es implacable. Pasados 
 
 ### 🎓 Lección del Día
 En Android, estar en "Foreground" no es suficiente para sobrevivir a la optimización extrema de algunos fabricantes. Los WakeLocks son el "seguro de vida" necesario para aplicaciones de misión crítica que dependen de la red y el procesamiento continuo.
+
+## 🚀 Blindaje y Limpieza v1.0-dev.79 | 01-Mar-2026
+### 📜 El Problema
+El repositorio acumulaba "ruido" técnico (logs de telemetría, archivos de sistema macOS y scripts temporales) que ensuciaban el historial y violaban la Regla 6 (Semáforo Rojo), además de carecer de una configuración de ignorado robusta para el entorno Mac.
+
+### 🛠️ La Solución
+1.  **Blindaje de .gitignore**: Inyección de reglas específicas para macOS (.DS_Store) y extensiones de telemetría (*.txt, *.aac).
+2.  **Purga de Repositorio**: Eliminación física y del índice de Git de 22 archivos huérfanos.
+3.  **Sincronización de Remotos**: Consolidación del remote 'origin' y eliminación de duplicados para una arquitectura de red limpia.
+
+### 🎓 Lecciones Aprendidas
+La higiene del repositorio es fundamental en proyectos de "Arqueología Técnica". Mantener un entorno libre de escombros facilita el uso de herramientas de automatización y asegura que solo el ADN del proyecto (código y docs) se comparta en la nube.

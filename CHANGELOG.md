@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.0-dev.79] - 2026-03-01
+### Añadido
+- Blindaje definitivo de Git: Reglas de exclusión para macOS (`.DS_Store`) y archivos de telemetría (`*.txt`, `*.aac`).
+### Cambiado
+- Consolidación de remotos: Eliminado el remote duplicado `github-el-oido-del-abuelo`.
+- Higiene total: Purga de archivos huérfanos y reinicio del índice de rastreo.
+
 ## [v1.0-dev.78] - 2026-02-26
 ### Añadido
 - Blindaje **Anti-Deep Sleep**: Implementación de `WakeLock` (CPU) y `WifiLock` (Red de alto rendimiento) para evitar desconexiones y suspensiones de MIUI cuando el dispositivo entra en reposo profundo.
