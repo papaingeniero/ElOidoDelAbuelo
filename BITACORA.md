@@ -1368,3 +1368,21 @@ Se ha sobreescrito la plantilla opaca del archivo `release_version.md` retirando
   3. Abandono táctico de comandos Shell nativos en favor de la API canónica `File.setExecutable(true)`.
 
 El sistema reporta ahora una recolección de ruidos satisfactoria (>10,000pts de amplitud).
+
+## 🚀 Versión 1.0-dev.83 (El Francotirador Asíncrono de FRP)
+*Fecha: 02 de Marzo de 2026*
+
+### 📜 El Problema: La Inmortalidad Indeseada
+En nuestra misión de convertir al Oído del Abuelo en un Centinela de Red persistente, integramos el proxy inverso genérico `FRP`. Nuestro diseño establecía que, ante un fallo de conexión (`loginFailExit = true`), FRP moriría limpiamente para que Java pudiera espaciar los reintentos (Exponential Backoff) y salvar así la batería del dispositivo al no mantener el módem despierto.
+El problema: FRP `v0.67.0` nos demostró que los binarios nativos en Go tienen *su propia voluntad*. Ignorando flagrantemente las órdenes del archivo `frpc.toml`, el comando se quedaba iterando en un bucle infinito local de "connection refused" cada 3 segundos, lo que habría drenado severamente la batería porque el Kernel no permitía dormir a la antena (Wakelock inducido).
+
+### 🛠️ La Solución: El Francotirador StreamGobbler
+Como el binario no quiso suicidarse, decidimos asesinarlo de forma reactiva asumiendo el control despótico desde el sistema operativo anfitrión JVM.
+1.  Si el `StreamGobbler` lee un `connect to server error` o equivalente en la consola viva de FRP.
+2.  Desata inmediatamente `frpProcess.destroy()`.
+3.  Esto aniquila el binario rebelde de Linux (`Exit code 143`) y desatora el bloqueo síncrono `process.waitFor()`.
+4.  Java inicia una siesta compensatoria escalonada (`Thread.sleep()`) de 10s -> 30s -> 2m -> **Tope Infinito de 5 minutos**.
+5.  Una vez finalizados los 5 minutos sin molestar al procesador ni a la red, el Watchdog vuelve a instanciar al túnel para un nuevo intento limpio.
+
+### 🎓 Lección del Día (Módems y RRC State)
+Cada intento HTTP/TCP fallido en un Smartphone no solo gasta energía en ese segundo, sino que despierta el chip de red y lo mantiene flotando en la "Cola de apagado" (FACH) por **15 a 20 segundos** previniendo nuevos envíos espurios. Sujetar a los pollings y pinging un mínimo de 5 minutos certifica que el teléfono logre entrar en el estado místico de reposo absoluto (*Deep Sleep*). Así es como se programa un Centinela IoT indetectable eléctricamente.

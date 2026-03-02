@@ -23,6 +23,15 @@ public class FrpManager {
     private Thread stdOutThread;
     private Thread stdErrThread;
     private ExecutorService executorService;
+    private volatile boolean isRunning = false;
+
+    // Tiempos de retardo exponencial (en milisegundos)
+    private static final long[] BACKOFF_DELAYS = {
+        10 * 1000,      // 10 segundos
+        30 * 1000,      // 30 segundos
+        2 * 60 * 1000,  // 2 minutos
+        5 * 60 * 1000   // 5 minutos (Tope)
+    };
 
     public FrpManager(Context context) {
         this.context = context;
@@ -30,40 +39,72 @@ public class FrpManager {
     }
 
     public void start() {
-        Log.d(TAG, "Iniciando FrpManager background task...");
+        if (isRunning) return;
+        isRunning = true;
+        Log.d(TAG, "Iniciando FrpManager Watchdog (Backoff Exponencial)...");
+        
         executorService.submit(() -> {
-            try {
-                // El binario está empaquetado en jniLibs como libfrpc.so bajo W^X de API 29
-                File frpBinary = new File(context.getApplicationInfo().nativeLibraryDir, "libfrpc.so");
-                File frpConfig = new File(context.getFilesDir(), CONFIG_NAME);
+            int retryCount = 0;
+            long lastTunnelStartTime = 0;
 
-                // 1. Extracción de configuración
-                if (!frpConfig.exists() || frpConfig.length() == 0) {
-                    Log.d(TAG, "Configuración " + CONFIG_NAME + " no encontrada o vacía. Extrayendo...");
-                    extractAsset(CONFIG_NAME, frpConfig);
+            while (isRunning) {
+                try {
+                    File frpBinary = new File(context.getApplicationInfo().nativeLibraryDir, "libfrpc.so");
+                    File frpConfig = new File(context.getFilesDir(), CONFIG_NAME);
+
+                    if (!frpConfig.exists() || frpConfig.length() == 0) {
+                        Log.d(TAG, "Extrayendo configuración " + CONFIG_NAME + "...");
+                        extractAsset(CONFIG_NAME, frpConfig);
+                    }
+
+                    if (!frpBinary.exists()) {
+                        Log.e(TAG, "🔥 Binario FRP no extraído por Android.");
+                        isRunning = false;
+                        return;
+                    }
+
+                    setExecutablePermissions(frpBinary);
+
+                    // Si el túnel aguantó vivo más de 5 minutos en el intento anterior, reseteamos el castigo
+                    if (System.currentTimeMillis() - lastTunnelStartTime > 5 * 60 * 1000) {
+                        retryCount = 0;
+                    }
+
+                    lastTunnelStartTime = System.currentTimeMillis();
+                    startTunnel(frpBinary, frpConfig);
+
+                    // Bloqueamos el hilo de Watchdog esperando a que el proceso FRP muera nativamente
+                    int exitCode = frpProcess.waitFor();
+                    Log.w(TAG, "⚠️ Proceso FRP terminó con código: " + exitCode);
+
+                } catch (InterruptedException e) {
+                    Log.d(TAG, "Watchdog interrumpido voluntariamente.");
+                    Thread.currentThread().interrupt();
+                    break; // Cierre de túnel ordenado por stop()
+                } catch (Exception e) {
+                    Log.e(TAG, "🔥 Error cíclico iniciando FrpManager", e);
                 }
 
-                if (!frpBinary.exists()) {
-                    Log.e(TAG, "🔥 Binario FRP no extraído por Android en: " + frpBinary.getAbsolutePath());
-                    return;
-                } else {
-                    Log.d(TAG, "Binario FRP listado en: " + frpBinary.getAbsolutePath());
+                // Si seguimos vivos (no nos han parado), aplicamos el castigo (Backoff)
+                if (isRunning) {
+                    long delay = BACKOFF_DELAYS[Math.min(retryCount, BACKOFF_DELAYS.length - 1)];
+                    Log.d(TAG, "Zzz... FRP durmiendo por " + (delay/1000) + " segundos antes de reintentar (Intento " + (retryCount+1) + ")");
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                    retryCount++;
                 }
-
-                // 2. Aseguramos permisos
-                setExecutablePermissions(frpBinary);
-
-                // 3. Ejecución
-                startTunnel(frpBinary, frpConfig);
-
-            } catch (Exception e) {
-                Log.e(TAG, "🔥 Error crítico iniciando FrpManager", e);
             }
         });
     }
 
     public void stop() {
-        Log.d(TAG, "Deteniendo FrpManager...");
+        Log.d(TAG, "Deteniendo FrpManager Watchdog...");
+        isRunning = false;
+        
         if (frpProcess != null) {
             frpProcess.destroy();
             frpProcess = null;
@@ -141,6 +182,14 @@ public class FrpManager {
                     Log.e(TAG, "[FRP-ERR] " + line);
                 } else {
                     Log.d(TAG, "[FRP-OUT] " + line);
+                }
+
+                // Wathdog Activo: Si detectamos que no hay servidor, matamos el proceso para forzar el Backoff de batería
+                if (line.contains("connect to server error") || line.contains("login to server failed")) {
+                    Log.e(TAG, "🔥 Servidor FRP inalcanzable. Destruyendo proceso nativo para forzar suspensión (Backoff)...");
+                    if (frpProcess != null) {
+                        frpProcess.destroy();
+                    }
                 }
             }
         } catch (IOException e) {

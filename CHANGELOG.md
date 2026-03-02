@@ -1,5 +1,8 @@
 # Changelog
 
+## [v1.0-dev.83] - 2026-03-02
+### Changed
+- **Arquitectura de Batería Extrema (Exponential Backoff)**: Supresión completa del bucle nativo errante de `frpc`. Implementado un Interceptor (*Watchdog*) en los `StreamGobblers` de Java que asesina (`destroy()`) el proceso ante fallos TCP, aplicando retardos de espera ascendentes (de 10s hasta 5 min) para obligar al Módem de red a entrar en reposo *Deep Sleep*.
 ## [v1.0-dev.82] - 2026-03-02
 ### Engineering & Process
 - **Poka-yoke en Workflows**: Renombrado el 'placeholder' engañoso (`Phase X:`) en `release_version.md` a un string literal que delimita sus variables con corchetes (`[Título Breve] [versionName Real] | [DD/MM/YYYY]`), suprimiendo el margen genérico de error de los Agentes al redactar sus crónicas técnicas de cierre procedimental.
