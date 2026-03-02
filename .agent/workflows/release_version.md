@@ -14,7 +14,7 @@ Sigue estos pasos estrictamente cuando el usuario solicite una "Release".
 
 ## 2. Preparación y Documentación
 1.  **Arqueología (Memoria Histórica)**: Identifica snapshots fallidos desde la última versión y documéntalos en la Bitácora.
-2.  **Bitácora**: Edita `BITACORA.md` (append) con la crónica completa. Formato: `## 🚀 Phase X: Título | Fecha...`. Guarda esto en `bitacora_temp.md`.
+2.  **Bitácora**: Edita `BITACORA.md` (append) con la crónica completa. Formato: `## 🚀 [Título Breve] [versionName Real] | [DD/MM/YYYY]`. Guarda esto en `bitacora_temp.md`.
 3.  **Versionado**: Incrementa `versionName` en `app/build.gradle` y añade entrada a `CHANGELOG.md`.
 
 ## 3. Ejecución de Release (Git)

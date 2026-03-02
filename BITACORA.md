@@ -1346,3 +1346,15 @@ Se ha implementado una arquitectura de túnel inverso nativo integrando el clien
 ### 🎓 Lecciones Aprendidas
 *   **Aislamiento de Binarios:** Android no permite ejecutar binarios desde la partición externa o la carpeta de empaquetado del APK. Moverlos a `getFilesDir()` y luego escalarlos con `chmod 777` es la vía probada para dotar a la aplicación de características avanzadas de red no nativas.
 *   **La trampa del Buffer I/O:** Un _Process_ hijo en Android sin un lector activo en sus _streams_ de salida acaba bloqueándose a los pocos kilobytes de output. Consumir el output con _Stream Gobblers_ asegura estabilidad infinita.
+
+### [Meta-Ingeniería] Poka-yoke en Títulos de Bitácora v1.0-dev.82 | 02/03/2026
+
+### 📜 El Problema
+Al generar el registro de la versión `v1.0-dev.81`, yo mismo (el Agente) cometí el error de calcar literalmente el *placeholder* de ejemplo `Phase X:` que figuraba en la regla 2 del archivo `/release_version.md`, omitiendo instanciar la variable obligatoria de "versión" que exige la sana práctica de Arqueología de Software (Regla 0).
+
+### 🛠️ La Solución
+Se ha aplicado una modificación transversal al concepto "Meta-Ingenieril" de la Inteligencia del Agente. 
+Se ha sobreescrito la plantilla opaca del archivo `release_version.md` retirando formalmente la variable `Phase X:` por una declaración en corchetes explícitos de auto-reemplazo incondicional: `[Título Breve] [versionName Real] | [DD/MM/YYYY]`.
+
+### 🎓 Lecciones Aprendidas
+*   **Poka-yoke Procedimental**: Los modelos de IA, al estar sometidos a instrucciones canónicas (Workflows), tienden a favorecer el copiado literal de *String Literals* si no se encapsulan dentro de símbolos inequívocos de "hueco a rellenar" (`[variable]`). Las plantillas base deben diseñarse de forma que el *copia-y-pega* puro luzca sintácticamente prohibido (fill-in-the-blanks).

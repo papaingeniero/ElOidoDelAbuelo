@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.82] - 2026-03-02
+### Engineering & Process
+- **Poka-yoke en Workflows**: Renombrado el 'placeholder' engañoso (`Phase X:`) en `release_version.md` a un string literal que delimita sus variables con corchetes (`[Título Breve] [versionName Real] | [DD/MM/YYYY]`), suprimiendo el margen genérico de error de los Agentes al redactar sus crónicas técnicas de cierre procedimental.
+
 ## [v1.0-dev.81] - 2026-03-02
 ### Añadido
 - **Túnel Inverso Nativo**: Integración del cliente FRP (`frpc`) directamente en el proceso core del teléfono a través del ejecutable precompilado de Go.
