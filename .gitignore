@@ -12,6 +12,9 @@ local.properties
 .DS_Store
 **/.DS_Store
 
+# Datos Sensibles y Claves (El Oido del Abuelo)
+frpc.toml
+
 # Android Studio generated files and folders
 captures/
 .externalNativeBuild/
