@@ -1358,3 +1358,13 @@ Se ha sobreescrito la plantilla opaca del archivo `release_version.md` retirando
 
 ### 🎓 Lecciones Aprendidas
 *   **Poka-yoke Procedimental**: Los modelos de IA, al estar sometidos a instrucciones canónicas (Workflows), tienden a favorecer el copiado literal de *String Literals* si no se encapsulan dentro de símbolos inequívocos de "hueco a rellenar" (`[variable]`). Las plantillas base deben diseñarse de forma que el *copia-y-pega* puro luzca sintácticamente prohibido (fill-in-the-blanks).
+
+### ⚠️ Reporte de Incidentes (OBLIGATORIO) V1.0-dev.82
+- **Problema descubierto**: Android 10 abortaba la ejecución de la consola FRP originando un `error=13 (Permission Denied)` a causa de la directiva nativa W^X sobre el almacenamiento privado interno. Se sumó además un fracaso logístico por disonancia de arquitectura (la app trataba de ser 64-bit en un SO instanciado en 32-bit `armeabi-v7a`).
+- **Problema Secundario (Regresión)**: Se detectó que el vúmetro del dashboard mostraba "amplitud 0" perpetua tras incluir FRP. La función nativa _chmod_ utilizada antes, combinada con la instanciación de _ProcessBuilder_ en el `Main Thread`, bloqueaba o robaba prioridad al servicio de micrófono (AudioRecord).
+- **Solución aplicada**: 
+  1. Conversión de binario en bloque nativo encapsulado (`armeabi-v7a` + `libfrpc.so`).
+  2. Implementación de un `ExecutorService` asíncrono puro para `FrpManager` desligándolo del ciclo de Service.
+  3. Abandono táctico de comandos Shell nativos en favor de la API canónica `File.setExecutable(true)`.
+
+El sistema reporta ahora una recolección de ruidos satisfactoria (>10,000pts de amplitud).

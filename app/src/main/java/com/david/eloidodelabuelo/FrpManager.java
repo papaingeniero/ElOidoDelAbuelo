@@ -9,6 +9,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class FrpManager {
 
@@ -20,37 +22,44 @@ public class FrpManager {
     private Process frpProcess;
     private Thread stdOutThread;
     private Thread stdErrThread;
+    private ExecutorService executorService;
 
     public FrpManager(Context context) {
         this.context = context;
+        this.executorService = Executors.newSingleThreadExecutor();
     }
 
     public void start() {
-        Log.d(TAG, "Iniciando FrpManager...");
-        try {
-            File frpBinary = new File(context.getFilesDir(), BINARY_NAME);
-            File frpConfig = new File(context.getFilesDir(), CONFIG_NAME);
+        Log.d(TAG, "Iniciando FrpManager background task...");
+        executorService.submit(() -> {
+            try {
+                // El binario está empaquetado en jniLibs como libfrpc.so bajo W^X de API 29
+                File frpBinary = new File(context.getApplicationInfo().nativeLibraryDir, "libfrpc.so");
+                File frpConfig = new File(context.getFilesDir(), CONFIG_NAME);
 
-            // 1. Extracción de assets si no existen o están vacíos
-            if (!frpBinary.exists() || frpBinary.length() == 0) {
-                Log.d(TAG, "Binario " + BINARY_NAME + " no encontrado o vacío. Extrayendo...");
-                extractAsset(BINARY_NAME, frpBinary);
+                // 1. Extracción de configuración
+                if (!frpConfig.exists() || frpConfig.length() == 0) {
+                    Log.d(TAG, "Configuración " + CONFIG_NAME + " no encontrada o vacía. Extrayendo...");
+                    extractAsset(CONFIG_NAME, frpConfig);
+                }
+
+                if (!frpBinary.exists()) {
+                    Log.e(TAG, "🔥 Binario FRP no extraído por Android en: " + frpBinary.getAbsolutePath());
+                    return;
+                } else {
+                    Log.d(TAG, "Binario FRP listado en: " + frpBinary.getAbsolutePath());
+                }
+
+                // 2. Aseguramos permisos
+                setExecutablePermissions(frpBinary);
+
+                // 3. Ejecución
+                startTunnel(frpBinary, frpConfig);
+
+            } catch (Exception e) {
+                Log.e(TAG, "🔥 Error crítico iniciando FrpManager", e);
             }
-            if (!frpConfig.exists() || frpConfig.length() == 0) {
-                Log.d(TAG, "Configuración " + CONFIG_NAME + " no encontrada o vacía. Extrayendo...");
-                extractAsset(CONFIG_NAME, frpConfig);
-            }
-
-            // 2. Permisos de Ejecución
-            Log.d(TAG, "Aplicando permisos de ejecución a " + BINARY_NAME);
-            setExecutablePermissions(frpBinary);
-
-            // 3. Ejecución y Stream Gobblers
-            startTunnel(frpBinary, frpConfig);
-
-        } catch (Exception e) {
-            Log.e(TAG, "🔥 Error crítico iniciando FrpManager", e);
-        }
+        });
     }
 
     public void stop() {
@@ -68,6 +77,9 @@ public class FrpManager {
         if (stdErrThread != null && stdErrThread.isAlive()) {
             stdErrThread.interrupt();
         }
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdownNow();
+        }
     }
 
     private void extractAsset(String assetName, File targetFile) throws IOException {
@@ -84,15 +96,15 @@ public class FrpManager {
         }
     }
 
-    private void setExecutablePermissions(File file) throws IOException, InterruptedException {
-        // En Android, los archivos en getFilesDir() no son ejecutables por defecto.
-        // Forzamos el chmod 777 usando la shell del sistema operativo.
-        Process process = Runtime.getRuntime().exec("chmod 777 " + file.getAbsolutePath());
-        int exitCode = process.waitFor();
-        if (exitCode == 0) {
-            Log.d(TAG, "Permisos 777 aplicados correctamente a " + file.getName());
+    private void setExecutablePermissions(File file) {
+        // Usamos la API de Archivos nativa de Java para sortear fallos de shell W^X
+        boolean r = file.setReadable(true, false);
+        boolean w = file.setWritable(true, false);
+        boolean e = file.setExecutable(true, false);
+        if (e) {
+            Log.d(TAG, "Permisos de ejecución (File API) aplicados correctamente a " + file.getName());
         } else {
-            Log.w(TAG, "⚠️ Error aplicando chmod 777. Código de salida: " + exitCode);
+            Log.w(TAG, "⚠️ Error aplicando setExecutable a " + file.getName());
         }
     }
 
