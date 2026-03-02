@@ -1330,7 +1330,7 @@ Extrayendo los registros del sistema (`ActivityManager`) mediante `logcat`, hall
 ### 🎓 Lecciones Aprendidas
 - **La Maldición de MIUI**: Un Foreground Service no es garantía de inmortalidad en Xiaomi (API 29). Si la capa propietaria decreta "low mem", asfixia incluso a los servicios persistentes y bloquea su `START_STICKY`. Solo se reactivará por un Broadcast externo o ejecución manual.
 
-## 🚀 Phase X: Integración de Túnel FRP | 02/03/2026
+## 🚀 Integración de Túnel FRP v1.0-dev.81 | 02/03/2026
 
 ### 📜 El Problema
 El Oído del Abuelo necesita exponer su servidor web (`NanoHTTPD` en el puerto 8080) al exterior de la red local para poder acceder al panel de control y escuchar las grabaciones de las alertas cuando no estamos conectados a la misma red Wi-Fi.
