@@ -1386,3 +1386,15 @@ Como el binario no quiso suicidarse, decidimos asesinarlo de forma reactiva asum
 
 ### 🎓 Lección del Día (Módems y RRC State)
 Cada intento HTTP/TCP fallido en un Smartphone no solo gasta energía en ese segundo, sino que despierta el chip de red y lo mantiene flotando en la "Cola de apagado" (FACH) por **15 a 20 segundos** previniendo nuevos envíos espurios. Sujetar a los pollings y pinging un mínimo de 5 minutos certifica que el teléfono logre entrar en el estado místico de reposo absoluto (*Deep Sleep*). Así es como se programa un Centinela IoT indetectable eléctricamente.
+
+## 🚀 Versión 1.0-dev.84 (Despliegue Local de Cuarentena)
+*Fecha: 03 de Marzo de 2026*
+
+### 📜 El Problema
+Tras desvincular los artefactos y configuraciones nativas que contenían material IP sensible de la base del repositorio público (aislados en `.gitignore`), requeríamos constatar que la arquitectura base soporta modificaciones del archivo de proxy directamente realizadas por el usuario in-situ, sin que ocurran colapsos a nivel de binarios ni de red.
+
+### 🛠️ La Solución
+Se lanzó un empaquetamiento expreso compilador (Snapshot Builder) integrando los parámetros Custom de `test-tcp` introducidos. El APK resultante levanta sin errores, confirmando la resiliencia del encapsulado `.so` a la modificación manual de `frpc.toml` por parte del operador local sin depender del IDE ni de reconstrucciones pesadas del agente.
+
+### 🎓 Lección del Día 
+Aislar el vector de ataque (`frpc.toml`) mediante gitignore no resta modularidad al código general. El Agente mantiene el framework intacto de Extracción de Assets a disco privado desde la APK, validando una dinámica *Plug & Play* donde el Oído asimila perfiles de red con solo empujar una instalación USB.

@@ -1,5 +1,8 @@
 # Changelog
 
+## [v1.0-dev.84] - 2026-03-03
+### Changed
+- **Verificación Local**: Reconstrucción de la aplicación y despliegue del binario FRP (Proxy Inverso) encapsulado con soporte explícito para servidor perimetral de pruebas local (`127.0.0.1:7000`), confirmando la flexibilidad del archivo .toml para entornos de usuario en cuarentena.
 ## [v1.0-dev.83] - 2026-03-02
 ### Changed
 - **Arquitectura de Batería Extrema (Exponential Backoff)**: Supresión completa del bucle nativo errante de `frpc`. Implementado un Interceptor (*Watchdog*) en los `StreamGobblers` de Java que asesina (`destroy()`) el proceso ante fallos TCP, aplicando retardos de espera ascendentes (de 10s hasta 5 min) para obligar al Módem de red a entrar en reposo *Deep Sleep*.
