@@ -1311,3 +1311,38 @@ Existía un pequeño error tipográfico en la regla de exclusión de macOS en el
 
 ### 🎓 Lecciones Aprendidas
 En archivos de configuración global como el `.gitignore`, un simple espacio en blanco puede invalidar completamente un patrón *glob*. La revisión constante y el mantenimiento preventivo aseguran la barrera (el escudo) entre lo local y el repositorio limpio.
+
+---
+
+## 🔎 Reporte Forense: Muerte Súbita (LMK) | 01-Mar-2026
+
+### 📜 El Problema
+Se ha detectado que el servicio de "El Oído del Abuelo" estaba inactivo. Se necesitaba realizar un volcado forense para determinar quién o qué asesinó a la aplicación y los motivos.
+
+### 🛠️ La Diagnóstico
+Extrayendo los registros del sistema (`ActivityManager`) mediante `logcat`, hallamos la confesión a las **21:41:58**:
+```log
+03-01 21:41:58.237 I ActivityManager: Process com.david.eloidodelabuelo (pid 26321) has died: prcp FGS 
+03-01 21:41:58.244 I ActiveServicesInjector: Denial of service restart, service :ServiceRecord... cause by low mem.
+```
+**Veredicto**: Fue el propio sistema operativo (MIUI). Aunque El Oído se camuflaba como un proceso Prioritario (Foreground Service o `FGS`), el Agresivo Low Memory Killer de Xiaomi lo sacrificó. Para rematar, el `ActiveServicesInjector` de MIUI impuso un bloqueo ("Denial of service restart") prohibiendo al servicio resucitar automáticamente debido a la escasez crítica de RAM ("cause by low mem").
+
+### 🎓 Lecciones Aprendidas
+- **La Maldición de MIUI**: Un Foreground Service no es garantía de inmortalidad en Xiaomi (API 29). Si la capa propietaria decreta "low mem", asfixia incluso a los servicios persistentes y bloquea su `START_STICKY`. Solo se reactivará por un Broadcast externo o ejecución manual.
+
+## 🚀 Phase X: Integración de Túnel FRP | 02/03/2026
+
+### 📜 El Problema
+El Oído del Abuelo necesita exponer su servidor web (`NanoHTTPD` en el puerto 8080) al exterior de la red local para poder acceder al panel de control y escuchar las grabaciones de las alertas cuando no estamos conectados a la misma red Wi-Fi.
+
+### 🛠️ La Solución
+Se ha implementado una arquitectura de túnel inverso nativo integrando el cliente **FRP** directamente dentro del servicio core del teléfono.
+1. Se ha creado la clase `FrpManager` que se encarga de extraer de forma binaria los archivos `frpc` y `frpc.toml` desde `assets/` hacia el almacenamiento interno protegido (`getFilesDir()`).
+2. Se ejecuta un comando de shell del sistema operativo (`chmod 777`) para marcar el binario extraído como ejecutable y engañar a las restricciones del kernel Linux en Android.
+3. El proceso es lanzado en segundo plano con `ProcessBuilder`, de forma completamente silenciosa e invisible para el usuario.
+4. **Stream Gobblers**: Se han anexado dos hilos (`Thread`) purgados para leer ininterrumpidamente tanto la salida estándar como la salida de error del proceso `frpc`. Esto es crítico; si el sistema operativo no consume el _buffer_ de salida (STDOUT/STDERR), el proceso de FRP colapsaría en memoria y el túnel caería. Los logs ahora se vuelcan a `Logcat` bajo el tag `[FRP-OUT]/[FRP-ERR]`.
+5. El ciclo de vida de `FrpManager` se ha ligado directamente al `onCreate()` y `onDestroy()` de `OidoService`, compartiendo el paraguas del `START_STICKY`.
+
+### 🎓 Lecciones Aprendidas
+*   **Aislamiento de Binarios:** Android no permite ejecutar binarios desde la partición externa o la carpeta de empaquetado del APK. Moverlos a `getFilesDir()` y luego escalarlos con `chmod 777` es la vía probada para dotar a la aplicación de características avanzadas de red no nativas.
+*   **La trampa del Buffer I/O:** Un _Process_ hijo en Android sin un lector activo en sus _streams_ de salida acaba bloqueándose a los pocos kilobytes de output. Consumir el output con _Stream Gobblers_ asegura estabilidad infinita.

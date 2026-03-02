@@ -23,6 +23,7 @@ public class OidoService extends Service {
 
     private AudioSentinel audioSentinel;
     private WebServer webServer;
+    private FrpManager frpManager;
     private android.os.PowerManager.WakeLock wakeLock;
     private android.net.wifi.WifiManager.WifiLock wifiLock;
 
@@ -60,6 +61,10 @@ public class OidoService extends Service {
         } catch (IOException e) {
             Log.e(TAG, "Error iniciando WebServer", e);
         }
+
+        // Inicializar FRP
+        frpManager = new FrpManager(this);
+        frpManager.start();
     }
 
     @Override
@@ -79,6 +84,9 @@ public class OidoService extends Service {
             wifiLock.release();
         if (webServer != null) {
             webServer.stop();
+        }
+        if (frpManager != null) {
+            frpManager.stop();
         }
         if (audioSentinel != null) {
             audioSentinel.stop();

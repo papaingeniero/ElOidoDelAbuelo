@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.0-dev.81] - 2026-03-02
+### Añadido
+- **Túnel Inverso Nativo**: Integración del cliente FRP (`frpc`) directamente en el proceso core del teléfono a través del ejecutable precompilado de Go.
+- **Microservicio FrpManager**: Nuevo módulo Java de extracción binaria y escalada de privilegios Kernel (`chmod 777`) para evadir el bloqueo de seguridad `W^X` de Android 10+.
+- **Stream Gobblers**: Hilos purgados gemelos que consumen y loguean en tiempo real la salida `STDOUT` y `STDERR` del proceso para evitar colapsos por I/O e inanición del router FRP.
+
 ## [v1.0-dev.80] - 2026-03-01
 ### Fixed
 - Corregido error de sintaxis en `.gitignore` que invalidaba el patrón de exclusión recursiva para archivos `.DS_Store` de macOS.
