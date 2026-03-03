@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.95] - 2026-03-03
+### Added
+- **Operación Lázaro (Anti-Kill)**: Añadido mecanismo de resurrección activa (`RevivalReceiver`) y declaración explícita de `foregroundServiceType` en el Manifest para evitar que MIUI aniquile el servicio del micrófono por baja memoria (`low mem`). El servicio ahora incorpora un `AlarmManager` (el "Desfibrilador") que comprueba las constantes vitales del proceso cada 15 minutos y lo despierta agresivamente si el sistema operativo lo ha matado silenciosamente en background.
+
 ## [v1.0-dev.94] - 2026-03-03
 ### Added
 - **Auditoría de Seguridad Completa**: Validación empírica de cifrado TLS (mediante sniffing de red) y de autenticación por Token (mediante pruebas de fallo negativo). El túnel queda certificado como seguro de extremo a extremo para el Xiaomi Redmi 9C.

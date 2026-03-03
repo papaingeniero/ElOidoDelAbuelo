@@ -15,7 +15,14 @@ import java.io.IOException;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import android.app.AlarmManager;
+import android.content.Context;
+import android.os.SystemClock;
+
 public class OidoService extends Service {
+
+    public static volatile boolean isServiceRunning = false;
+
 
     private static final String TAG = "OidoService";
     private static final String CHANNEL_ID = "SentinelChannel";
@@ -30,6 +37,7 @@ public class OidoService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        isServiceRunning = true;
         Log.d(TAG, "onCreate: Iniciando servicio");
 
         // 🛡️ BLINDAJE ANTI-DEEP SLEEP (CPU + 4G)
@@ -65,6 +73,8 @@ public class OidoService extends Service {
         // Inicializar FRP
         frpManager = new FrpManager(this);
         frpManager.start();
+
+        scheduleRevivalAlarm();
     }
 
     @Override
@@ -76,6 +86,8 @@ public class OidoService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        isServiceRunning = false;
+        cancelRevivalAlarm();
         Log.d(TAG, "onDestroy: Deteniendo servicio");
 
         if (wakeLock != null && wakeLock.isHeld())
@@ -127,4 +139,46 @@ public class OidoService extends Service {
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
     }
+
+    private void scheduleRevivalAlarm() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            Intent intent = new Intent(this, RevivalReceiver.class);
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                    this,
+                    0,
+                    intent,
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT : PendingIntent.FLAG_UPDATE_CURRENT
+            );
+
+            // MIUI es agresivo, usamos setExactAndAllowWhileIdle si es posible, repitiendo cada 15 min aprox.
+            long triggerAtMillis = SystemClock.elapsedRealtime() + AlarmManager.INTERVAL_FIFTEEN_MINUTES;
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAtMillis, pendingIntent);
+            } else {
+                alarmManager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAtMillis, pendingIntent);
+            }
+            Log.d(TAG, "⏰ Desfibrilador programado para dentro de 15 minutos exactos.");
+        }
+    }
+
+    private void cancelRevivalAlarm() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            Intent intent = new Intent(this, RevivalReceiver.class);
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                    this,
+                    0,
+                    intent,
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_NO_CREATE : PendingIntent.FLAG_NO_CREATE
+            );
+            if (pendingIntent != null) {
+                alarmManager.cancel(pendingIntent);
+                pendingIntent.cancel();
+                Log.d(TAG, "🛑 Desfibrilador (AlarmManager) cancelado por muerte voluntaria.");
+            }
+        }
+    }
 }
+

@@ -35,7 +35,11 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".OidoService" />
+        <service android:name=".OidoService"
+            android:foregroundServiceType="microphone|dataSync" />
+
+        <receiver android:name=".RevivalReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

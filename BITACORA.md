@@ -1,5 +1,27 @@
 # Bitácora de Desarrollo: El Oído del Abuelo
 
+## 🚀 Operación Lázaro (Anti-Kill Countermeasures) v1.0-dev.95 | 03-Mar-2026
+### 📜 El Problema
+Tras una investigación exhaustiva vía `adb logcat` a raíz del reporte de un asesinato por parte de MIUI, se descubrió que el sistema operativo estaba liquidando a nuestro `OidoService` por falta crítica de memoria (`cause by low mem`), denegando agresivamente incluso el reinicio automático nativo (`START_STICKY`) con un `Denial of service restart`. Además, el usuario aportó una pista vital: MIUI respetaba el proceso si estaba grabando activamente (consumiendo I/O), pero lo aniquilaba al dejarlo en Standby (sólo escuchando).
+
+### 🛠️ La Solución
+Se ha implementado la **Operación Lázaro**, un blindaje de Nivel 2 contra el *Low Memory Killer* de Android 10:
+1. **Escudo Legal (`foregroundServiceType`)**: Se añadió `android:foregroundServiceType="microphone|dataSync"` al `AndroidManifest.xml`. Esto comunica explícitamente a MIUI que el servicio en reposo absoluto sigue dependiendo vitalmente del hardware de audio, elevando artificialmente su puntuación de supervivencia (OOM_ADJ).
+2. **El Desfibrilador (`RevivalReceiver`)**: Se ha creado un nuevo `BroadcastReceiver` diseñado exclusivamente para monitorizar el pulso del sistema.
+3. **`AlarmManager` Inexorable**: Cada vez que `OidoService` nace, programa una alarma estricta (`setExactAndAllowWhileIdle`) para dentro de 15 minutos en el subsistema de alarmas de Android (el cual sobrevive a la muerte de los procesos).
+4. **Resurrección Activa**: Si MIUI asesina arteramente nuestro proceso, a los 15 minutos el `AlarmManager` despertará a nuestro `RevivalReceiver`. Si éste detecta que el servicio maestro está caído (flag `isServiceRunning = false`), invoca un choque eléctrico (`startForegroundService`) que fuerza a MIUI a levantar toda la aplicación de entre los muertos de forma incondicional.
+
+### 🎓 Lecciones Aprendidas
+- **La Burocracia Salva Vidas**: No basta con usar un micrófono en un Foreground Service; si el `AndroidManifest.xml` no lo especifica *por escrito* en API 29+, los fabricantes agresivos (Xiaomi/Huawei) asumen que estás ejecutando tareas de baja prioridad (ej. descargas) y te ejecutan.
+- **El Patrón Desfibrilador (`AlarmManager` como Watchdog)**: Confiar en las "buenas intenciones" de Android (`START_STICKY`) en teléfonos de 2GB de RAM es un error táctico. Un temporizador independiente en el `AlarmManager` es el único mecanismo verdaderamente fiable para construir demonios inmortales en el hostil ecosistema móvil.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V95) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.95 | ⬜ |
+
 ## 🚀 Inicio del Proyecto | 19-Feb-2026
 ### 📜 El Problema
 Necesitamos establecer una base sólida para el proyecto 'El Oído del Abuelo', asegurando compatibilidad estricta con Android 10 (API 29) y un entorno limpio.
