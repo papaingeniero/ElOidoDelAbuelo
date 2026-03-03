@@ -1398,3 +1398,15 @@ Se lanzó un empaquetamiento expreso compilador (Snapshot Builder) integrando lo
 
 ### 🎓 Lección del Día 
 Aislar el vector de ataque (`frpc.toml`) mediante gitignore no resta modularidad al código general. El Agente mantiene el framework intacto de Extracción de Assets a disco privado desde la APK, validando una dinámica *Plug & Play* donde el Oído asimila perfiles de red con solo empujar una instalación USB.
+
+## 🚀 Versión 1.0-dev.85 (El Desbloqueo del Stale Data)
+*Fecha: 03 de Marzo de 2026*
+
+### 📜 El Problema
+Al intentar cambiar la IP del proxy inverso local (`192.168.1.138`) en `frpc.toml`, nos encontramos con que la aplicación seguía conectándose obstinadamente a `127.0.0.1`. Aunque recompiláramos y subiéramos el APK, el viejo túnel se negaba a morir. La investigación forense determinó que `FrpManager` estaba sufriendo de *Stale Data*: como la primera vez que se instaló la app extrajo el Asset antiguo `frpc.toml` al directorio `FilesDir` interno (Sandbox), las ejecuciones sucesivas veían que el archivo "ya existía" e ignoraban alegremente la nueva configuración viva inyectada en el APK.
+
+### 🛠️ La Solución
+Se eliminó la debilidad condicional `if (!frpConfig.exists())` del `FrpManager.java`. Ahora, en vez de mirar si el archivo existe, el Watchdog despliega toda su furia *sobreescribiendo implacablemente* el archivo `frpc.toml` extraído directamente desde los `/assets` en cada único bucle de reinicio o arranque del servicio. 
+
+### 🎓 Lección del Día (La persistencia del Sandbox)
+En Android, el directorio `/data/user/0/paquete/files/` sobrevive a reinstalaciones (Update) de un APK. Asumir que un archivo estático en Assets (`.toml`, `.json`, `.db`) va a sobreescribir la memoria interna automáticamente en tiempo de despliegue es un error letal de arquitectura. Para configuraciones que orbiten en constante mutación durante desarrollo, extraer sin condiciones es la vacuna definitiva contra los fantasmas del enrutamiento.

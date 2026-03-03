@@ -1,5 +1,8 @@
 # Changelog
 
+## [v1.0-dev.85] - 2026-03-03
+### Fixed
+- **Stale Data en Configuración FRP**: Se ha sustituido la comprobación condicional de existencia de `frpc.toml` dentro del `getFilesDir()` de Android en `FrpManager` por una sobreescritura implacable (`extractAsset()`) en cada ciclo de arranque. Esto garantiza que cualquier cambio de IP remota o puerto introducido en desarrollo sobre la carpeta `/assets` se propague instantáneamente al teléfono sin necesidad de borrar los datos en caché de la aplicación desde los ajustes del sistema operativo.
 ## [v1.0-dev.84] - 2026-03-03
 ### Changed
 - **Verificación Local**: Reconstrucción de la aplicación y despliegue del binario FRP (Proxy Inverso) encapsulado con soporte explícito para servidor perimetral de pruebas local (`127.0.0.1:7000`), confirmando la flexibilidad del archivo .toml para entornos de usuario en cuarentena.

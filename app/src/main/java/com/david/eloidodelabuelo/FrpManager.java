@@ -52,10 +52,8 @@ public class FrpManager {
                     File frpBinary = new File(context.getApplicationInfo().nativeLibraryDir, "libfrpc.so");
                     File frpConfig = new File(context.getFilesDir(), CONFIG_NAME);
 
-                    if (!frpConfig.exists() || frpConfig.length() == 0) {
-                        Log.d(TAG, "Extrayendo configuración " + CONFIG_NAME + "...");
-                        extractAsset(CONFIG_NAME, frpConfig);
-                    }
+                    Log.d(TAG, "Forzando extracción de configuración " + CONFIG_NAME + " para evitar datos obsoletos...");
+                    extractAsset(CONFIG_NAME, frpConfig);
 
                     if (!frpBinary.exists()) {
                         Log.e(TAG, "🔥 Binario FRP no extraído por Android.");
