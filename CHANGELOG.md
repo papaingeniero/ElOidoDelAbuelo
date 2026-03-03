@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.88] - 2026-03-03
+### Changed
+- **Sincronización de Entorno**: Nueva iteración de despliegue snapshot para consolidar la configuración de túneles y telemetría en el dispositivo físico.
+
 ## [v1.0-dev.87] - 2026-03-03
 ### Fixed
 - **Sintaxis TOML de FRP**: Corregido error tipográfico en la configuración de TLS (`enabled` -> `enable`). Las versiones recientes de FRP son extremadamente estrictas con los nombres de los campos en el formato TOML.

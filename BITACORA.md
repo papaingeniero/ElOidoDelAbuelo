@@ -1434,3 +1434,15 @@ Se identificó que en las versiones modernas de FRP que utilizan el formato TOML
 
 ### 🎓 Lección del Día 
 Cuando se trabaja con binarios compilados en Go (como FRP), los errores de "unknown field" suelen ser binarios: o el campo no existe en esa versión, o hay un error de un solo carácter en el nombre. La documentación de FRP es la única fuente de verdad frente a la intuición lingüística.
+
+## 🚀 Versión 1.0-dev.88 (Consolidación de Despliegue)
+*Fecha: 03 de Marzo de 2026*
+
+### 📜 El Problema
+Se requiere realizar una nueva validación del ciclo completo de despliegue para asegurar que las correcciones de sintaxis del túnel (v87) y la lógica de extracción de assets son consistentes bajo una reinstalación limpia.
+
+### 🛠️ La Solución
+Despliegue de una nueva Snapshot incremental. Se mantiene la arquitectura de sobreescritura implacable del archivo `frpc.toml`, asegurando que el estado del túnel en el Xiaomi coincida exactamente con la última definición en la carpeta de activos del proyecto.
+
+### 🎓 Lección del Día 
+En el desarrollo de sistemas IoT, la redundancia en los despliegues de prueba no es ruido; es la única forma de garantizar que el estado del Sandbox del terminal no "enquiste" configuraciones antiguas por fallos imprevistos de caché del SO.
