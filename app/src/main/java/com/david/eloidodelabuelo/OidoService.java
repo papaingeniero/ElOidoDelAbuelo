@@ -74,7 +74,7 @@ public class OidoService extends Service {
         frpManager = new FrpManager(this);
         frpManager.start();
 
-        scheduleRevivalAlarm();
+        scheduleRevivalAlarm(this);
     }
 
     @Override
@@ -140,12 +140,12 @@ public class OidoService extends Service {
                 .build();
     }
 
-    private void scheduleRevivalAlarm() {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+    public static void scheduleRevivalAlarm(Context context) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager != null) {
-            Intent intent = new Intent(this, RevivalReceiver.class);
+            Intent intent = new Intent(context, RevivalReceiver.class);
             PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                    this,
+                    context,
                     0,
                     intent,
                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT : PendingIntent.FLAG_UPDATE_CURRENT

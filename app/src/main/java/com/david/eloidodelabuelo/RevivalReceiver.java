@@ -29,5 +29,8 @@ public class RevivalReceiver extends BroadcastReceiver {
         } else {
             Log.d(TAG, "✅ OidoService está vivo y respirando. Falsa alarma.");
         }
+
+        // 🔥 LA MAGIA: Volver a cargar el desfibrilador para dentro de 15 minutos
+        OidoService.scheduleRevivalAlarm(context);
     }
 }

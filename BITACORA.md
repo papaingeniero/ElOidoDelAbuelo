@@ -1,5 +1,24 @@
 # Bitácora de Desarrollo: El Oído del Abuelo
 
+## 🚀 Parche: Desfibrilador de Un Solo Uso (Bucle Infinito) v1.0-dev.97 | 03-Mar-2026
+### 📜 El Problema
+Se detectó un fallo lógico (Bug) crítico en la "Operación Lázaro". El `AlarmManager` se programó con `setExactAndAllowWhileIdle()`, la cual es una alarma de disparo único. Si el sistema de vigilancia sobrevivía a los primeros 15 minutos, el `RevivalReceiver` se ejecutaba, comprobaba que todo estaba en orden, y moría. Nadie reprogramaba la alarma, dejando a la app desprotegida contra apagones posteriores de MIUI.
+
+### 🛠️ La Solución
+- Se ha refactorizado `OidoService` convirtiendo `scheduleRevivalAlarm` en estático y público (`public static void scheduleRevivalAlarm(Context context)`).
+- Se ha inyectado en `RevivalReceiver.java` una llamada obligatoria a `OidoService.scheduleRevivalAlarm(context)` al final de cada ejecución (`onReceive`), independientemente de si el servicio estaba vivo o muerto. 
+- Ahora, cada vez que el Desfibrilador se dispara, él mismo vuelve a "recargarse" para dentro de 15 minutos. El bucle infinito está cerrado.
+
+### 🎓 Lecciones Aprendidas
+- **Mecánicas del AlarmManager**: En Android moderno (API 23+), no existe una alarma que sea simultáneamente "Exacta", capaz de romper el "Doze Mode" (`AllowWhileIdle`), y además "Repetitiva". Para lograr este tridente táctico, debes usar alarmas de un solo uso que se reprogramen a sí mismas recurrentemente al final de su ejecución.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V97) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.97 | ⬜ |
+
 ## 🚀 Inmunidad Diplomática (Exención de Batería) v1.0-dev.96 | 03-Mar-2026
 ### 📜 El Problema
 MIUI y su gestor de batería son infames por aniquilar procesos en background para ahorrar energía. Hasta ahora, el usuario tenía que buscar la app en los menús de configuración ocultos de Xiaomi y marcarla manualmente como "Sin restricciones" de batería, un proceso tedioso y propenso a olvidos que dejaba la vigilancia vulnerable.

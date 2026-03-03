@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.97] - 2026-03-03
+### Fixed
+- **Desfibrilador de Un Solo Uso (Bugfix)**: El `AlarmManager` para la Operación Lázaro utilizaba `setExactAndAllowWhileIdle`, el cual dispara una única vez. Se modificó `OidoService` y `RevivalReceiver` para que el temporizador se recargue infinitamente tras cada comprobación, garantizando una vigilancia perpetua de MIUI a intervalos de 15 minutos.
+
 ## [v1.0-dev.96] - 2026-03-03
 ### Added
 - **Inmunidad Diplomática**: Implementada solicitud activa de exención de batería (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`) en el `MainActivity`. El Oído del Abuelo ahora pide automáticamente al usuario que lo desligue de las garras del "Ahorro de Batería" de MIUI, sin tener que bucear por menús ocultos.
