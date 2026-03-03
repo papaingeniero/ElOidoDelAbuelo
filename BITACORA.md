@@ -1575,3 +1575,25 @@ Se detectó un fallo lógico (Bug) crítico en la "Operación Lázaro". El `Alar
 | 2. Actualización BITACORA.md | ✅ |
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.97 | ⬜ |
+
+## 🚀 Motor de Renderizado: Zoom y Regla Temporal (v1.0-dev.98) | 03-Mar-2026
+### 📜 El Problema
+El reproductor de audio forense del Dashboard web (`index.html`) cumplía su función básica mostrando la forma de onda estática de toda la grabación. Sin embargo, para grabaciones largas, la densidad de los picos hacía imposible analizar ruidos específicos con precisión micrométrica. Faltaba una forma de hacer "Zoom in" en una región temporal.
+
+### 🛠️ La Solución
+Se ha refactorizado profundamente el motor de renderizado HTML5 Canvas:
+- **Cámara Virtual**: Introducción del concepto de "cámara" con `viewStartSec` y `viewEndSec` para renderizar únicamente un subconjunto interpolado de la matriz de picos (`forensicPeaks`).
+- **Zoom Multitáctil (Mobile-First)**: Implementación de detección matemática de `Pinch-to-Zoom` interceptando los eventos `touchstart` y `touchmove` con 2 dedos, calculando la distancia del Pinch (`Math.hypot`) y reajustando la duración de la cámara de forma fluida.
+- **Zoom Rueda (Desktop)**: Soporte equivalente interceptando el evento `wheel` (`e.deltaY`) para acercar o alejar calculando dinámicamente el `zoomFactor`.
+- **Regla Temporal Dinámica**: Nuevo algoritmo de renderizado bajo el Eje X (formato MM:SS) cuya granularidad (`tickInterval`) se autoajusta inteligentemente dependiendo del nivel de zoom actual (desde marcas cada 60s en vistas globales hasta 1s en primeros planos extremos).
+
+### 🎓 Lecciones Aprendidas
+- **Desacoplamiento de Vista y Modelo**: Al separar la matriz de datos de origen (`forensicPeaks`) de la lógica de pintado (la "cámara"), logramos iterar sobre millones de muestras renderizando únicamente a nivel sub-píxel la porción de array visible.
+- **Micro-gestión de Gestos**: Bloquear selectivamente `e.preventDefault()` en los eventos `touchstart/wheel` en Canvas es fundamental para evitar que el navegador interprete los gestos intra-pantalla como un comando de scroll global de la página.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V98) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.98 | ⬜ |

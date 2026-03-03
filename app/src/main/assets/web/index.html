@@ -1227,6 +1227,9 @@
         let isWavePlaying = false;
         let waveFileName = "";
 
+        // VARIABLES PARA LA CÁMARA (ZOOM Y PAN)
+        let viewStartSec = 0;
+        let viewEndSec = 0;
         const canvas = document.getElementById('waveCanvas');
         const ctx = canvas.getContext('2d');
         const waveLoading = document.getElementById('waveLoading');
@@ -1255,9 +1258,13 @@
             if (fileObj && fileObj.peaks && fileObj.peaks.length > 0) {
                 forensicPeaks = fileObj.peaks;
                 forensicDuration = (fileObj.durationMs || 0) / 1000;
+                viewStartSec = 0;
+                viewEndSec = forensicDuration;
             } else {
                 forensicPeaks = [0]; // Fallback si es un archivo muy antiguo sin JSON
                 forensicDuration = 1;
+                viewStartSec = 0;
+                viewEndSec = 1;
             }
 
             if (forensicAudio) {
@@ -1306,61 +1313,68 @@
             if (!canvas) return;
             const width = canvas.width;
             const height = canvas.height;
+            ctx.clearRect(0, 0, width, height);
 
-            if (!forensicPeaks || forensicPeaks.length <= 1) {
-                // Fallback: No hay picos, dibujar solo el mensaje y la línea de tiempo si está reproduciendo
-                ctx.clearRect(0, 0, width, height);
+            if (!forensicPeaks || forensicPeaks.length <= 1 || forensicDuration <= 0) {
                 ctx.fillStyle = 'rgba(255,255,255,0.3)';
                 ctx.font = '14px monospace';
                 ctx.textAlign = 'center';
-                ctx.fillText('Sin datos de onda — Pulsa PLAY para reproducir', width / 2, height / 2 + 5);
-                ctx.textAlign = 'left';
-
-                if (forensicAudio && forensicDuration > 0 && !isNaN(forensicAudio.currentTime)) {
-                    const currentPlayX = (forensicAudio.currentTime / forensicDuration) * width;
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(currentPlayX - 1, 0, 3, 10);
-                    ctx.fillRect(currentPlayX - 1, height - 10, 3, 10);
-                }
+                ctx.fillText('Sin datos de onda — Pulsa PLAY', width / 2, height / 2 + 5);
                 return;
             }
 
-            ctx.clearRect(0, 0, width, height);
-
             const localMax = Math.max(...forensicPeaks, 100);
-            const maxPcm = localMax;
+            const viewDuration = viewEndSec - viewStartSec;
+            if (viewDuration <= 0) return;
 
-            // Grid (Centro, Techo, Suelo)
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.beginPath();
-            ctx.moveTo(0, height / 2); ctx.lineTo(width, height / 2);
-            ctx.moveTo(0, 0); ctx.lineTo(width, 0);
-            ctx.moveTo(0, height); ctx.lineTo(width, height);
-            ctx.stroke();
-
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            // 1. DIBUJAR REGLA DE TIEMPO (Eje X)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
             ctx.font = '10px monospace';
-            ctx.textAlign = 'left';
-            ctx.fillText('+' + maxPcm, 2, 10);
-            ctx.fillText('0', 2, (height / 2) - 2);
-            ctx.fillText('-' + maxPcm, 2, height - 2);
+            ctx.textAlign = 'center';
 
-            const step = width / forensicPeaks.length;
-            const currentPlayX = (forensicAudio && forensicDuration > 0 && !isNaN(forensicAudio.currentTime)) ? (forensicAudio.currentTime / forensicDuration) * width : 0;
+            let tickInterval = 1; 
+            if (viewDuration > 300) tickInterval = 60;
+            else if (viewDuration > 60) tickInterval = 10;
+            else if (viewDuration > 10) tickInterval = 5;
 
-            for (let i = 0; i < forensicPeaks.length; i++) {
-                const normalized = forensicPeaks[i] / localMax;
-                const barHeight = Math.max(1, normalized * height);
-                const x = i * step;
-                const y = (height - barHeight) / 2;
-
-                ctx.fillStyle = x <= currentPlayX ? '#d32f2f' : '#4caf50';
-                ctx.fillRect(x, y, Math.max(1, step - 0.5), barHeight);
+            const firstTick = Math.ceil(viewStartSec / tickInterval) * tickInterval;
+            for (let t = firstTick; t <= viewEndSec; t += tickInterval) {
+                const x = ((t - viewStartSec) / viewDuration) * width;
+                ctx.fillRect(x, height - 15, 1, 15);
+                const m = Math.floor(t / 60).toString().padStart(2, '0');
+                const s = Math.floor(t % 60).toString().padStart(2, '0');
+                ctx.fillText(`${m}:${s}`, x, height - 18);
             }
 
-            ctx.fillStyle = 'white';
-            ctx.fillRect(currentPlayX - 1, 0, 3, 10);
-            ctx.fillRect(currentPlayX - 1, height - 10, 3, 10);
+            // 2. DIBUJAR PICOS VISIBLES
+            const startIdx = Math.floor((viewStartSec / forensicDuration) * forensicPeaks.length);
+            const endIdx = Math.ceil((viewEndSec / forensicDuration) * forensicPeaks.length);
+            const visiblePeaks = forensicPeaks.slice(Math.max(0, startIdx), Math.min(forensicPeaks.length, endIdx));
+
+            if (visiblePeaks.length > 0) {
+                const step = width / visiblePeaks.length;
+                const currentPlayTime = forensicAudio ? forensicAudio.currentTime : 0;
+                
+                for (let i = 0; i < visiblePeaks.length; i++) {
+                    const peakTime = viewStartSec + ((i / visiblePeaks.length) * viewDuration);
+                    const normalized = visiblePeaks[i] / localMax;
+                    const barHeight = Math.max(1, normalized * (height - 25)); 
+                    const x = i * step;
+                    const y = ((height - 25) - barHeight) / 2;
+
+                    ctx.fillStyle = peakTime <= currentPlayTime ? '#d32f2f' : '#4caf50';
+                    ctx.fillRect(x, y, Math.max(1, step - 0.5), barHeight);
+                }
+            }
+
+            // 3. DIBUJAR CABEZAL DE REPRODUCCIÓN
+            if (forensicAudio && !isNaN(forensicAudio.currentTime)) {
+                if (forensicAudio.currentTime >= viewStartSec && forensicAudio.currentTime <= viewEndSec) {
+                    const currentPlayX = ((forensicAudio.currentTime - viewStartSec) / viewDuration) * width;
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(currentPlayX - 1, 0, 2, height);
+                }
+            }
         }
 
         function initForensicAudio() {
@@ -1445,35 +1459,124 @@
             waveTimeDisplay.innerText = `${formatTime(forensicAudio ? forensicAudio.currentTime : 0)} / ${formatTime(forensicDuration)}`;
         }
 
-        // --- LÓGICA DE SCRUBBING ---
+        // --- LÓGICA MULTITÁCTIL, SCRUBBING Y ZOOM ---
         let isDragging = false;
+        let initialPinchDist = null;
+        let initialViewStart = 0;
+        let initialViewEnd = 0;
+
         function handlePointerDown(e) {
             if (!forensicAudio) return;
             isDragging = true;
             handlePointerMove(e);
         }
+
         function handlePointerMove(e) {
             if (!isDragging || !forensicAudio || forensicDuration === 0) return;
+            if (e.touches && e.touches.length > 1) return; // Evitar conflictos con el Pinch
+            
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             let ratio = (clientX - rect.left) / rect.width;
             ratio = Math.max(0, Math.min(ratio, 1));
 
-            forensicAudio.currentTime = ratio * forensicDuration;
+            const viewDuration = viewEndSec - viewStartSec;
+            forensicAudio.currentTime = viewStartSec + (ratio * viewDuration);
+            
             drawForensicWaveform();
             updateWaveTimeDisplay();
         }
-        function handlePointerUp() {
-            isDragging = false;
-        }
 
+        function handlePointerUp() { isDragging = false; }
+
+        // MÓVIL: Pinch to Zoom
+        canvas.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 2) {
+                isDragging = false; 
+                initialPinchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                initialViewStart = viewStartSec;
+                initialViewEnd = viewEndSec;
+                e.preventDefault(); 
+            } else if (e.touches.length === 1) {
+                handlePointerDown(e);
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', function(e) {
+            if (e.touches.length === 2 && initialPinchDist) {
+                const currentDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const scale = initialPinchDist / currentDist;
+
+                const rect = canvas.getBoundingClientRect();
+                const pinchX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+                const pinchRatio = pinchX / rect.width;
+                
+                const initialDuration = initialViewEnd - initialViewStart;
+                const pivotTime = initialViewStart + (pinchRatio * initialDuration);
+
+                let newDuration = initialDuration * scale;
+                if (newDuration < 1) newDuration = 1; 
+                if (newDuration > forensicDuration) newDuration = forensicDuration;
+
+                let newStart = pivotTime - (pinchRatio * newDuration);
+                let newEnd = pivotTime + ((1 - pinchRatio) * newDuration);
+
+                if (newStart < 0) { newStart = 0; newEnd = newDuration; }
+                if (newEnd > forensicDuration) { newEnd = forensicDuration; newStart = forensicDuration - newDuration; }
+
+                viewStartSec = newStart;
+                viewEndSec = newEnd;
+                drawForensicWaveform();
+                e.preventDefault();
+            } else if (e.touches.length === 1) {
+                handlePointerMove(e);
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', function(e) {
+            if (e.touches.length < 2) initialPinchDist = null;
+            handlePointerUp();
+        });
+
+        // DESKTOP: Zoom con Rueda / Trackpad
+        canvas.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            if (!forensicAudio) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const ratio = mouseX / rect.width;
+            
+            const viewDuration = viewEndSec - viewStartSec;
+            const pivotTime = viewStartSec + (ratio * viewDuration);
+
+            const zoomFactor = e.deltaY > 0 ? 1.2 : 0.8; 
+            let newDuration = viewDuration * zoomFactor;
+
+            if (newDuration < 1) newDuration = 1;
+            if (newDuration > forensicDuration) newDuration = forensicDuration;
+
+            let newStart = pivotTime - (ratio * newDuration);
+            let newEnd = pivotTime + ((1 - ratio) * newDuration);
+
+            if (newStart < 0) { newStart = 0; newEnd = newDuration; }
+            if (newEnd > forensicDuration) { newEnd = forensicDuration; newStart = forensicDuration - newDuration; }
+
+            viewStartSec = newStart;
+            viewEndSec = newEnd;
+            drawForensicWaveform();
+        }, { passive: false });
+
+        // Eventos clásicos de ratón
         canvas.addEventListener('mousedown', handlePointerDown);
         canvas.addEventListener('mousemove', handlePointerMove);
         canvas.addEventListener('mouseup', handlePointerUp);
         canvas.addEventListener('mouseleave', handlePointerUp);
-        canvas.addEventListener('touchstart', handlePointerDown, { passive: true });
-        canvas.addEventListener('touchmove', handlePointerMove, { passive: true });
-        canvas.addEventListener('touchend', handlePointerUp);
 
         // --- Lógica de Arrastre de Umbral (V59) ---
         let isDraggingThreshold = false;

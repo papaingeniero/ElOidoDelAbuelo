@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.98] - 2026-03-03
+### Added
+- **Timeline Ruler & Zoom (Dashboard)**: Se ha reescrito el motor de renderizado del `waveCanvas` en el reproductor forense (`index.html`). Ahora incluye capacidades avanzadas de zoom multitáctil (Pinch-to-Zoom) para móviles, zoom vertical con rueda/trackpad para Desktop, paneo fluido y una nueva regla temporal en el Eje X que se autoescala (MM:SS).
+
 ## [v1.0-dev.97] - 2026-03-03
 ### Fixed
 - **Desfibrilador de Un Solo Uso (Bugfix)**: El `AlarmManager` para la Operación Lázaro utilizaba `setExactAndAllowWhileIdle`, el cual dispara una única vez. Se modificó `OidoService` y `RevivalReceiver` para que el temporizador se recargue infinitamente tras cada comprobación, garantizando una vigilancia perpetua de MIUI a intervalos de 15 minutos.
