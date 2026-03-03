@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.99] - 2026-03-03
+### Fixed
+- **Motor Multitáctil (Pan & Zoom)**: Arreglado un bug donde el arrastre horizontal (Pan) de la onda forense se sentía agarrotado e invertido durante un Pinch-to-Zoom. Se sustituyó el cálculo posicional estático por un motor basado en "Deltas por frame", logrando que la onda se desplace con absoluta fluidez en la misma dirección que los dedos.
+
 ## [v1.0-dev.98] - 2026-03-03
 ### Added
 - **Timeline Ruler & Zoom (Dashboard)**: Se ha reescrito el motor de renderizado del `waveCanvas` en el reproductor forense (`index.html`). Ahora incluye capacidades avanzadas de zoom multitáctil (Pinch-to-Zoom) para móviles, zoom vertical con rueda/trackpad para Desktop, paneo fluido y una nueva regla temporal en el Eje X que se autoescala (MM:SS).

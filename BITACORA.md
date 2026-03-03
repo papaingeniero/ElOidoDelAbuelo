@@ -1597,3 +1597,24 @@ Se ha refactorizado profundamente el motor de renderizado HTML5 Canvas:
 | 2. Actualización BITACORA.md | ✅ |
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.98 | ⬜ |
+
+## 🚀 Motor Multitáctil de Paneos (v1.0-dev.99) | 03-Mar-2026
+### 📜 El Problema
+El usuario reportó que al hacer "Pinch-to-Zoom" en el canvas de audio, la función de ampliación funcionaba, pero el intento de arrastrar la onda lateralmente (Pan) resultaba en un movimiento mínimo e invertido. 
+
+### 🛠️ La Solución
+El problema erradicaba en que el cálculo de `touchmove` estaba anclado estáticamente a las coordenadas iniciales del `touchstart`. Se ha refactorizado la lógica multitáctil de `index.html` para utilizar una arquitectura basada en "Deltas por frame":
+- Se sustituyen `initialPinchDist` e `initialViewStart` por rastreadores de frame anterior: `lastPinchDist` y `lastPinchCenterX`.
+- Al desplazarse, se calcula la diferencia en píxeles (`deltaXPixels`) desde el frame anterior y se traduce a segundos observables (`deltaSeconds`).
+- La cámara se desplaza restando este delta, consiguiendo que la onda gráfica se mueva en perfecta sintonía geométrica 1:1 con el arrastre de los dedos en la pantalla (como un mapa iterativo).
+- El cálculo se engloba dentro de topes (Clamp) para evitar navegar hacia segundos negativos o más allá del final del audio.
+
+### 🎓 Lecciones Aprendidas
+- **Físicas Touch**: Las transformaciones absolutas (`initial` vs `current`) funcionan bien para escalas ancladas (Zoom puro desde el centro). Pero para movimientos combinados (Pan + Zoom simultáneo), usar deltas recursivos con un bucle persistente de estado (`last = current`) es la única forma de conseguir un feeling nativo.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V99) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.99 | ⬜ |

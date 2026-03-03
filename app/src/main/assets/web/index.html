@@ -1332,7 +1332,7 @@
             ctx.font = '10px monospace';
             ctx.textAlign = 'center';
 
-            let tickInterval = 1; 
+            let tickInterval = 1;
             if (viewDuration > 300) tickInterval = 60;
             else if (viewDuration > 60) tickInterval = 10;
             else if (viewDuration > 10) tickInterval = 5;
@@ -1354,11 +1354,11 @@
             if (visiblePeaks.length > 0) {
                 const step = width / visiblePeaks.length;
                 const currentPlayTime = forensicAudio ? forensicAudio.currentTime : 0;
-                
+
                 for (let i = 0; i < visiblePeaks.length; i++) {
                     const peakTime = viewStartSec + ((i / visiblePeaks.length) * viewDuration);
                     const normalized = visiblePeaks[i] / localMax;
-                    const barHeight = Math.max(1, normalized * (height - 25)); 
+                    const barHeight = Math.max(1, normalized * (height - 25));
                     const x = i * step;
                     const y = ((height - 25) - barHeight) / 2;
 
@@ -1461,9 +1461,8 @@
 
         // --- LÓGICA MULTITÁCTIL, SCRUBBING Y ZOOM ---
         let isDragging = false;
-        let initialPinchDist = null;
-        let initialViewStart = 0;
-        let initialViewEnd = 0;
+        let lastPinchDist = null;
+        let lastPinchCenterX = null;
 
         function handlePointerDown(e) {
             if (!forensicAudio) return;
@@ -1474,7 +1473,7 @@
         function handlePointerMove(e) {
             if (!isDragging || !forensicAudio || forensicDuration === 0) return;
             if (e.touches && e.touches.length > 1) return; // Evitar conflictos con el Pinch
-            
+
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             let ratio = (clientX - rect.left) / rect.width;
@@ -1482,80 +1481,107 @@
 
             const viewDuration = viewEndSec - viewStartSec;
             forensicAudio.currentTime = viewStartSec + (ratio * viewDuration);
-            
+
             drawForensicWaveform();
             updateWaveTimeDisplay();
         }
 
         function handlePointerUp() { isDragging = false; }
 
-        // MÓVIL: Pinch to Zoom
-        canvas.addEventListener('touchstart', function(e) {
+        // MÓVIL: Pinch to Zoom y Pan (Desplazamiento Horizontal)
+        canvas.addEventListener('touchstart', function (e) {
             if (e.touches.length === 2) {
-                isDragging = false; 
-                initialPinchDist = Math.hypot(
+                isDragging = false;
+                lastPinchDist = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
                     e.touches[0].clientY - e.touches[1].clientY
                 );
-                initialViewStart = viewStartSec;
-                initialViewEnd = viewEndSec;
-                e.preventDefault(); 
+                lastPinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                e.preventDefault();
             } else if (e.touches.length === 1) {
                 handlePointerDown(e);
             }
         }, { passive: false });
 
-        canvas.addEventListener('touchmove', function(e) {
-            if (e.touches.length === 2 && initialPinchDist) {
+        canvas.addEventListener('touchmove', function (e) {
+            if (e.touches.length === 2 && lastPinchDist !== null) {
+                e.preventDefault();
+
                 const currentDist = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
                     e.touches[0].clientY - e.touches[1].clientY
                 );
-                const scale = initialPinchDist / currentDist;
+                const currentCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
 
                 const rect = canvas.getBoundingClientRect();
-                const pinchX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
-                const pinchRatio = pinchX / rect.width;
-                
-                const initialDuration = initialViewEnd - initialViewStart;
-                const pivotTime = initialViewStart + (pinchRatio * initialDuration);
+                const currentViewDuration = viewEndSec - viewStartSec;
 
-                let newDuration = initialDuration * scale;
-                if (newDuration < 1) newDuration = 1; 
-                if (newDuration > forensicDuration) newDuration = forensicDuration;
+                // 1. PANEO (Arrastre Horizontal)
+                const deltaXPixels = currentCenterX - lastPinchCenterX;
+                // Convertir los píxeles arrastrados a segundos en la vista actual
+                const deltaSeconds = (deltaXPixels / rect.width) * currentViewDuration;
 
-                let newStart = pivotTime - (pinchRatio * newDuration);
-                let newEnd = pivotTime + ((1 - pinchRatio) * newDuration);
+                // Aplicar el movimiento contrario para que la onda siga el dedo
+                viewStartSec -= deltaSeconds;
+                viewEndSec -= deltaSeconds;
 
-                if (newStart < 0) { newStart = 0; newEnd = newDuration; }
-                if (newEnd > forensicDuration) { newEnd = forensicDuration; newStart = forensicDuration - newDuration; }
+                // 2. ZOOM (Escala)
+                if (lastPinchDist > 0) {
+                    const scale = lastPinchDist / currentDist;
+                    const pinchRatio = (currentCenterX - rect.left) / rect.width;
+                    const pivotTime = viewStartSec + (pinchRatio * currentViewDuration);
 
-                viewStartSec = newStart;
-                viewEndSec = newEnd;
+                    let newDuration = currentViewDuration * scale;
+                    if (newDuration < 1) newDuration = 1; // Límite max zoom: 1 seg
+                    if (newDuration > forensicDuration) newDuration = forensicDuration;
+
+                    viewStartSec = pivotTime - (pinchRatio * newDuration);
+                    viewEndSec = pivotTime + ((1 - pinchRatio) * newDuration);
+                }
+
+                // 3. LIMITAR A LOS BORDES DE LA PISTA (Clamp)
+                if (viewStartSec < 0) {
+                    viewEndSec -= viewStartSec; // Empujar la ventana a la derecha
+                    viewStartSec = 0;
+                    if (viewEndSec > forensicDuration) viewEndSec = forensicDuration;
+                }
+                if (viewEndSec > forensicDuration) {
+                    const shift = viewEndSec - forensicDuration;
+                    viewStartSec -= shift;
+                    viewEndSec = forensicDuration;
+                    if (viewStartSec < 0) viewStartSec = 0;
+                }
+
+                // 4. Guardar estado para el próximo frame
+                lastPinchDist = currentDist;
+                lastPinchCenterX = currentCenterX;
+
                 drawForensicWaveform();
-                e.preventDefault();
             } else if (e.touches.length === 1) {
                 handlePointerMove(e);
             }
         }, { passive: false });
 
-        canvas.addEventListener('touchend', function(e) {
-            if (e.touches.length < 2) initialPinchDist = null;
+        canvas.addEventListener('touchend', function (e) {
+            if (e.touches.length < 2) {
+                lastPinchDist = null;
+                lastPinchCenterX = null;
+            }
             handlePointerUp();
         });
 
         // DESKTOP: Zoom con Rueda / Trackpad
-        canvas.addEventListener('wheel', function(e) {
+        canvas.addEventListener('wheel', function (e) {
             e.preventDefault();
             if (!forensicAudio) return;
             const rect = canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const ratio = mouseX / rect.width;
-            
+
             const viewDuration = viewEndSec - viewStartSec;
             const pivotTime = viewStartSec + (ratio * viewDuration);
 
-            const zoomFactor = e.deltaY > 0 ? 1.2 : 0.8; 
+            const zoomFactor = e.deltaY > 0 ? 1.2 : 0.8;
             let newDuration = viewDuration * zoomFactor;
 
             if (newDuration < 1) newDuration = 1;
