@@ -1446,3 +1446,15 @@ Despliegue de una nueva Snapshot incremental. Se mantiene la arquitectura de sob
 
 ### 🎓 Lección del Día 
 En el desarrollo de sistemas IoT, la redundancia en los despliegues de prueba no es ruido; es la única forma de garantizar que el estado del Sandbox del terminal no "enquiste" configuraciones antiguas por fallos imprevistos de caché del SO.
+
+## 🚀 Versión 1.0-dev.89 (Forzado de TLS por Bloques)
+*Fecha: 03 de Marzo de 2026*
+
+### 📜 El Problema
+A pesar de configurar `transport.tls.enable = true` en la v88, los logs del servidor `frps` en el Mac indicaban que la conexión seguía siendo puramente TCP (ausencia de `tls_enable [true]`). Esto sugiere una "caída silenciosa" (fallback) del protocolo, posiblemente por la ambigüedad de la notación de puntos en archivos TOML complejos con múltiples secciones.
+
+### 🛠️ La Solución
+Se ha reestructurado el archivo `frpc.toml` abandonando las líneas planas por una jerarquía de bloques explícitos: `[auth]` y `[transport.tls]`. Al definir los encabezados de sección, forzamos al parseador del binario Go a instanciar los objetos de configuración correctos, eliminando cualquier interpretación errática del archivo de activos.
+
+### 🎓 Lección del Día 
+En el estándar TOML 1.0+, aunque la notación punteada es válida, no es infalible ante parseadores que esperan una estructura de árbol estricta. Ante fallos silenciosos de protocolo en el IoT, la verbosidad de los bloques `[]` es preferible a la elegancia de las líneas planas; la seguridad no admite ambigüedades.
