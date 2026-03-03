@@ -1458,3 +1458,15 @@ Se ha reestructurado el archivo `frpc.toml` abandonando las líneas planas por u
 
 ### 🎓 Lección del Día 
 En el estándar TOML 1.0+, aunque la notación punteada es válida, no es infalible ante parseadores que esperan una estructura de árbol estricta. Ante fallos silenciosos de protocolo en el IoT, la verbosidad de los bloques `[]` es preferible a la elegancia de las líneas planas; la seguridad no admite ambigüedades.
+
+## 🚀 Versión 1.0-dev.90 (Auditoría Final de Protocolo)
+*Fecha: 03 de Marzo de 2026*
+
+### 📜 El Problema
+A pesar de la reestructuración de la v89, el servidor seguía sin reportar el flag `tls_enable [true]`. La hipótesis es una "ceguera" selectiva del parseador ante la mezcla de variables globales y bloques.
+
+### 🛠️ La Solución
+Purga total de la notación de puntos. Se ha reescrito el `frpc.toml` bajo el estándar de "Bloque Puro", definiendo incluso el protocolo de transporte explícitamente. Se sincroniza con el operador para que aplique el mismo rigor en el servidor (`frps.toml`).
+
+### 🎓 Lección del Día 
+En entornos críticos, el "sucursalismo" de configuraciones (mezclar estilos) es el padre de las brechas de seguridad. Si el servidor no ve el flag de TLS, el túnel es vulnerable aunque el archivo diga lo contrario. Solo la simetría absoluta entre bloques de cliente y servidor garantiza el cifrado real.
