@@ -1618,3 +1618,23 @@ El problema erradicaba en que el cálculo de `touchmove` estaba anclado estátic
 | 2. Actualización BITACORA.md | ✅ |
 | 3. Actualización CHANGELOG.md | ✅ |
 | 4. Commit v1.0-dev.99 | ⬜ |
+
+## 🚀 Anti-Sloppy Pinch: Ventana de Gracia (v1.0-dev.100) | 04-Mar-2026
+### 📜 El Problema
+El usuario detectó que, aunque el nuevo motor de deltas para el Pinch-to-Zoom funcionaba perfectamente de forma conceptual, en el mundo real biológico los dedos no tocan la pantalla exactamente a la misma vez. Existía una desincronización de milisegundos donde el Dedo 1 entraba al Canvas despistando al reproductor, el cual interpretaba ese primer impacto como un "Arrastre individual" instantáneo (Scrubbing), saltando la reproducción actual a ese punto de la onda justo antes de que el Dedo 2 confirmara el Gesto de Zoom.
+
+### 🛠️ La Solución
+Se ha construido un `Grace Period` (Ventana de Gracia) de 100ms dentro de los detectores de toque del `index.html`:
+- Al registrarse un toque simple (`touches.length === 1`), en lugar de disparar la reproducción, la rutina se "aguanta la respiración" e invoca un `setTimeout` que guarda la coordenada `singleTouchX` con 100ms de retraso.
+- Si antes de que estalle ese temporizador el usuario apoya el segundo dedo o empieza a arrastrar el único dedo un pixel extra, el temporizador muere (`clearTimeout`) y ejecuta el plan B: Iniciar el Zoom sin saltar la pista, o arrancar el Scrubbing manual si realmente era la intención.
+- Si el temporizador no es cancelado y detona pasados los 100ms, o el usuario levanta el dedo muy rápido (`touchend`), la página acepta el comando y ejecuta el salto de reproducción (`handlePointerDown`) con la coordenada cacheada.
+
+### 🎓 Lecciones Aprendidas
+- **Leyes Táctiles Asíncronas**: Los lenguajes asumen que "Multitouch = Múltiples toques al unísono", pero la pantalla matricial captura los impactos de forma imperativamente lineal (dedo tras dedo). Los *Timer Debouncers* en los eventos raíz (`touchstart`) son la única vía arquitectónica pacífica para reconciliar el Hardware y la intención Humana.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V100) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.100 | ⬜ |

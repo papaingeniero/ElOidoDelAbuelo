@@ -1463,6 +1463,8 @@
         let isDragging = false;
         let lastPinchDist = null;
         let lastPinchCenterX = null;
+        let singleTouchTimer = null;
+        let singleTouchX = null;
 
         function handlePointerDown(e) {
             if (!forensicAudio) return;
@@ -1488,9 +1490,14 @@
 
         function handlePointerUp() { isDragging = false; }
 
-        // MÓVIL: Pinch to Zoom y Pan (Desplazamiento Horizontal)
+        // MÓVIL: Pinch to Zoom y Pan (Desplazamiento Horizontal) con Anti-Sloppy Pinch
         canvas.addEventListener('touchstart', function (e) {
             if (e.touches.length === 2) {
+                // Si estábamos esperando a ver si era un solo toque, lo cancelamos
+                if (singleTouchTimer) {
+                    clearTimeout(singleTouchTimer);
+                    singleTouchTimer = null;
+                }
                 isDragging = false;
                 lastPinchDist = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
@@ -1499,12 +1506,22 @@
                 lastPinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                 e.preventDefault();
             } else if (e.touches.length === 1) {
-                handlePointerDown(e);
+                // Guardar la coordenada y abrir ventana de gracia de 100ms
+                singleTouchX = e.touches[0].clientX;
+                singleTouchTimer = setTimeout(() => {
+                    handlePointerDown({ clientX: singleTouchX });
+                    singleTouchTimer = null;
+                }, 100);
             }
         }, { passive: false });
 
         canvas.addEventListener('touchmove', function (e) {
             if (e.touches.length === 2 && lastPinchDist !== null) {
+                // Por si el touchmove dispara antes que el touchstart del segundo dedo
+                if (singleTouchTimer) {
+                    clearTimeout(singleTouchTimer);
+                    singleTouchTimer = null;
+                }
                 e.preventDefault();
 
                 const currentDist = Math.hypot(
@@ -1518,10 +1535,7 @@
 
                 // 1. PANEO (Arrastre Horizontal)
                 const deltaXPixels = currentCenterX - lastPinchCenterX;
-                // Convertir los píxeles arrastrados a segundos en la vista actual
                 const deltaSeconds = (deltaXPixels / rect.width) * currentViewDuration;
-
-                // Aplicar el movimiento contrario para que la onda siga el dedo
                 viewStartSec -= deltaSeconds;
                 viewEndSec -= deltaSeconds;
 
@@ -1532,16 +1546,16 @@
                     const pivotTime = viewStartSec + (pinchRatio * currentViewDuration);
 
                     let newDuration = currentViewDuration * scale;
-                    if (newDuration < 1) newDuration = 1; // Límite max zoom: 1 seg
+                    if (newDuration < 1) newDuration = 1;
                     if (newDuration > forensicDuration) newDuration = forensicDuration;
 
                     viewStartSec = pivotTime - (pinchRatio * newDuration);
                     viewEndSec = pivotTime + ((1 - pinchRatio) * newDuration);
                 }
 
-                // 3. LIMITAR A LOS BORDES DE LA PISTA (Clamp)
+                // 3. LIMITAR A LOS BORDES (Clamp)
                 if (viewStartSec < 0) {
-                    viewEndSec -= viewStartSec; // Empujar la ventana a la derecha
+                    viewEndSec -= viewStartSec;
                     viewStartSec = 0;
                     if (viewEndSec > forensicDuration) viewEndSec = forensicDuration;
                 }
@@ -1552,12 +1566,16 @@
                     if (viewStartSec < 0) viewStartSec = 0;
                 }
 
-                // 4. Guardar estado para el próximo frame
                 lastPinchDist = currentDist;
                 lastPinchCenterX = currentCenterX;
-
                 drawForensicWaveform();
             } else if (e.touches.length === 1) {
+                // Si el usuario empieza a arrastrar con 1 dedo antes de 100ms, forzamos el click
+                if (singleTouchTimer) {
+                    clearTimeout(singleTouchTimer);
+                    singleTouchTimer = null;
+                    handlePointerDown({ clientX: singleTouchX });
+                }
                 handlePointerMove(e);
             }
         }, { passive: false });
@@ -1566,6 +1584,12 @@
             if (e.touches.length < 2) {
                 lastPinchDist = null;
                 lastPinchCenterX = null;
+            }
+            // Si levanta el dedo muy rápido (Tap simple antes de 100ms), ejecutamos el salto
+            if (singleTouchTimer) {
+                clearTimeout(singleTouchTimer);
+                singleTouchTimer = null;
+                handlePointerDown({ clientX: singleTouchX });
             }
             handlePointerUp();
         });

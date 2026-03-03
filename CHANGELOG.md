@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.100] - 2026-03-04
+### Fixed
+- **Anti-Sloppy Pinch (Canvas Web)**: Implementada una "Ventana de Gracia" de 100 milisegundos en el reproductor web forense. Esto soluciona un comportamiento errático donde un contacto asíncrono de los dos dedos durante un Pinch-to-Zoom provocaba que la onda saltase repentinamente interpretando un Scrubbing (click simple) falso.
+
 ## [v1.0-dev.99] - 2026-03-03
 ### Fixed
 - **Motor Multitáctil (Pan & Zoom)**: Arreglado un bug donde el arrastre horizontal (Pan) de la onda forense se sentía agarrotado e invertido durante un Pinch-to-Zoom. Se sustituyó el cálculo posicional estático por un motor basado en "Deltas por frame", logrando que la onda se desplace con absoluta fluidez en la misma dirección que los dedos.
