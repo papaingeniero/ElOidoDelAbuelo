@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.86] - 2026-03-03
+### Changed
+- **Actualización de Configuración FRP**: Sincronización de nuevos parámetros de tunelización definidos en `frpc.toml` para pruebas de conectividad en el entorno local del operador.
+
 ## [v1.0-dev.85] - 2026-03-03
 ### Fixed
 - **Stale Data en Configuración FRP**: Se ha sustituido la comprobación condicional de existencia de `frpc.toml` dentro del `getFilesDir()` de Android en `FrpManager` por una sobreescritura implacable (`extractAsset()`) en cada ciclo de arranque. Esto garantiza que cualquier cambio de IP remota o puerto introducido en desarrollo sobre la carpeta `/assets` se propague instantáneamente al teléfono sin necesidad de borrar los datos en caché de la aplicación desde los ajustes del sistema operativo.

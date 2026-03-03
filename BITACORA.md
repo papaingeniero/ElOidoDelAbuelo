@@ -1410,3 +1410,15 @@ Se eliminó la debilidad condicional `if (!frpConfig.exists())` del `FrpManager.
 
 ### 🎓 Lección del Día (La persistencia del Sandbox)
 En Android, el directorio `/data/user/0/paquete/files/` sobrevive a reinstalaciones (Update) de un APK. Asumir que un archivo estático en Assets (`.toml`, `.json`, `.db`) va a sobreescribir la memoria interna automáticamente en tiempo de despliegue es un error letal de arquitectura. Para configuraciones que orbiten en constante mutación durante desarrollo, extraer sin condiciones es la vacuna definitiva contra los fantasmas del enrutamiento.
+
+## 🚀 Versión 1.0-dev.86 (Actualización de Túnel Táctico)
+*Fecha: 03 de Marzo de 2026*
+
+### 📜 El Problema
+El operador requiere iterar rápidamente sobre los parámetros de configuración de `frpc.toml` (IPs, puertos o nombres de proxies) para validar la estabilidad del servidor perimetral sin realizar cambios estructurales en el código Java.
+
+### 🛠️ La Solución
+Se ha procedido a un nuevo despliegue de Snapshot aprovechando la arquitectura de "Extracción Forzada" implementada en la versión anterior. Esta versión empaqueta los últimos cambios realizados manualmente en el archivo de activos, garantizando que el binario de FRP asimile la nueva topología de red nada más arrancar el servicio.
+
+### 🎓 Lección del Día 
+La agilidad en el ciclo de *Debug* depende de la confianza en los automatismos. Al tener garantizada la sobreescritura del Sandbox, el flujo se reduce a: Editar TOML -> `@/deploy_snapshot`. La infraestructura se vuelve invisible frente a la lógica de red.
