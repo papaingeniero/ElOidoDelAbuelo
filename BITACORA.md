@@ -1470,3 +1470,21 @@ Purga total de la notación de puntos. Se ha reescrito el `frpc.toml` bajo el es
 
 ### 🎓 Lección del Día 
 En entornos críticos, el "sucursalismo" de configuraciones (mezclar estilos) es el padre de las brechas de seguridad. Si el servidor no ve el flag de TLS, el túnel es vulnerable aunque el archivo diga lo contrario. Solo la simetría absoluta entre bloques de cliente y servidor garantiza el cifrado real.
+
+## 🚀 Versión 1.0-dev.91-TEST (La Prueba del Vacío / Negative Test)
+*Fecha: 03 de Marzo de 2026*
+
+### 📜 El Problema
+Existía una duda razonable sobre si el TLS estaba realmente activo, dado que los logs de `0.67.0` no mostraban el flag explícito `tls_enable [true]` en el login exitoso.
+
+### 🛠️ La Solución
+Se desplegó una versión de prueba con TLS **desactivado** manualmente en el móvil, mientras el servidor mantenía `transport.tls.force = true`. El resultado fue un fallo inmediato: `connect to server error: EOF`. Esto confirma que el servidor rechaza conexiones en plano, validando por eliminación que la v90 sí estaba operando bajo TLS.
+
+## 🚀 Versión 1.0-dev.92 (Cifrado Confirmado)
+*Fecha: 03 de Marzo de 2026*
+
+### 🛠️ La Solución
+Restauración final de la configuración de bloques con TLS activo. Se consolida el sistema en un estado de alta seguridad, verificado mediante pruebas de fallo.
+
+### 🎓 Lección del Día 
+En criptografía y redes, a veces la ausencia de noticias es la mejor noticia. Si un servidor configurado para ser exclusivo (Force TLS) te deja pasar, es que llevas el carnet de identidad (handshake) correcto, aunque el portero no te lo mencione en voz alta. El error `EOF` en el test de fallo es el certificado de calidad de nuestro túnel.
