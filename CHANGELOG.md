@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.96] - 2026-03-03
+### Added
+- **Inmunidad Diplomática**: Implementada solicitud activa de exención de batería (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`) en el `MainActivity`. El Oído del Abuelo ahora pide automáticamente al usuario que lo desligue de las garras del "Ahorro de Batería" de MIUI, sin tener que bucear por menús ocultos.
+
 ## [v1.0-dev.95] - 2026-03-03
 ### Added
 - **Operación Lázaro (Anti-Kill)**: Añadido mecanismo de resurrección activa (`RevivalReceiver`) y declaración explícita de `foregroundServiceType` en el Manifest para evitar que MIUI aniquile el servicio del micrófono por baja memoria (`low mem`). El servicio ahora incorpora un `AlarmManager` (el "Desfibrilador") que comprueba las constantes vitales del proceso cada 15 minutos y lo despierta agresivamente si el sistema operativo lo ha matado silenciosamente en background.

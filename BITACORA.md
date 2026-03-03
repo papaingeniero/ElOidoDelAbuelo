@@ -1,5 +1,25 @@
 # Bitácora de Desarrollo: El Oído del Abuelo
 
+## 🚀 Inmunidad Diplomática (Exención de Batería) v1.0-dev.96 | 03-Mar-2026
+### 📜 El Problema
+MIUI y su gestor de batería son infames por aniquilar procesos en background para ahorrar energía. Hasta ahora, el usuario tenía que buscar la app en los menús de configuración ocultos de Xiaomi y marcarla manualmente como "Sin restricciones" de batería, un proceso tedioso y propenso a olvidos que dejaba la vigilancia vulnerable.
+
+### 🛠️ La Solución
+Se ha implementado una capa de "Inmunidad Diplomática" proactiva en el `MainActivity`:
+1. **Permiso Explícito**: Se solicitó `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` en el Manifest.
+2. **Interrogatorio al Sistema**: Ahora, al arrancar la app, consultamos al `PowerManager` si ya somos inmunes (`isIgnoringBatteryOptimizations()`).
+3. **El Invocador Nativo**: Si no somos inmunes, disparamos un `Intent` directo con la acción `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. Esto hace saltar un diálogo nativo del sistema preguntando al usuario si desea "Permitir que la aplicación siempre se ejecute en segundo plano", resolviendo la configuración en un solo toque (One-Click) blindando nuestro `OidoService` contra el verdugo de batería de Xiaomi.
+
+### 🎓 Lecciones Aprendidas
+- **Defensa Proactiva vs Pasiva**: Es mejor interrumpir al usuario un segundo con un diálogo del sistema nativo durante el primer arranque, que lamentar la pérdida de horas de grabación porque MIUI decidió ahorrar un 1% de batería de madrugada.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V96) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.96 | ⬜ |
+
 ## 🚀 Operación Lázaro (Anti-Kill Countermeasures) v1.0-dev.95 | 03-Mar-2026
 ### 📜 El Problema
 Tras una investigación exhaustiva vía `adb logcat` a raíz del reporte de un asesinato por parte de MIUI, se descubrió que el sistema operativo estaba liquidando a nuestro `OidoService` por falta crítica de memoria (`cause by low mem`), denegando agresivamente incluso el reinicio automático nativo (`START_STICKY`) con un `Denial of service restart`. Además, el usuario aportó una pista vital: MIUI respetaba el proceso si estaba grabando activamente (consumiendo I/O), pero lo aniquilaba al dejarlo en Standby (sólo escuchando).
