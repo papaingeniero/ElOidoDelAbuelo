@@ -1,65 +1,6 @@
 # Bitácora de Desarrollo: El Oído del Abuelo
 
-## 🚀 Parche: Desfibrilador de Un Solo Uso (Bucle Infinito) v1.0-dev.97 | 03-Mar-2026
-### 📜 El Problema
-Se detectó un fallo lógico (Bug) crítico en la "Operación Lázaro". El `AlarmManager` se programó con `setExactAndAllowWhileIdle()`, la cual es una alarma de disparo único. Si el sistema de vigilancia sobrevivía a los primeros 15 minutos, el `RevivalReceiver` se ejecutaba, comprobaba que todo estaba en orden, y moría. Nadie reprogramaba la alarma, dejando a la app desprotegida contra apagones posteriores de MIUI.
 
-### 🛠️ La Solución
-- Se ha refactorizado `OidoService` convirtiendo `scheduleRevivalAlarm` en estático y público (`public static void scheduleRevivalAlarm(Context context)`).
-- Se ha inyectado en `RevivalReceiver.java` una llamada obligatoria a `OidoService.scheduleRevivalAlarm(context)` al final de cada ejecución (`onReceive`), independientemente de si el servicio estaba vivo o muerto. 
-- Ahora, cada vez que el Desfibrilador se dispara, él mismo vuelve a "recargarse" para dentro de 15 minutos. El bucle infinito está cerrado.
-
-### 🎓 Lecciones Aprendidas
-- **Mecánicas del AlarmManager**: En Android moderno (API 23+), no existe una alarma que sea simultáneamente "Exacta", capaz de romper el "Doze Mode" (`AllowWhileIdle`), y además "Repetitiva". Para lograr este tridente táctico, debes usar alarmas de un solo uso que se reprogramen a sí mismas recurrentemente al final de su ejecución.
-
-| Punto de Verificación | Estado |
-| :--- | :--- |
-| 1. Incremento de Versión (V97) | ✅ |
-| 2. Actualización BITACORA.md | ✅ |
-| 3. Actualización CHANGELOG.md | ✅ |
-| 4. Commit v1.0-dev.97 | ⬜ |
-
-## 🚀 Inmunidad Diplomática (Exención de Batería) v1.0-dev.96 | 03-Mar-2026
-### 📜 El Problema
-MIUI y su gestor de batería son infames por aniquilar procesos en background para ahorrar energía. Hasta ahora, el usuario tenía que buscar la app en los menús de configuración ocultos de Xiaomi y marcarla manualmente como "Sin restricciones" de batería, un proceso tedioso y propenso a olvidos que dejaba la vigilancia vulnerable.
-
-### 🛠️ La Solución
-Se ha implementado una capa de "Inmunidad Diplomática" proactiva en el `MainActivity`:
-1. **Permiso Explícito**: Se solicitó `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` en el Manifest.
-2. **Interrogatorio al Sistema**: Ahora, al arrancar la app, consultamos al `PowerManager` si ya somos inmunes (`isIgnoringBatteryOptimizations()`).
-3. **El Invocador Nativo**: Si no somos inmunes, disparamos un `Intent` directo con la acción `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. Esto hace saltar un diálogo nativo del sistema preguntando al usuario si desea "Permitir que la aplicación siempre se ejecute en segundo plano", resolviendo la configuración en un solo toque (One-Click) blindando nuestro `OidoService` contra el verdugo de batería de Xiaomi.
-
-### 🎓 Lecciones Aprendidas
-- **Defensa Proactiva vs Pasiva**: Es mejor interrumpir al usuario un segundo con un diálogo del sistema nativo durante el primer arranque, que lamentar la pérdida de horas de grabación porque MIUI decidió ahorrar un 1% de batería de madrugada.
-
-| Punto de Verificación | Estado |
-| :--- | :--- |
-| 1. Incremento de Versión (V96) | ✅ |
-| 2. Actualización BITACORA.md | ✅ |
-| 3. Actualización CHANGELOG.md | ✅ |
-| 4. Commit v1.0-dev.96 | ⬜ |
-
-## 🚀 Operación Lázaro (Anti-Kill Countermeasures) v1.0-dev.95 | 03-Mar-2026
-### 📜 El Problema
-Tras una investigación exhaustiva vía `adb logcat` a raíz del reporte de un asesinato por parte de MIUI, se descubrió que el sistema operativo estaba liquidando a nuestro `OidoService` por falta crítica de memoria (`cause by low mem`), denegando agresivamente incluso el reinicio automático nativo (`START_STICKY`) con un `Denial of service restart`. Además, el usuario aportó una pista vital: MIUI respetaba el proceso si estaba grabando activamente (consumiendo I/O), pero lo aniquilaba al dejarlo en Standby (sólo escuchando).
-
-### 🛠️ La Solución
-Se ha implementado la **Operación Lázaro**, un blindaje de Nivel 2 contra el *Low Memory Killer* de Android 10:
-1. **Escudo Legal (`foregroundServiceType`)**: Se añadió `android:foregroundServiceType="microphone|dataSync"` al `AndroidManifest.xml`. Esto comunica explícitamente a MIUI que el servicio en reposo absoluto sigue dependiendo vitalmente del hardware de audio, elevando artificialmente su puntuación de supervivencia (OOM_ADJ).
-2. **El Desfibrilador (`RevivalReceiver`)**: Se ha creado un nuevo `BroadcastReceiver` diseñado exclusivamente para monitorizar el pulso del sistema.
-3. **`AlarmManager` Inexorable**: Cada vez que `OidoService` nace, programa una alarma estricta (`setExactAndAllowWhileIdle`) para dentro de 15 minutos en el subsistema de alarmas de Android (el cual sobrevive a la muerte de los procesos).
-4. **Resurrección Activa**: Si MIUI asesina arteramente nuestro proceso, a los 15 minutos el `AlarmManager` despertará a nuestro `RevivalReceiver`. Si éste detecta que el servicio maestro está caído (flag `isServiceRunning = false`), invoca un choque eléctrico (`startForegroundService`) que fuerza a MIUI a levantar toda la aplicación de entre los muertos de forma incondicional.
-
-### 🎓 Lecciones Aprendidas
-- **La Burocracia Salva Vidas**: No basta con usar un micrófono en un Foreground Service; si el `AndroidManifest.xml` no lo especifica *por escrito* en API 29+, los fabricantes agresivos (Xiaomi/Huawei) asumen que estás ejecutando tareas de baja prioridad (ej. descargas) y te ejecutan.
-- **El Patrón Desfibrilador (`AlarmManager` como Watchdog)**: Confiar en las "buenas intenciones" de Android (`START_STICKY`) en teléfonos de 2GB de RAM es un error táctico. Un temporizador independiente en el `AlarmManager` es el único mecanismo verdaderamente fiable para construir demonios inmortales en el hostil ecosistema móvil.
-
-| Punto de Verificación | Estado |
-| :--- | :--- |
-| 1. Incremento de Versión (V95) | ✅ |
-| 2. Actualización BITACORA.md | ✅ |
-| 3. Actualización CHANGELOG.md | ✅ |
-| 4. Commit v1.0-dev.95 | ⬜ |
 
 ## 🚀 Inicio del Proyecto | 19-Feb-2026
 ### 📜 El Problema
@@ -1570,3 +1511,67 @@ Restauración del token legítimo y cierre de la auditoría de seguridad. El tú
 
 ### 🎓 Lección del Día 
 La seguridad en capas (Capa 3: IP, Capa 4: TLS, Capa 7: Token Auth) es la única forma de dormir tranquilo con un centinela IoT. Hemos roto el sistema dos veces para demostrar que funciona una sola vez: la correcta. El reporte de fallo de token es la firma de clausura de este ciclo de desarrollo.
+
+
+## 🚀 Operación Lázaro (Anti-Kill Countermeasures) v1.0-dev.95 | 03-Mar-2026
+### 📜 El Problema
+Tras una investigación exhaustiva vía `adb logcat` a raíz del reporte de un asesinato por parte de MIUI, se descubrió que el sistema operativo estaba liquidando a nuestro `OidoService` por falta crítica de memoria (`cause by low mem`), denegando agresivamente incluso el reinicio automático nativo (`START_STICKY`) con un `Denial of service restart`. Además, el usuario aportó una pista vital: MIUI respetaba el proceso si estaba grabando activamente (consumiendo I/O), pero lo aniquilaba al dejarlo en Standby (sólo escuchando).
+
+### 🛠️ La Solución
+Se ha implementado la **Operación Lázaro**, un blindaje de Nivel 2 contra el *Low Memory Killer* de Android 10:
+1. **Escudo Legal (`foregroundServiceType`)**: Se añadió `android:foregroundServiceType="microphone|dataSync"` al `AndroidManifest.xml`. Esto comunica explícitamente a MIUI que el servicio en reposo absoluto sigue dependiendo vitalmente del hardware de audio, elevando artificialmente su puntuación de supervivencia (OOM_ADJ).
+2. **El Desfibrilador (`RevivalReceiver`)**: Se ha creado un nuevo `BroadcastReceiver` diseñado exclusivamente para monitorizar el pulso del sistema.
+3. **`AlarmManager` Inexorable**: Cada vez que `OidoService` nace, programa una alarma estricta (`setExactAndAllowWhileIdle`) para dentro de 15 minutos en el subsistema de alarmas de Android (el cual sobrevive a la muerte de los procesos).
+4. **Resurrección Activa**: Si MIUI asesina arteramente nuestro proceso, a los 15 minutos el `AlarmManager` despertará a nuestro `RevivalReceiver`. Si éste detecta que el servicio maestro está caído (flag `isServiceRunning = false`), invoca un choque eléctrico (`startForegroundService`) que fuerza a MIUI a levantar toda la aplicación de entre los muertos de forma incondicional.
+
+### 🎓 Lecciones Aprendidas
+- **La Burocracia Salva Vidas**: No basta con usar un micrófono en un Foreground Service; si el `AndroidManifest.xml` no lo especifica *por escrito* en API 29+, los fabricantes agresivos (Xiaomi/Huawei) asumen que estás ejecutando tareas de baja prioridad (ej. descargas) y te ejecutan.
+- **El Patrón Desfibrilador (`AlarmManager` como Watchdog)**: Confiar en las "buenas intenciones" de Android (`START_STICKY`) en teléfonos de 2GB de RAM es un error táctico. Un temporizador independiente en el `AlarmManager` es el único mecanismo verdaderamente fiable para construir demonios inmortales en el hostil ecosistema móvil.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V95) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.95 | ⬜ |
+
+
+
+## 🚀 Inmunidad Diplomática (Exención de Batería) v1.0-dev.96 | 03-Mar-2026
+### 📜 El Problema
+MIUI y su gestor de batería son infames por aniquilar procesos en background para ahorrar energía. Hasta ahora, el usuario tenía que buscar la app en los menús de configuración ocultos de Xiaomi y marcarla manualmente como "Sin restricciones" de batería, un proceso tedioso y propenso a olvidos que dejaba la vigilancia vulnerable.
+
+### 🛠️ La Solución
+Se ha implementado una capa de "Inmunidad Diplomática" proactiva en el `MainActivity`:
+1. **Permiso Explícito**: Se solicitó `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` en el Manifest.
+2. **Interrogatorio al Sistema**: Ahora, al arrancar la app, consultamos al `PowerManager` si ya somos inmunes (`isIgnoringBatteryOptimizations()`).
+3. **El Invocador Nativo**: Si no somos inmunes, disparamos un `Intent` directo con la acción `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. Esto hace saltar un diálogo nativo del sistema preguntando al usuario si desea "Permitir que la aplicación siempre se ejecute en segundo plano", resolviendo la configuración en un solo toque (One-Click) blindando nuestro `OidoService` contra el verdugo de batería de Xiaomi.
+
+### 🎓 Lecciones Aprendidas
+- **Defensa Proactiva vs Pasiva**: Es mejor interrumpir al usuario un segundo con un diálogo del sistema nativo durante el primer arranque, que lamentar la pérdida de horas de grabación porque MIUI decidió ahorrar un 1% de batería de madrugada.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V96) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.96 | ⬜ |
+
+## 🚀 Parche: Desfibrilador de Un Solo Uso (Bucle Infinito) v1.0-dev.97 | 03-Mar-2026
+### 📜 El Problema
+Se detectó un fallo lógico (Bug) crítico en la "Operación Lázaro". El `AlarmManager` se programó con `setExactAndAllowWhileIdle()`, la cual es una alarma de disparo único. Si el sistema de vigilancia sobrevivía a los primeros 15 minutos, el `RevivalReceiver` se ejecutaba, comprobaba que todo estaba en orden, y moría. Nadie reprogramaba la alarma, dejando a la app desprotegida contra apagones posteriores de MIUI.
+
+### 🛠️ La Solución
+- Se ha refactorizado `OidoService` convirtiendo `scheduleRevivalAlarm` en estático y público (`public static void scheduleRevivalAlarm(Context context)`).
+- Se ha inyectado en `RevivalReceiver.java` una llamada obligatoria a `OidoService.scheduleRevivalAlarm(context)` al final de cada ejecución (`onReceive`), independientemente de si el servicio estaba vivo o muerto. 
+- Ahora, cada vez que el Desfibrilador se dispara, él mismo vuelve a "recargarse" para dentro de 15 minutos. El bucle infinito está cerrado.
+
+### 🎓 Lecciones Aprendidas
+- **Mecánicas del AlarmManager**: En Android moderno (API 23+), no existe una alarma que sea simultáneamente "Exacta", capaz de romper el "Doze Mode" (`AllowWhileIdle`), y además "Repetitiva". Para lograr este tridente táctico, debes usar alarmas de un solo uso que se reprogramen a sí mismas recurrentemente al final de su ejecución.
+
+| Punto de Verificación | Estado |
+| :--- | :--- |
+| 1. Incremento de Versión (V97) | ✅ |
+| 2. Actualización BITACORA.md | ✅ |
+| 3. Actualización CHANGELOG.md | ✅ |
+| 4. Commit v1.0-dev.97 | ⬜ |
