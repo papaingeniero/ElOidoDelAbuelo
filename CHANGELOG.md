@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.87] - 2026-03-03
+### Fixed
+- **Sintaxis TOML de FRP**: Corregido error tipográfico en la configuración de TLS (`enabled` -> `enable`). Las versiones recientes de FRP son extremadamente estrictas con los nombres de los campos en el formato TOML.
+
 ## [v1.0-dev.86] - 2026-03-03
 ### Changed
 - **Actualización de Configuración FRP**: Sincronización de nuevos parámetros de tunelización definidos en `frpc.toml` para pruebas de conectividad en el entorno local del operador.

@@ -1422,3 +1422,15 @@ Se ha procedido a un nuevo despliegue de Snapshot aprovechando la arquitectura d
 
 ### 🎓 Lección del Día 
 La agilidad en el ciclo de *Debug* depende de la confianza en los automatismos. Al tener garantizada la sobreescritura del Sandbox, el flujo se reduce a: Editar TOML -> `@/deploy_snapshot`. La infraestructura se vuelve invisible frente a la lógica de red.
+
+## 🚀 Versión 1.0-dev.87 (La Dictadura del TOML en FRP)
+*Fecha: 03 de Marzo de 2026*
+
+### 📜 El Problema
+Tras intentar activar el cifrado TLS en el túnel, el proceso FRP moría instantáneamente con un error críptico: `json: unknown field "enabled"`. Esto indicaba un fallo de parseo en el archivo de configuración asset.
+
+### 🛠️ La Solución
+Se identificó que en las versiones modernas de FRP que utilizan el formato TOML, la propiedad booleana para activar TLS es `transport.tls.enable` (sin la 'd' final). FRP no ignora los campos desconocidos, sino que lanza una excepción de puntero a estructura JSON que aborta el binario. Se ha corregido el typo en `frpc.toml` y se ha relanzado el despliegue.
+
+### 🎓 Lección del Día 
+Cuando se trabaja con binarios compilados en Go (como FRP), los errores de "unknown field" suelen ser binarios: o el campo no existe en esa versión, o hay un error de un solo carácter en el nombre. La documentación de FRP es la única fuente de verdad frente a la intuición lingüística.
