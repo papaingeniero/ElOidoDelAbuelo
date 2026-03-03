@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0-dev.94] - 2026-03-03
+### Added
+- **Auditoría de Seguridad Completa**: Validación empírica de cifrado TLS (mediante sniffing de red) y de autenticación por Token (mediante pruebas de fallo negativo). El túnel queda certificado como seguro de extremo a extremo para el Xiaomi Redmi 9C.
+
 ## [v1.0-dev.89] - 2026-03-03
 ### Changed
 - **Forzado de Protocolo TLS (Block Syntax)**: Se ha migrado la configuración de `frpc.toml` de notación de puntos a sintaxis de bloques explícitos (`[transport.tls]`). Esta medida se toma tras detectar en los logs del servidor que el handshake TLS no se estaba activando debido a un posible fallo de parseo del binario en la notación simplificada.

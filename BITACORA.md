@@ -1488,3 +1488,24 @@ Restauración final de la configuración de bloques con TLS activo. Se consolida
 
 ### 🎓 Lección del Día 
 En criptografía y redes, a veces la ausencia de noticias es la mejor noticia. Si un servidor configurado para ser exclusivo (Force TLS) te deja pasar, es que llevas el carnet de identidad (handshake) correcto, aunque el portero no te lo mencione en voz alta. El error `EOF` en el test de fallo es el certificado de calidad de nuestro túnel.
+
+### 🕵️ Auditoría Forense Final (v92)
+Se ha verificado el tráfico mediante `tcpdump` en el servidor, confirmando la presencia de tramas `17 03 03`. Esta secuencia identifica inequívocamente el "TLS Application Data" cifrado. El sistema queda validado como seguro de extremo a extremo.
+
+## 🚀 Versión 1.0-dev.93-AUTH-TEST (Prueba de Credenciales)
+*Fecha: 03 de Marzo de 2026*
+
+### 📜 El Problema
+Una vez verificado el cifrado TLS, era imperativo constatar que el motor de autenticación interno (Token-based) realmente protegía la línea ante intrusos que pudieran conocer la IP del servidor Mac.
+
+### 🛠️ La Solución
+Despliegue de una versión con `WRONG_TOKEN`. Los logs del terminal Android reportaron un fallo fulminante de tipo `token in login doesn't match token from configuration`. Esta respuesta confirma que el secreto compartido (`token`) es el guardián final del acceso al proxy.
+
+## 🚀 Versión 1.0-dev.94 (Despliegue Final de Seguridad Total)
+*Fecha: 03 de Marzo de 2026*
+
+### 🛠️ La Solución
+Restauración del token legítimo y cierre de la auditoría de seguridad. El túnel opera ahora con cifrado TLS (v92) y autenticación verificada (v94).
+
+### 🎓 Lección del Día 
+La seguridad en capas (Capa 3: IP, Capa 4: TLS, Capa 7: Token Auth) es la única forma de dormir tranquilo con un centinela IoT. Hemos roto el sistema dos veces para demostrar que funciona una sola vez: la correcta. El reporte de fallo de token es la firma de clausura de este ciclo de desarrollo.
