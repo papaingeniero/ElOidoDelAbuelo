@@ -128,8 +128,12 @@ public class OidoService extends Service {
 
     private Notification createNotification() {
         Intent notificationIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this,
-                0, notificationIntent, 0);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this,
+                0, 
+                notificationIntent, 
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0
+        );
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("El Oído del Abuelo")

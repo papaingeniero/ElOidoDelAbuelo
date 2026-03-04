@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.1.1] - 2026-03-04
+### Changed
+- **Optimización Memoria (AudioSentinel)**: Corregido GC Thrashing al eliminar la inyección recurrente de arrays en el bucle principal infinito, reciclando un objeto de RAM in-place.
+- **Deuda Técnica (OidoService)**: Blindaje de seguridad en PendingIntent con `FLAG_IMMUTABLE` previendo la futura compatibilidad estricta de API 31+.
+
+
 ## [v1.1.0] - 2026-03-04
 ### Release Oficial
 - Consolidación de versiones v1.0-dev.97 a v1.0-dev.100 en Release Estable.

@@ -221,6 +221,7 @@ public class AudioSentinel {
             audioRecord.startRecording();
             short[] buffer = new short[bufferSize / 2];
             byte[] byteBuffer = new byte[bufferSize]; // Para escritura WAV
+            byte[] reusableByteBufferOut = new byte[bufferSize * 2];
 
             while (isRunning) {
                 // 1. Lectura de Preferencias desde RAM (Eco-Mode V31)
@@ -424,14 +425,15 @@ public class AudioSentinel {
                                 ByteBuffer inputBuffer = codec.getInputBuffer(inputBufferIndex);
                                 inputBuffer.clear();
 
-                                byte[] byteBufferOut = new byte[readResult * 2];
+                                // Usar el array pre-asignado en lugar de crear uno nuevo
                                 for (int i = 0; i < readResult; i++) {
-                                    byteBufferOut[i * 2] = (byte) (buffer[i] & 0x00FF);
-                                    byteBufferOut[(i * 2) + 1] = (byte) (buffer[i] >> 8);
+                                    reusableByteBufferOut[i * 2] = (byte) (buffer[i] & 0x00FF);
+                                    reusableByteBufferOut[(i * 2) + 1] = (byte) (buffer[i] >> 8);
                                 }
-                                inputBuffer.put(byteBufferOut);
-                                codec.queueInputBuffer(inputBufferIndex, 0, byteBufferOut.length, currentTime * 1000,
-                                        0);
+                                
+                                // Inyectar usando la longitud real calculada
+                                inputBuffer.put(reusableByteBufferOut, 0, readResult * 2);
+                                codec.queueInputBuffer(inputBufferIndex, 0, readResult * 2, currentTime * 1000, 0);
                             }
 
                             // Ordeñar el MediaCodec (Out) y empaquetar en ADTS
