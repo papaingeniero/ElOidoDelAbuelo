@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.1.0] - 2026-03-04
+### Release Oficial
+- Consolidación de versiones v1.0-dev.97 a v1.0-dev.100 en Release Estable.
+- **Microscopio Temporal Web**: Zoom multitáctil y ruletero dinámico.
+- **Anti-Sloppy Pinch**: Ventana de gracia para evitar saltos.
+- **Desfibrilador Loop Infinito**: Arreglado el servicio de regeneración ante agresiones de MIUI.
+
 ## [v1.0-dev.100] - 2026-03-04
 ### Fixed
 - **Anti-Sloppy Pinch (Canvas Web)**: Implementada una "Ventana de Gracia" de 100 milisegundos en el reproductor web forense. Esto soluciona un comportamiento errático donde un contacto asíncrono de los dos dedos durante un Pinch-to-Zoom provocaba que la onda saltase repentinamente interpretando un Scrubbing (click simple) falso.
