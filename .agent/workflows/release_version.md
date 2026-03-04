@@ -23,6 +23,11 @@ Sigue estos pasos estrictamente cuando el usuario solicite una "Release".
 3.  **Tag Enriquecido**: `git tag -a vX.Y.Z --cleanup=verbatim -m "Release vX.Y.Z" -m "$(cat bitacora_temp.md)" -m "$(cat CHANGELOG.md)"`
 4.  **Limpieza y Push**: `rm bitacora_temp.md`, luego `git push origin vX.Y.Z` y `git push origin main`.
 
-## 4. Cierre y Verificación de 8 Puntos
-Reportar: Versión, Compilación, Ejecución, Bitácora, Changelog, Commit/Tag, Push, Git Status.
+## 4. Compilación y Despliegue
+1.  **Release Build**: Ejecutar `./gradlew assembleRelease`.
+2.  **Instalación**: Instalar el APK en el dispositivo (`adb install -r app/build/outputs/apk/release/app-release.apk` o equivalente).
+3.  **Ejecución Continua (CRÍTICO)**: Arrancar la aplicación en el móvil y **dejarla siempre lanzada/corriendo** para armar el servicio Centinela y el Desfibrilador.
+
+## 5. Cierre y Verificación de 9 Puntos
+Reportar: Versión, Compilación, Despliegue Continuo, Bitácora, Changelog, Commit/Tag, Push, Git Status.
 
