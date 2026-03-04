@@ -135,9 +135,24 @@ public class AudioSentinel {
     }
 
     private volatile long scheduledRecordingEndTime = 0;
+    private volatile boolean forceStopAndRestart = false;
 
     public void startScheduledRecording(long durationMs) {
         if (durationMs > 0) {
+            // Si el usuario está grabando manualmente (Botón Rojo activo), ignoramos la
+            // programada.
+            if (forceRecordCached) {
+                Log.i(TAG, "⏱️ Grabación Programada IGNORADA: Hay una grabación Manual activa.");
+                return;
+            }
+
+            // Si hay una grabación en progreso (Automática), la forzamos a detenerse antes
+            // de iniciar.
+            if (isRecordingStatus) {
+                forceStopAndRestart = true;
+                Log.i(TAG, "⏱️ Grabación Automática interceptada por Grabación Programada.");
+            }
+
             scheduledRecordingEndTime = System.currentTimeMillis() + durationMs;
             Log.i(TAG, "⏱️ Inyección de Grabación Programada por " + durationMs + "ms");
         }
@@ -325,6 +340,12 @@ public class AudioSentinel {
                                 }
                             }
                         }
+                    }
+
+                    if (forceStopAndRestart && isRecording) {
+                        wantToRecord = false;
+                        forceStopAndRestart = false;
+                        Log.w(TAG, "🔪 Cortando grabación en curso para dar paso a Grabación Programada.");
                     }
 
                     // 4. Gestión del MediaCodec y Archivo

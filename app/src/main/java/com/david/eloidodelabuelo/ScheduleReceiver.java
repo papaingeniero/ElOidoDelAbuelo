@@ -19,8 +19,6 @@ public class ScheduleReceiver extends BroadcastReceiver {
         SharedPreferences.Editor editor = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE).edit();
         editor.remove("SCHEDULE_AT_MS");
         editor.remove("SCHEDULE_DUR_MS");
-        // Activamos la bandera FORCE_RECORD temporal localmente en las preferencias
-        editor.putBoolean("FORCE_RECORD", true);
         editor.apply();
 
         // Lanzar AudioSentinel en OidoService (usamos WakefulBroadcastReceiver o

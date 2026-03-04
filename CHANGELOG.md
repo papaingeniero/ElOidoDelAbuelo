@@ -1,5 +1,19 @@
 # Changelog
 
+## [v1.3.0-dev.2] - 2026-03-05
+### Added
+- **Jerarquía de Prioridad en Grabaciones**: Las Grabaciones Programadas ahora respetan las Grabaciones Manuales (Grabar Ahora) en curso (Ignorando la alarma), y abortan grácilmente las grabaciones automáticas por ruido para tomar control inmediato del Micrófono.
+- **Interrupción Grácil**: Nuevo flag concurrente en el bucle principal de *AudioSentinel* que permite cerrar ordenadamente el `MediaCodec` y guardar el `.m4a` capturado antes de iniciar la tarea programada diferida.
+
+## [v1.3.0-dev.1] - 2026-03-05
+### Added
+- **Grabación Programada**: Sistema de grabación en diferido con asignación de tiempo de inicio (Hora) y duración en minutos.
+- **Evadiendo MIUI Doze**: Integración de relés vitales usando `AlarmManager.setExactAndAllowWhileIdle()` asegurando la persistencia y puntualidad atómica de ejecución remota a pantalla apagada. 
+
+## [v1.2.0] - 2026-03-04
+### Oficial Release
+- **Despliegue del Tunel Inverso Inteligente (FRP)**: Aceptación de IP dinámica mediante Dashboard de control local.
+
 ## [v1.1.1] - 2026-03-04
 ### Changed
 - **Optimización Memoria (AudioSentinel)**: Corregido GC Thrashing al eliminar la inyección recurrente de arrays en el bucle principal infinito, reciclando un objeto de RAM in-place.

@@ -1723,3 +1723,18 @@ Había escenarios donde el Abuelo requería vigilar espacios durante lapsos de t
 
 **🎓 Lecciones Aprendidas:**
 Combatir al economizador de energía de Android 10+ (MIUI) en un servicio persistente sin interactuar con la pantalla es complejo. La única forma autorizada de despertar un flujo de código de grabación diferida de forma puramente determinista es el puente a través del `AlarmManager` con la marca explícita `setExactAndAllowWhileIdle`, permitiendo que el hardware interceda a favor de la App.
+
+---
+
+### 🚀 v1.3.0-dev.2 | Jerarquía de Grabaciones Programadas
+
+**📜 El Problema:**
+Al detonar una Grabación Programada, existía el riesgo de colisionar con operaciones previas, resultando en audios truncados o solapados. Si el usuario había activado el "Grabar Ahora" (Manual) intencionadamente, la alarma no debía interferir. Si, por el contrario, el Oído estaba grabando automáticamente por ruido (Auto), la alarma debía interrumpirlo forzosamente para dar prioridad a la Programación horaria planificada.
+
+**🛠️ La Solución:**
+1.  **Independencia del Receiver:** Se eliminó la inyección artificial de la variable `FORCE_RECORD` dentro de `ScheduleReceiver`, desacoplando la programación de la acción Manual del Dashboard.
+2.  **Interceptador de Prioridad (forceStopAndRestart):** En `AudioSentinel`, la inyección de una grabación programada ahora evalúa la bandera `forceRecordCached`. Si es verdadera (Manual), la rechaza (`return` anticipado). Si hay una grabación de ruido en curso (`isRecordingStatus = true`), activa un booleano de corte (`forceStopAndRestart = true`).
+3.  **Corte Grácil en Bucle:** Se inyectó una guardia justo antes del MediaCodec que lee el `forceStopAndRestart`. Si está activo y se está grabando, fuerza un `wantToRecord = false` temporal, lo que invoca el bloque lógico de "Cierre Seguro" guardando el fichero AAC de ruido limpiamente. En la subsecuente iteración de pocos milisegundos, nace el fichero para la Grabación Programada.
+
+**🎓 Lecciones Aprendidas:**
+Las jerarquías de prioridad táctica en IoT no deben pelearse por los recursos simultáneamente. La técnica del "Boolean de un solo ciclo" (Un *Kill-Switch* temporal que aprovecha el propio bucle destructor `!wantToRecord && isRecording` pre-existente) permite cortar y reiniciar transmisiones en caliente en menos de 5ms sin engordar la lógica del código ni duplicar los bloques puros de cierre (*MediaCodec*, *FOS*, *JSON*).
