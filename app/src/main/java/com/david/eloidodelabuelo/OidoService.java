@@ -78,15 +78,56 @@ public class OidoService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && "RESTART_FRP".equals(intent.getAction())) {
-            Log.w(TAG, "♻️ Recibida orden HTTP de RESTART_FRP. Reiniciando túnel...");
-            if (frpManager != null) {
-                frpManager.stop();
-                frpManager.start();
+        if (intent != null) {
+            String action = intent.getAction();
+            if ("RESTART_FRP".equals(action)) {
+                Log.w(TAG, "♻️ Recibida orden HTTP de RESTART_FRP. Reiniciando túnel...");
+                if (frpManager != null) {
+                    frpManager.stop();
+                    frpManager.start();
+                }
+            } else if ("PROGRAM_SCHEDULE_REC".equals(action)) {
+                long trigger = intent.getLongExtra("triggerAtMillis", 0);
+                long dur = intent.getLongExtra("durationMs", 0);
+                programarGrabacionExacta(trigger, dur);
+            } else if ("CANCEL_SCHEDULE_REC".equals(action)) {
+                cancelarGrabacionExacta();
+            } else if ("EXACT_SCHEDULE_FIRED".equals(action)) {
+                long durMs = intent.getLongExtra("durationMs", 0);
+                Log.w(TAG, "🔥 ALARMA DETONADA. Forzando grabación por " + durMs + "ms");
+                if (audioSentinel != null) {
+                    audioSentinel.startScheduledRecording(durMs);
+                }
             }
         }
         // Si el sistema mata el servicio, intentar recrearlo
         return START_STICKY;
+    }
+
+    private void programarGrabacionExacta(long triggerAtMillis, long durationMs) {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, ScheduleReceiver.class);
+        intent.putExtra("durationMs", durationMs);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 999, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        if (alarmManager != null) {
+            // Usar reloj RTC_WAKEUP exacto para saltar la hora con Doze mode override
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
+            Log.i(TAG, "📅 Grabacion Programada Activada en AlarmManager para el Timestamp: " + triggerAtMillis);
+        }
+    }
+
+    private void cancelarGrabacionExacta() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, ScheduleReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 999, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        if (alarmManager != null) {
+            alarmManager.cancel(pendingIntent);
+            Log.i(TAG, "🔕 Grabacion Programada Cancelada en AlarmManager");
+        }
     }
 
     @Override

@@ -269,7 +269,20 @@ public class WebServer extends NanoHTTPD {
                 json.put("version", BuildConfig.VERSION_NAME);
                 json.put("appStartTime", appStartTime);
 
-                // Telemetría con Cache (Eco-Mode V27)
+                SharedPreferences prefs = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE);
+
+                JSONObject status = new JSONObject();
+                status.put("isListening", false);
+                status.put("isRecordingAlarm", AudioSentinel.isRecordingAlarm());
+                status.put("frpServerAddr", prefs.getString("FRP_SERVER_ADDR", "192.168.1.138"));
+
+                long schedAt = prefs.getLong("SCHEDULE_AT_MS", 0);
+                if (schedAt > System.currentTimeMillis()) {
+                    json.put("scheduledAtMs", schedAt);
+                    json.put("scheduledDurationMs", prefs.getLong("SCHEDULE_DUR_MS", 0));
+                }
+
+                json.put("status", status);
                 refreshHardwareTelemetry();
                 json.put("batteryPct", Math.round(cachedBatteryPct));
                 json.put("isCharging", cachedIsCharging);
@@ -279,7 +292,7 @@ public class WebServer extends NanoHTTPD {
                 long freeSpace = (musicDir != null) ? musicDir.getUsableSpace() : 0;
                 json.put("freeSpaceBytes", freeSpace);
 
-                SharedPreferences prefs = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE);
+                json.put("freeSpaceBytes", freeSpace);
                 json.put("micEnabled", prefs.getBoolean("MIC_ENABLED", true));
                 json.put("autoDetectionEnabled", prefs.getBoolean("AUTO_DETECTION_ENABLED", true)); // Nuevo V38
                 json.put("shieldEnabled", prefs.getBoolean("SHIELD_ENABLED", true));
@@ -478,6 +491,54 @@ public class WebServer extends NanoHTTPD {
             } catch (Exception e) {
                 return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "Error");
             }
+        }
+
+        if ("/api/schedule".equals(uri) && Method.POST.equals(session.getMethod())) {
+            try {
+                Map<String, String> filesMap = new HashMap<>();
+                session.parseBody(filesMap);
+                String postData = filesMap.get("postData");
+                if (postData != null) {
+                    JSONObject json = new JSONObject(postData);
+                    long triggerAtMillis = json.getLong("triggerAtMillis");
+                    long durationMs = json.getLong("durationMs");
+
+                    SharedPreferences.Editor editor = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE)
+                            .edit();
+                    editor.putLong("SCHEDULE_AT_MS", triggerAtMillis);
+                    editor.putLong("SCHEDULE_DUR_MS", durationMs);
+                    editor.apply();
+
+                    // Mandar Broadcast/Intent al Servicio Android para que el AlarmManager lo
+                    // absorba
+                    Intent scheduleIntent = new Intent(context, OidoService.class);
+                    scheduleIntent.setAction("PROGRAM_SCHEDULE_REC");
+                    scheduleIntent.putExtra("triggerAtMillis", triggerAtMillis);
+                    scheduleIntent.putExtra("durationMs", durationMs);
+                    context.startService(scheduleIntent);
+
+                    JSONObject res = new JSONObject();
+                    res.put("status", "ok");
+                    return newFixedLengthResponse(Response.Status.OK, "application/json", res.toString());
+                } else {
+                    return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "Falta payload");
+                }
+            } catch (Exception e) {
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "Error programando");
+            }
+        }
+
+        if ("/api/schedule/cancel".equals(uri) && Method.POST.equals(session.getMethod())) {
+            SharedPreferences.Editor editor = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE).edit();
+            editor.remove("SCHEDULE_AT_MS");
+            editor.remove("SCHEDULE_DUR_MS");
+            editor.apply();
+
+            Intent cancelIntent = new Intent(context, OidoService.class);
+            cancelIntent.setAction("CANCEL_SCHEDULE_REC");
+            context.startService(cancelIntent);
+
+            return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\":\"ok\"}");
         }
 
         if ("/api/generate-progress".equals(uri)) {

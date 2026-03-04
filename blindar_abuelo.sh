@@ -16,7 +16,7 @@ echo ""
 echo "📦 FASE 0: DESPLIEGUE Y EJECUCIÓN"
 echo "---------------------------------------------------"
 echo "⏳ Instalando la última compilación (APK)..."
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/release/app-release.apk
 sleep 2
 
 echo "▶️  Arrancando el motor principal (MainActivity)..."

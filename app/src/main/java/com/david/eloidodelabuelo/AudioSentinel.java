@@ -95,6 +95,12 @@ public class AudioSentinel {
 
     private volatile double currentAmplitude = 0;
     private volatile boolean isRecordingStatus = false;
+    private static volatile boolean isRecordingAlarmStatic = false; // V38 Bugfix
+
+    public static boolean isRecordingAlarm() {
+        return isRecordingAlarmStatic;
+    }
+
     private volatile Long recordingStartTimestamp = null;
     private final CopyOnWriteArrayList<OutputStream> liveListeners = new CopyOnWriteArrayList<>();
 
@@ -126,9 +132,15 @@ public class AudioSentinel {
         if (isForced) {
             recordingStartTimestamp = System.currentTimeMillis();
         }
-        // Eliminamos el 'else' para evitar la condición de carrera.
-        // El bucle principal ya hace 'recordingStartTimestamp = null;' tras calcular
-        // finalDurationMs.
+    }
+
+    private volatile long scheduledRecordingEndTime = 0;
+
+    public void startScheduledRecording(long durationMs) {
+        if (durationMs > 0) {
+            scheduledRecordingEndTime = System.currentTimeMillis() + durationMs;
+            Log.i(TAG, "⏱️ Inyección de Grabación Programada por " + durationMs + "ms");
+        }
     }
 
     public AudioSentinel(Context context) {
@@ -282,6 +294,8 @@ public class AudioSentinel {
                     if (micEnabled) {
                         if (forceRecord) {
                             wantToRecord = true; // Continuo absoluto guiado por el Botón REC
+                        } else if (scheduledRecordingEndTime > currentTime) {
+                            wantToRecord = true; // Override por Grabación Programada
                         } else if (autoDetection) { // Detección Clásica solo si está habilitada (V38)
                             if (abortRequested) {
                                 recordingEndTime = 0;
@@ -430,7 +444,7 @@ public class AudioSentinel {
                                     reusableByteBufferOut[i * 2] = (byte) (buffer[i] & 0x00FF);
                                     reusableByteBufferOut[(i * 2) + 1] = (byte) (buffer[i] >> 8);
                                 }
-                                
+
                                 // Inyectar usando la longitud real calculada
                                 inputBuffer.put(reusableByteBufferOut, 0, readResult * 2);
                                 codec.queueInputBuffer(inputBufferIndex, 0, readResult * 2, currentTime * 1000, 0);

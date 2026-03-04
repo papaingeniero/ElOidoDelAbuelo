@@ -1707,3 +1707,19 @@ Convertir la snapshot `v1.1.2-dev.1` en una `v1.2.0` oficial con despliegue de R
 
 **🎓 Lecciones Aprendidas:**
 Las snapshot cumplen su propósito experimental, pero deben consagrarse en la tabla del historial mediante builds finales (`assembleRelease`) para garantizar la inmutabilidad de la memoria técnica de esta aplicación que funcionará 24/7 en un Xiaomi de recursos limitados.
+
+---
+
+### 🚀 v1.3.0-dev.1 | Inteligencia Temporal: Grabación Programada
+
+**📜 El Problema:**
+Había escenarios donde el Abuelo requería vigilar espacios durante lapsos de tiempo conocidos en un futuro (por una cita, evento, etc), pero la pantalla del Xiaomi permanecería apagada, causando que el Oído no actuase ni el usuario pudiese iniciar el "Grabar Ahora" oportunamente por estar ocupado. Un contador (Timer) dentro del proceso de Android hubiese sido asesinado implacablemente por el sistema de optimización de MIUI de forma imperativa (Doze Mode).
+
+**🛠️ La Solución:**
+1.  **Frontend Modal:** Implementación de un nuevo input UI (Modal de Programación) donde el administrador puede declarar una hora *HH:MM* de inicio y un lapso de *Duración*. Se incluyó cálculo automático de Offset y un contador visual tipo "pulso amarillo".
+2.  **AlarmManager Exacto:** La orden viaja del Dashboard a `WebServer.java` (\`/api/schedule\`) y envía un Broadcast al Servicio. `OidoService` anida una "Bomba Lógica" en el Reloj Exacto de hardware de Android usando `setExactAndAllowWhileIdle()`.
+3.  **ScheduleReceiver y Despertador:** Cuando el reloj del sistema coincide, se invoca a un nuevo `BroadcastReceiver` (ScheduleReceiver) que sobrevive a suspensiones de energía y que dispara un comando de inicio al `OidoService`.
+4.  **Bypass de Señal:** `AudioSentinel` fue modificado; y durante el loop natural evalúa si el *timestamp* actual es menor al límite de programación, lo que impone un Override de la variable `wantToRecord = true`, forzando la creación de los ficheros AAC.
+
+**🎓 Lecciones Aprendidas:**
+Combatir al economizador de energía de Android 10+ (MIUI) en un servicio persistente sin interactuar con la pantalla es complejo. La única forma autorizada de despertar un flujo de código de grabación diferida de forma puramente determinista es el puente a través del `AlarmManager` con la marca explícita `setExactAndAllowWhileIdle`, permitiendo que el hardware interceda a favor de la App.

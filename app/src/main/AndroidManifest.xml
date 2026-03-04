@@ -41,6 +41,9 @@
 
         <receiver android:name=".RevivalReceiver"
             android:exported="false" />
+
+        <receiver android:name=".ScheduleReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

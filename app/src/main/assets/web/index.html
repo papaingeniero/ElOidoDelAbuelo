@@ -198,6 +198,20 @@
             animation: pulse 2s infinite;
         }
 
+        @keyframes pulse-yellow {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 179, 0, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 0 6px rgba(255, 179, 0, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 179, 0, 0);
+            }
+        }
+
         @keyframes pulse {
             0% {
                 transform: scale(1);
@@ -484,9 +498,23 @@
             ⏳ CONECTANDO CON EL CENTINELA...
         </div>
         <button id="btnRecMaster" class="pill-btn"
-            style="display: block; width: 100%; margin: 10px 0 25px 0; text-align: center; font-size: 1.3rem; padding: 18px; background-color: var(--status-red); border: none; color: white; border-radius: 12px; font-weight: bold; cursor: pointer; transition: background 0.2s;"
+            style="display: block; width: 100%; margin: 10px 0 10px 0; text-align: center; font-size: 1.3rem; padding: 18px; background-color: var(--status-red); border: none; color: white; border-radius: 12px; font-weight: bold; cursor: pointer; transition: background 0.2s;"
             onclick="toggleContinuousRec()">
             ⏺️ GRABAR AHORA
+        </button>
+
+        <!-- SCHEDULED TASK FEEDBACK -->
+        <div id="scheduledTaskBadge"
+            style="display: none; background-color: rgba(255, 179, 0, 0.2); border: 1px solid var(--status-yellow); color: var(--status-yellow); padding: 10px; border-radius: 8px; margin-bottom: 10px; font-weight: bold; font-size: 0.95rem;">
+            ⏰ <span id="scheduledTaskText">Programado para las --:--</span>
+            <button onclick="cancelSchedule()"
+                style="float: right; background: none; border: none; color: var(--status-red); font-size: 1.2rem; cursor: pointer; margin-top: -3px; font-weight: bold;">×</button>
+        </div>
+
+        <button id="btnScheduleRec" class="pill-btn"
+            style="display: block; width: 100%; margin: 0 0 25px 0; text-align: center; font-size: 1.05rem; padding: 12px; background-color: var(--primary-dark); border: none; color: #ddd; border-radius: 12px; font-weight: bold; cursor: pointer; transition: filter 0.2s;"
+            onclick="openScheduleModal()">
+            📅 GRABACIÓN PROGRAMADA
         </button>
 
         <div class="instrument-panel">
@@ -600,6 +628,42 @@
             <div class="btn-row" style="padding-bottom: 100px;">
                 <button class="btn btn-close" onclick="closeSettings()">Cancelar</button>
                 <button class="btn btn-save" onclick="saveSettings()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Grabación Programada -->
+    <div id="scheduleModal" class="modal">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: var(--status-yellow);">📅 Programar Vigilancia</h2>
+                <button onclick="closeScheduleModal()"
+                    style="background: none; border: none; color: #888; font-size: 2rem; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
+            </div>
+
+            <p style="font-size: 0.85rem; color: #bbb; margin-bottom: 20px;">
+                El Oído del Abuelo despertará automáticamente y grabará durante el tiempo establecido aunque la pantalla
+                del móvil esté apagada.
+            </p>
+
+            <div class="form-group">
+                <label style="color: white; font-size: 1.1rem; font-weight: bold;">Hora de Inicio ⏰</label>
+                <input type="time" id="inpScheduleStart"
+                    style="font-size: 1.5rem; text-align: center; padding: 15px; margin-top: 5px;">
+            </div>
+
+            <div class="form-group" style="margin-top: 25px;">
+                <label style="color: white; font-size: 1.1rem; font-weight: bold;">Duración Estimada ⏳</label>
+                <span style="font-size: 0.8rem; color: #aaa; display: block; margin-bottom: 10px;">(Horas :
+                    Minutos)</span>
+                <input type="time" id="inpScheduleDur" value="00:30"
+                    style="font-size: 1.5rem; text-align: center; padding: 15px;">
+            </div>
+
+            <div class="btn-row" style="margin-top: 30px;">
+                <button class="btn btn-close" onclick="closeScheduleModal()">Cancelar</button>
+                <button class="btn btn-save" style="background-color: var(--status-yellow); color: black;"
+                    onclick="saveSchedule()">Aplicar</button>
             </div>
         </div>
     </div>
@@ -796,6 +860,26 @@
                     let percentage = (amp / MAX_AMPLITUDE) * 100;
                     if (percentage > 100) percentage = 100;
                     if (vumeter) vumeter.style.width = percentage + '%';
+
+                    // Schedule Feedback UI
+                    const scheduledTaskBadge = document.getElementById('scheduledTaskBadge');
+                    const scheduledTaskText = document.getElementById('scheduledTaskText');
+
+                    if (data.scheduledAtMs) {
+                        if (scheduledTaskBadge && scheduledTaskText) {
+                            const schedDate = new Date(data.scheduledAtMs);
+                            const durMins = Math.round(data.scheduledDurationMs / 60000);
+                            const hs = String(schedDate.getHours()).padStart(2, '0');
+                            const ms = String(schedDate.getMinutes()).padStart(2, '0');
+                            scheduledTaskText.textContent = `Programado para ${hs}:${ms} (${durMins} min)`;
+                            scheduledTaskBadge.style.display = 'block';
+
+                            // Animación de pulso lento para recordar que hay algo latente
+                            scheduledTaskBadge.style.animation = 'pulse-yellow 3s infinite';
+                        }
+                    } else {
+                        if (scheduledTaskBadge) scheduledTaskBadge.style.display = 'none';
+                    }
 
                     // Lógica de colores y estados - V38 Dicotomía: El badge narra, el botón actúa
                     const btn = btnRecMaster;
@@ -995,7 +1079,78 @@
                 updateDashboard();
             }).catch(err => alert("Error de red al activar/desactivar grabación"));
         }
+        function openScheduleModal() {
+            document.body.classList.add('modal-open');
+            // Autocompletar con la hora actual + 5 min
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + 5);
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('inpScheduleStart').value = `${hh}:${mm}`;
+            document.getElementById('scheduleModal').style.display = 'flex';
+        }
 
+        function closeScheduleModal() {
+            document.body.classList.remove('modal-open');
+            document.getElementById('scheduleModal').style.display = 'none';
+        }
+
+        function saveSchedule() {
+            const timeStart = document.getElementById('inpScheduleStart').value; // "HH:MM"
+            const timeDur = document.getElementById('inpScheduleDur').value;   // "HH:MM"
+
+            if (!timeStart || !timeDur) {
+                alert("Por favor, rellena tanto la hora de inicio como la duración.");
+                return;
+            }
+
+            // Parsear Duración a Milisegundos
+            const [durH, durM] = timeDur.split(':').map(Number);
+            const durationMs = ((durH * 60) + durM) * 60 * 1000;
+
+            if (durationMs <= 0) {
+                alert("La duración debe ser mayor a 0 minutos.");
+                return;
+            }
+
+            // Calcular Timestamp Objetivo Absoluto
+            const now = new Date();
+            const [stH, stM] = timeStart.split(':').map(Number);
+
+            let targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), stH, stM, 0, 0);
+
+            // Si la hora programada ya pasó hoy, se asume que es para mañana
+            if (targetDate.getTime() < now.getTime()) {
+                targetDate.setDate(targetDate.getDate() + 1);
+            }
+
+            const payload = {
+                triggerAtMillis: targetDate.getTime(),
+                durationMs: durationMs
+            };
+
+            fetch('/api/schedule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(response => response.json())
+                .then(data => {
+                    if (data.status === "ok") {
+                        closeScheduleModal();
+                    } else {
+                        alert("Error programando: " + data.error);
+                    }
+                }).catch(err => {
+                    alert("Fallo de red al programar. ¿Abuelo desconectado?");
+                });
+        }
+
+        function cancelSchedule() {
+            if (!confirm("¿Cancelar la grabación programada actual?")) return;
+            fetch('/api/schedule/cancel', {
+                method: 'POST'
+            }).then(() => updateDashboard());
+        }
         function saveSettings() {
             const payload = {
                 micEnabled: document.getElementById('inpMicEnabled').checked,
