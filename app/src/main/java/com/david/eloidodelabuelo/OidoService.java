@@ -23,7 +23,6 @@ public class OidoService extends Service {
 
     public static volatile boolean isServiceRunning = false;
 
-
     private static final String TAG = "OidoService";
     private static final String CHANNEL_ID = "SentinelChannel";
     private static final int NOTIFICATION_ID = 1;
@@ -79,6 +78,13 @@ public class OidoService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && "RESTART_FRP".equals(intent.getAction())) {
+            Log.w(TAG, "♻️ Recibida orden HTTP de RESTART_FRP. Reiniciando túnel...");
+            if (frpManager != null) {
+                frpManager.stop();
+                frpManager.start();
+            }
+        }
         // Si el sistema mata el servicio, intentar recrearlo
         return START_STICKY;
     }
@@ -130,10 +136,9 @@ public class OidoService extends Service {
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this,
-                0, 
-                notificationIntent, 
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0
-        );
+                0,
+                notificationIntent,
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("El Oído del Abuelo")
@@ -152,14 +157,17 @@ public class OidoService extends Service {
                     context,
                     0,
                     intent,
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT : PendingIntent.FLAG_UPDATE_CURRENT
-            );
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                            ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+                            : PendingIntent.FLAG_UPDATE_CURRENT);
 
-            // MIUI es agresivo, usamos setExactAndAllowWhileIdle si es posible, repitiendo cada 15 min aprox.
+            // MIUI es agresivo, usamos setExactAndAllowWhileIdle si es posible, repitiendo
+            // cada 15 min aprox.
             long triggerAtMillis = SystemClock.elapsedRealtime() + AlarmManager.INTERVAL_FIFTEEN_MINUTES;
-            
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAtMillis, pendingIntent);
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAtMillis,
+                        pendingIntent);
             } else {
                 alarmManager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAtMillis, pendingIntent);
             }
@@ -175,8 +183,9 @@ public class OidoService extends Service {
                     this,
                     0,
                     intent,
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_NO_CREATE : PendingIntent.FLAG_NO_CREATE
-            );
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                            ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_NO_CREATE
+                            : PendingIntent.FLAG_NO_CREATE);
             if (pendingIntent != null) {
                 alarmManager.cancel(pendingIntent);
                 pendingIntent.cancel();
@@ -185,4 +194,3 @@ public class OidoService extends Service {
         }
     }
 }
-

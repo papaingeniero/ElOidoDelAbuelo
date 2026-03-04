@@ -587,6 +587,12 @@
                 <input type="number" id="inpDuration" min="1000" max="60000">
             </div>
             <div class="form-group" style="margin-top: 20px; border-top: 1px solid #444; padding-top: 20px;">
+                <label>IP del Servidor FRP (serverAddr)</label>
+                <input type="text" id="inpFrpServer" placeholder="ej. 192.168.1.138">
+                <span style="font-size: 0.75rem; color: #aaa; display: block; margin-top: 5px;">Al guardar, el túnel FRP
+                    se reiniciará inmediatamente.</span>
+            </div>
+            <div class="form-group" style="margin-top: 20px; border-top: 1px solid #444; padding-top: 20px;">
                 <label style="color: var(--status-red); font-weight: bold;">⚠️ ZONA DE PELIGRO</label>
                 <button class="btn" style="background: var(--status-red); color: white; width: 100%; margin-top: 10px;"
                     onclick="deleteRecordings()">🗑️ Purgar Todo el Historial</button>
@@ -927,18 +933,19 @@
         }
 
         function openSettings() {
-            document.getElementById('inpMicEnabled').checked = (latestConfig.micEnabled !== undefined) ? latestConfig.micEnabled : true;
-            document.getElementById('inpAutoDetectionEnabled').checked = (latestConfig.autoDetectionEnabled !== undefined) ? latestConfig.autoDetectionEnabled : true;
-            document.getElementById('inpShieldEnabled').checked = (latestConfig.shieldEnabled !== undefined) ? latestConfig.shieldEnabled : true;
-            toggleShieldVisibility();
+            document.body.classList.add('modal-open'); // Inmoviliza el fondo
+            document.getElementById('inpMicEnabled').checked = latestConfig.micEnabled !== false;
+            document.getElementById('inpAutoDetectionEnabled').checked = latestConfig.autoDetectionEnabled !== false;
+            document.getElementById('inpShieldEnabled').checked = latestConfig.shieldEnabled !== false;
 
-            document.getElementById('inpSpike').value = latestConfig.SPIKE_THRESHOLD ?? 10000;
-            document.getElementById('valSpike').innerText = latestConfig.SPIKE_THRESHOLD ?? 10000;
-            document.getElementById('inpRequired').value = latestConfig.REQUIRED_SPIKES ?? 3;
-            document.getElementById('inpWindow').value = latestConfig.SHIELD_WINDOW_MS ?? 500;
-            document.getElementById('inpDuration').value = latestConfig.RECORD_DURATION_MS ?? 15000;
+            document.getElementById('inpSpike').value = latestConfig.SPIKE_THRESHOLD || 10000;
+            document.getElementById('valSpike').innerText = latestConfig.SPIKE_THRESHOLD || 10000;
+            document.getElementById('inpRequired').value = latestConfig.REQUIRED_SPIKES || 3;
+            document.getElementById('inpWindow').value = latestConfig.SHIELD_WINDOW_MS || 500;
+            document.getElementById('inpDuration').value = latestConfig.RECORD_DURATION_MS || 15000;
+            document.getElementById('inpFrpServer').value = latestConfig.frpServerAddr || "192.168.1.138";
 
-            document.body.classList.add('modal-open');
+            toggleShieldVisibility(); // Ajustar UI inicial según switches
             document.getElementById('settingsModal').style.display = 'flex';
         }
 
@@ -997,7 +1004,8 @@
                 SPIKE_THRESHOLD: parseInt(document.getElementById('inpSpike').value),
                 REQUIRED_SPIKES: parseInt(document.getElementById('inpRequired').value),
                 SHIELD_WINDOW_MS: parseInt(document.getElementById('inpWindow').value),
-                RECORD_DURATION_MS: parseInt(document.getElementById('inpDuration').value)
+                RECORD_DURATION_MS: parseInt(document.getElementById('inpDuration').value),
+                frpServerAddr: document.getElementById('inpFrpServer').value.trim()
             };
 
             fetch('/api/settings', {

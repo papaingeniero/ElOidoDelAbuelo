@@ -1678,4 +1678,20 @@ Tras la liberación oficial de la v1.1.0, procedimos con una auditoría de rendi
 | 1. Incremento de Versión (V1.1.1) | ✅ |
 | 2. Actualización BITACORA.md | ✅ |
 | 3. Actualización CHANGELOG.md | ✅ |
-| 4. Commit v1.1.1 | ⬜ |
+| 4. Commit v1.1.1 | [x] |
+
+---
+
+### 🚀 v1.1.2-dev.1 | Inteligencia Dinámica: IP del Servidor FRP (Ojo de Sauron)
+
+**📜 El Problema:**
+Cada vez que el servidor central (Mac/Raspberry) cambiaba de IP local o queríamos asignar El Oído del Abuelo a una red diferente conectando a un equipo distinto, teníamos un problema grave: El valor `serverAddr` estaba _hardcodeado_ a fuego dentro del archivo `assets/frpc.toml`. Esto implicaba recompilar el código fuente en Android Studio, generar el APK y reinstalarlo por ADB para que el cliente FRP encontrara su nuevo faro guía. 
+
+**🛠️ La Solución:**
+Hemos independizado al Centinela de su necesidad de recompilación dotándolo de configuración dinámica en caliente.
+1. **Frontend (Dashboard):** Se añadió un campo en la sección "Ajustes del Centinela" (ZONA DE PELIGRO) para que el administrador pueda teclear la nueva IP de FRP. Se agregó la lógica JS para consultar la actual vía `GET` `/api/status` y enviarla por `POST` en `saveSettings()`.
+2. **Backend (WebServer):** El WebServer lee el Intent HTTP, guarda el parámetro en `SharedPreferences` como `FRP_SERVER_ADDR` y envía una bandera inter-componentes `RESTART_FRP`.
+3. **Servicio y Enrutador (OidoService & FrpManager):** El Servicio reacciona al intent relanzando `FrpManager`. En su inicio, `FrpManager` lee las Preferencias y, en lugar de copiar `frpc.toml` ciegamente desde el APK (usando un simple buffer de bytes), realiza un escaneo de texto en vuelo, localiza la llave estática `serverAddr` y la muta inyectándole la IP deseada por el usuario antes de mandárselo a comer al binario `libfrpc.so`. Inmediatamente después, el túnel arranca hacia su nuevo destino sin usar Android Studio.
+
+**🎓 Lección Aprendida:**
+Es posible alterar dinámicamente un binario que exige un fichero de configuración estático convirtiéndolo en una _plantilla_. Aunque las políticas W^X de Android 10 limitan enormemente correr ejecutables propios, si inyectamos una manipulación de strings en el proceso I/O entre la partición inmutable estéril (`Android/assets`) y la mutable de variables (`getFilesDir`), podemos inyectar datos persistentes simulando un ecosistema dinámico puro frente al ejecutable Golang/C++ inferior.

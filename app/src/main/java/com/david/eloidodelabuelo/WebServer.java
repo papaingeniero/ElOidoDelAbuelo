@@ -285,6 +285,7 @@ public class WebServer extends NanoHTTPD {
                 json.put("shieldEnabled", prefs.getBoolean("SHIELD_ENABLED", true));
                 json.put("forceRecord", prefs.getBoolean("FORCE_RECORD", false));
                 json.put("recordingStartTimestamp", sentinel.getRecordingStartTimestamp());
+                json.put("frpServerAddr", prefs.getString("FRP_SERVER_ADDR", "192.168.1.138"));
 
                 json.put("SPIKE_THRESHOLD", prefs.getInt("SPIKE_THRESHOLD", 10000));
                 json.put("REQUIRED_SPIKES", prefs.getInt("REQUIRED_SPIKES", 3));
@@ -325,6 +326,18 @@ public class WebServer extends NanoHTTPD {
                     }
                     if (json.has("abortRecording") && json.getBoolean("abortRecording")) {
                         sentinel.abortCurrentRecording();
+                    }
+                    if (json.has("frpServerAddr")) {
+                        String newAddr = json.getString("frpServerAddr");
+                        String oldAddr = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE)
+                                .getString("FRP_SERVER_ADDR", "192.168.1.138");
+                        if (!newAddr.equals(oldAddr)) {
+                            editor.putString("FRP_SERVER_ADDR", newAddr);
+                            // Notificamos al servicio que relance FRP
+                            Intent intent = new Intent(context, OidoService.class);
+                            intent.setAction("RESTART_FRP");
+                            context.startService(intent);
+                        }
                     }
                     if (json.has("SPIKE_THRESHOLD"))
                         editor.putInt("SPIKE_THRESHOLD", json.getInt("SPIKE_THRESHOLD"));

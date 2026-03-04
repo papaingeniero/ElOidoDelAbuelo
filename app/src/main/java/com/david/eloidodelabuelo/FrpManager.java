@@ -27,10 +27,10 @@ public class FrpManager {
 
     // Tiempos de retardo exponencial (en milisegundos)
     private static final long[] BACKOFF_DELAYS = {
-        10 * 1000,      // 10 segundos
-        30 * 1000,      // 30 segundos
-        2 * 60 * 1000,  // 2 minutos
-        5 * 60 * 1000   // 5 minutos (Tope)
+            10 * 1000, // 10 segundos
+            30 * 1000, // 30 segundos
+            2 * 60 * 1000, // 2 minutos
+            5 * 60 * 1000 // 5 minutos (Tope)
     };
 
     public FrpManager(Context context) {
@@ -39,10 +39,11 @@ public class FrpManager {
     }
 
     public void start() {
-        if (isRunning) return;
+        if (isRunning)
+            return;
         isRunning = true;
         Log.d(TAG, "Iniciando FrpManager Watchdog (Backoff Exponencial)...");
-        
+
         executorService.submit(() -> {
             int retryCount = 0;
             long lastTunnelStartTime = 0;
@@ -52,8 +53,9 @@ public class FrpManager {
                     File frpBinary = new File(context.getApplicationInfo().nativeLibraryDir, "libfrpc.so");
                     File frpConfig = new File(context.getFilesDir(), CONFIG_NAME);
 
-                    Log.d(TAG, "Forzando extracción de configuración " + CONFIG_NAME + " para evitar datos obsoletos...");
-                    extractAsset(CONFIG_NAME, frpConfig);
+                    Log.d(TAG,
+                            "Forzando extracción de configuración " + CONFIG_NAME + " para evitar datos obsoletos...");
+                    extractAndPatchConfig(CONFIG_NAME, frpConfig);
 
                     if (!frpBinary.exists()) {
                         Log.e(TAG, "🔥 Binario FRP no extraído por Android.");
@@ -63,7 +65,8 @@ public class FrpManager {
 
                     setExecutablePermissions(frpBinary);
 
-                    // Si el túnel aguantó vivo más de 5 minutos en el intento anterior, reseteamos el castigo
+                    // Si el túnel aguantó vivo más de 5 minutos en el intento anterior, reseteamos
+                    // el castigo
                     if (System.currentTimeMillis() - lastTunnelStartTime > 5 * 60 * 1000) {
                         retryCount = 0;
                     }
@@ -71,7 +74,8 @@ public class FrpManager {
                     lastTunnelStartTime = System.currentTimeMillis();
                     startTunnel(frpBinary, frpConfig);
 
-                    // Bloqueamos el hilo de Watchdog esperando a que el proceso FRP muera nativamente
+                    // Bloqueamos el hilo de Watchdog esperando a que el proceso FRP muera
+                    // nativamente
                     int exitCode = frpProcess.waitFor();
                     Log.w(TAG, "⚠️ Proceso FRP terminó con código: " + exitCode);
 
@@ -86,7 +90,8 @@ public class FrpManager {
                 // Si seguimos vivos (no nos han parado), aplicamos el castigo (Backoff)
                 if (isRunning) {
                     long delay = BACKOFF_DELAYS[Math.min(retryCount, BACKOFF_DELAYS.length - 1)];
-                    Log.d(TAG, "Zzz... FRP durmiendo por " + (delay/1000) + " segundos antes de reintentar (Intento " + (retryCount+1) + ")");
+                    Log.d(TAG, "Zzz... FRP durmiendo por " + (delay / 1000) + " segundos antes de reintentar (Intento "
+                            + (retryCount + 1) + ")");
                     try {
                         Thread.sleep(delay);
                     } catch (InterruptedException ie) {
@@ -102,13 +107,13 @@ public class FrpManager {
     public void stop() {
         Log.d(TAG, "Deteniendo FrpManager Watchdog...");
         isRunning = false;
-        
+
         if (frpProcess != null) {
             frpProcess.destroy();
             frpProcess = null;
             Log.d(TAG, "Proceso FRP destruido.");
         }
-        
+
         // Interrumpimos los hilos de log (Stream Gobblers)
         if (stdOutThread != null && stdOutThread.isAlive()) {
             stdOutThread.interrupt();
@@ -121,17 +126,24 @@ public class FrpManager {
         }
     }
 
-    private void extractAsset(String assetName, File targetFile) throws IOException {
-        try (InputStream in = context.getAssets().open(assetName);
-             FileOutputStream out = new FileOutputStream(targetFile)) {
+    private void extractAndPatchConfig(String assetName, File targetFile) throws IOException {
+        String dynamicIp = context.getSharedPreferences("OidoPrefs", Context.MODE_PRIVATE)
+                .getString("FRP_SERVER_ADDR", "192.168.1.138");
 
-            byte[] buffer = new byte[1024];
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                out.write(buffer, 0, read);
+        try (InputStream in = context.getAssets().open(assetName);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+                FileOutputStream out = new FileOutputStream(targetFile)) {
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.trim().startsWith("serverAddr")) {
+                    line = "serverAddr = \"" + dynamicIp + "\"";
+                }
+                out.write((line + "\n").getBytes());
             }
             out.flush();
-            Log.d(TAG, "Asset " + assetName + " extraído en " + targetFile.getAbsolutePath());
+            Log.d(TAG, "Configuración " + assetName + " extraída y parcheada (IP: " + dynamicIp + ") en "
+                    + targetFile.getAbsolutePath());
         }
     }
 
@@ -149,25 +161,26 @@ public class FrpManager {
 
     private void startTunnel(File frpBinary, File frpConfig) throws IOException {
         Log.d(TAG, "Levantando túnel FRP en segundo plano...");
-        
-        // Usamos ProcessBuilder para mayor control sobre el working directory y el comando
+
+        // Usamos ProcessBuilder para mayor control sobre el working directory y el
+        // comando
         ProcessBuilder builder = new ProcessBuilder(
                 frpBinary.getAbsolutePath(),
                 "-c",
-                frpConfig.getAbsolutePath()
-        );
+                frpConfig.getAbsolutePath());
         // Establecemos el directorio de ejecución donde residen los binarios extraídos
         builder.directory(context.getFilesDir());
 
         frpProcess = builder.start();
 
-        // Creamos los Stream Gobblers (Vital para evitar que el búfer bloquee el proceso)
+        // Creamos los Stream Gobblers (Vital para evitar que el búfer bloquee el
+        // proceso)
         stdOutThread = new Thread(() -> streamGobbler(frpProcess.getInputStream(), "STDOUT"));
         stdErrThread = new Thread(() -> streamGobbler(frpProcess.getErrorStream(), "STDERR"));
 
         stdOutThread.start();
         stdErrThread.start();
-        
+
         Log.d(TAG, "Túnel FRP lanzado. Stream Gobblers escuchando.");
     }
 
@@ -182,9 +195,11 @@ public class FrpManager {
                     Log.d(TAG, "[FRP-OUT] " + line);
                 }
 
-                // Wathdog Activo: Si detectamos que no hay servidor, matamos el proceso para forzar el Backoff de batería
+                // Wathdog Activo: Si detectamos que no hay servidor, matamos el proceso para
+                // forzar el Backoff de batería
                 if (line.contains("connect to server error") || line.contains("login to server failed")) {
-                    Log.e(TAG, "🔥 Servidor FRP inalcanzable. Destruyendo proceso nativo para forzar suspensión (Backoff)...");
+                    Log.e(TAG,
+                            "🔥 Servidor FRP inalcanzable. Destruyendo proceso nativo para forzar suspensión (Backoff)...");
                     if (frpProcess != null) {
                         frpProcess.destroy();
                     }
