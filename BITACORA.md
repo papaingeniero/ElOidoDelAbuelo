@@ -1738,3 +1738,18 @@ Al detonar una Grabación Programada, existía el riesgo de colisionar con opera
 
 **🎓 Lecciones Aprendidas:**
 Las jerarquías de prioridad táctica en IoT no deben pelearse por los recursos simultáneamente. La técnica del "Boolean de un solo ciclo" (Un *Kill-Switch* temporal que aprovecha el propio bucle destructor `!wantToRecord && isRecording` pre-existente) permite cortar y reiniciar transmisiones en caliente en menos de 5ms sin engordar la lógica del código ni duplicar los bloques puros de cierre (*MediaCodec*, *FOS*, *JSON*).
+
+---
+
+### 🎨 v1.3.0-dev.3 | Refactorización Input Programado (Anti-AM/PM)
+
+**📜 El Problema:**
+En la interfaz final del Xiaomi/Safari, si un usuario ingresaba al modal de Programar Grabación para fijar la "Duración Estimada", el Input de tipo `type="time"` desplegaba rígidamente un control de reloj rotativo (AM/PM) que le exigía, por ejemplo, declarar "12:00 AM" para definir 0 horas o intentar meter minutos sueltos en un formato puramente temporal, fallando conceptualmente en captar y comunicar la idea de una "duración" absoluta.
+
+**🛠️ La Solución:**
+1.  **Destrucción del Tag Temporal:** Se erradicó el `<input type="time">` de la sección "Duración" en `index.html`.
+2.  **Inputs Numéricos Gemelos:** Se sustituyó por una arquitectura Flexible (`display: flex`) emparejando dos `<input type="number">` acoplados, controlando Horas (`min="0" max="24"`) y Minutos (`min="0" max="59"`) de forma literal y agnóstica al huso horario.
+3.  **Parsing Agresivo:** El bucle transaccional JS `saveSchedule()` prescindió de los métodos `String.split(':')` y se reorientó a utilizar un cast forzado tipo C (`parseInt(value, 10) || 0`) sobre ambos nodos de entrada numéricos, ensamblando de nuevo los MS purificados en origen.
+
+**🎓 Lecciones Aprendidas:**
+Intentar reciclar el `type="time"` de HTML5 para un concepto de "Duración" (Deltas Temporales) es un antipatrón en experiencia del usuario. Los navegadores interpretan "Hora del Día" e inyectan modales locales no solicitados (como ruedas AM/PM) que destruyen por completo el sentido de la métrica de tiempo. A veces es mejor construir tus propios `type="number"` encapsulados.

@@ -656,8 +656,13 @@
                 <label style="color: white; font-size: 1.1rem; font-weight: bold;">Duración Estimada ⏳</label>
                 <span style="font-size: 0.8rem; color: #aaa; display: block; margin-bottom: 10px;">(Horas :
                     Minutos)</span>
-                <input type="time" id="inpScheduleDur" value="00:30"
-                    style="font-size: 1.5rem; text-align: center; padding: 15px;">
+                <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
+                    <input type="number" id="inpScheduleDurH" value="0" min="0" max="24" placeholder="HH"
+                        style="font-size: 1.5rem; text-align: center; padding: 15px; width: 45%; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+                    <span style="font-size: 1.5rem; color: #888; font-weight: bold;">:</span>
+                    <input type="number" id="inpScheduleDurM" value="30" min="0" max="59" placeholder="MM"
+                        style="font-size: 1.5rem; text-align: center; padding: 15px; width: 45%; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px;">
+                </div>
             </div>
 
             <div class="btn-row" style="margin-top: 30px;">
@@ -1097,15 +1102,17 @@
 
         function saveSchedule() {
             const timeStart = document.getElementById('inpScheduleStart').value; // "HH:MM"
-            const timeDur = document.getElementById('inpScheduleDur').value;   // "HH:MM"
+            const durHStr = document.getElementById('inpScheduleDurH').value;
+            const durMStr = document.getElementById('inpScheduleDurM').value;
 
-            if (!timeStart || !timeDur) {
+            if (!timeStart || durHStr === "" || durMStr === "") {
                 alert("Por favor, rellena tanto la hora de inicio como la duración.");
                 return;
             }
 
             // Parsear Duración a Milisegundos
-            const [durH, durM] = timeDur.split(':').map(Number);
+            const durH = parseInt(durHStr, 10) || 0;
+            const durM = parseInt(durMStr, 10) || 0;
             const durationMs = ((durH * 60) + durM) * 60 * 1000;
 
             if (durationMs <= 0) {

@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.3.0-dev.3] - 2026-03-05
+### Changed
+- **UX Duración Programada**: Modificado el campo de entrada web de Duración Estimada. Se sustituyó el elemento nativo `type="time"` (que Safari y Chrome renderizaban erróneamente forzando un selector de hora de reloj AM/PM) por dos selectores numéricos independientes divididos para las `Horas` y `Minutos` exactos.
+
 ## [v1.3.0-dev.2] - 2026-03-05
 ### Added
 - **Jerarquía de Prioridad en Grabaciones**: Las Grabaciones Programadas ahora respetan las Grabaciones Manuales (Grabar Ahora) en curso (Ignorando la alarma), y abortan grácilmente las grabaciones automáticas por ruido para tomar control inmediato del Micrófono.
