@@ -24,7 +24,7 @@ Sigue estos pasos estrictamente cuando el usuario solicite una "Release".
 4.  **Limpieza y Push**: `rm bitacora_temp.md`, luego `git push origin vX.Y.Z` y `git push origin main`.
 
 ## 4. Compilación y Despliegue
-1.  **Release Build**: Ejecutar `./gradlew assembleRelease`.
+1.  **Compilación Oficial (CRÍTICO)**: Ejecutar `./gradlew assembleRelease`. **NUNCA** compilar en modo Debug (`assembleDebug`) durante una Release. El APK debe ser la variante optimizada de producción.
 2.  **Instalación**: Instalar el APK en el dispositivo (`adb install -r app/build/outputs/apk/release/app-release.apk` o equivalente).
 3.  **Ejecución Continua (CRÍTICO)**: Arrancar la aplicación en el móvil y **dejarla siempre lanzada/corriendo** para armar el servicio Centinela y el Desfibrilador.
 
