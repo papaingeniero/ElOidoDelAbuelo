@@ -1,5 +1,15 @@
 # Changelog
 
+## [v1.3.0] - 2026-03-05
+### Added
+- **Grabación Programada Avanzada**: Se añadió un Modal al Dashboard para detonar grabaciones diferidas indicando HH:MM de duración. El backend (AudioSentinel + OidoService) gestiona alarmas, despierta el hilo y graba el bloque estipulado.
+- **Estado de Grabación Dual (UI)**: El Frontend ahora discierne si el micrófono ha sido secuestrado por el usuario manualmente (`🔴 GRABACIÓN MANUAL FORZADA`) o por una tarea de cronometría (`🟡 GRABACIÓN PROGRAMADA ACTIVA`).
+- **Escala de Amplitud (Eje Y)**: El visor de Forma de Onda Forense ahora inyecta una cuadrícula horizontal de decibelios relacionales adaptativa. Al "Analizar Pista", la gráfica calcula 3 guías simétricas (al 25%, 50% y 75% del pico máximo auditable) garantizando que la deformación visual ("Zoom" o "Aplastamiento") mantenga su escala matemática legible en cualquier escenario acústico.
+
+### Changed
+- **UX Duración Programada**: Se eliminó el anti-patrón HTML5 `type="time"` para cronometrar duraciones, el cual invocaba teclados de "Reloj Astronómico" no deseados, sustituyéndose directamente por componentes nativos de horas y minutos.
+- **Prioridad de Threads de Grabadora**: La Grabación Automática por Spike interrumpe su ejecución si choca temporalmente con el inicio de una Grabación Programada silenciosa.
+
 ## [v1.3.0-dev.7] - 2026-03-05
 ### Fixed
 - **Estética de Onda Forense (Auto-Scale Y)**: Revertido el techo fijo de la malla. Para mantener la majestuosidad visual de la gráfica, la onda ahora vuelve a utilizar siempre el 100% de la altura de la pantalla (Auto-Zoom total). Para cuantificar este zoom, la rejilla de referencia (Eje Y) ahora se calcula de forma dinámica en tiempo real pintando sus tres guías cuartiles en el 25%, 50% y 75% del valor del Pico Máximo del evento bajo análisis.
