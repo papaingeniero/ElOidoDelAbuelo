@@ -266,6 +266,7 @@ public class WebServer extends NanoHTTPD {
                 JSONObject json = new JSONObject();
                 json.put("currentAmplitude", sentinel.getCurrentAmplitude());
                 json.put("isRecording", sentinel.isCurrentlyRecording());
+                json.put("isScheduledRecording", sentinel.isScheduledRecording());
                 json.put("version", BuildConfig.VERSION_NAME);
                 json.put("appStartTime", appStartTime);
 

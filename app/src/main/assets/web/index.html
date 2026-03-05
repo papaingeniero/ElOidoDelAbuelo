@@ -910,6 +910,33 @@
                             btnLive.innerHTML = "📻 Escuchar en Vivo (Hardware OFF)";
                             stopLiveStream();
                         }
+                    } else if (data.isScheduledRecording) {
+                        if (stateBadge) {
+                            stateBadge.innerHTML = "🟡 ESTADO: GRABACIÓN PROGRAMADA ACTIVA";
+                            stateBadge.style.color = "#ffd600";
+                            stateBadge.style.borderColor = "#4a401c";
+                        }
+                        if (vumeter) vumeter.style.backgroundColor = "var(--status-yellow)";
+
+                        let timeStr = "00:00:00";
+                        if (data.recordingStartTimestamp) {
+                            const diff = Math.floor((Date.now() - data.recordingStartTimestamp) / 1000);
+                            const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+                            const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+                            const s = String(diff % 60).padStart(2, '0');
+                            timeStr = `${h}:${m}:${s}`;
+                        }
+                        if (btn) {
+                            btn.innerHTML = `⏺️ GRABAR AHORA (MANUAL)`;
+                            btn.className = "pill-btn";
+                            btn.style.backgroundColor = "var(--status-red)";
+                            btn.disabled = false;
+                        }
+                        if (btnLive) {
+                            btnLive.disabled = false;
+                            btnLive.style.opacity = "1";
+                            if (!liveAudioElement) btnLive.innerHTML = "📻 Escuchar en Vivo (OFF)";
+                        }
                     } else if (forceRecord) {
                         if (stateBadge) {
                             stateBadge.innerHTML = "🔴 ESTADO: GRABACIÓN MANUAL FORZADA";

@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.3.0-dev.4] - 2026-03-05
+### Added
+- **Estado de Grabación UI**: Se integró el flag `isScheduledRecording` desde `AudioSentinel` al `WebServer` y `index.html`. Ahora, cuando la Grabación Programada está activa y domina el micrófono, el Dashboard muestra explícitamente el badge `🟡 ESTADO: GRABACIÓN PROGRAMADA ACTIVA` en lugar de confundirlo con una grabación manual forzada, transparentando quién ordenó el arranque al usuario.
+
 ## [v1.3.0-dev.3] - 2026-03-05
 ### Changed
 - **UX Duración Programada**: Modificado el campo de entrada web de Duración Estimada. Se sustituyó el elemento nativo `type="time"` (que Safari y Chrome renderizaban erróneamente forzando un selector de hora de reloj AM/PM) por dos selectores numéricos independientes divididos para las `Horas` y `Minutos` exactos.

@@ -1753,3 +1753,18 @@ En la interfaz final del Xiaomi/Safari, si un usuario ingresaba al modal de Prog
 
 **🎓 Lecciones Aprendidas:**
 Intentar reciclar el `type="time"` de HTML5 para un concepto de "Duración" (Deltas Temporales) es un antipatrón en experiencia del usuario. Los navegadores interpretan "Hora del Día" e inyectan modales locales no solicitados (como ruedas AM/PM) que destruyen por completo el sentido de la métrica de tiempo. A veces es mejor construir tus propios `type="number"` encapsulados.
+
+---
+
+### 🟢 v1.3.0-dev.4 | Segmentación de Estados de Interfaz (UI)
+
+**📜 El Problema:**
+Había un problema de "Frenesí Visual" en el Dashboard Web. Cuando el Reloj de Android detonaba una "Grabación Programada" de forma silenciosa e inyectaba el arranque al Oído de forma forzosa, el Frontend (`index.html`) leía la variable maestra `forceRecord = true` del JSON de Backend (`/api/status`) y dibujaba instintivamente `🔴 ESTADO: GRABACIÓN MANUAL FORZADA`. Esto era semánticamente falso (El usuario NO la había iniciado a mano) y generaba paranoia cognitiva.
+
+**🛠️ La Solución:**
+1.  **Exposición Forense:** Se inyectó un getter público `isScheduledRecording()` directamente en `AudioSentinel` que evalúa si un barrido de reloj es inminente contra el `System.currentTimeMillis()` y *no* hay una grabación manual explícita secuestrando el hilo.
+2.  **Inyección en JSON:** El Gateway Local `WebServer` ahora absorbe esa métrica en tiempo real por hilo y la adjunta al stream local de `/api/status`.
+3.  **Cascada de Nodos UI:** En `index.html` (Vanilla JS), se elevó un ramal estricto antes del detector de *forceRecord* base. Al entrar a grabar por culpa de la alarma dorada, el dashboard muteado pinta su *Status Badge* natural a `🟡 ESTADO: GRABACIÓN PROGRAMADA ACTIVA` sobre campo y borde ambarino amigable y reconfortante.
+
+**🎓 Lecciones Aprendidas:**
+Los usuarios confían en la telemetría sólo cuando es matemáticamente franca. Si una acción del sistema en la sombra (Background) suplanta visualmente una acción del usuario (Foreground), la app es percibida como "hostil" o "poseída". Diferenciar el origen del mandato (Persona vs Cron jobs) en la jerarquía del JSON es una directiva suprema.

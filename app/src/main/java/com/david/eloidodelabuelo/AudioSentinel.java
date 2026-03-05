@@ -137,6 +137,10 @@ public class AudioSentinel {
     private volatile long scheduledRecordingEndTime = 0;
     private volatile boolean forceStopAndRestart = false;
 
+    public boolean isScheduledRecording() {
+        return System.currentTimeMillis() < scheduledRecordingEndTime && !forceRecordCached;
+    }
+
     public void startScheduledRecording(long durationMs) {
         if (durationMs > 0) {
             // Si el usuario está grabando manualmente (Botón Rojo activo), ignoramos la
