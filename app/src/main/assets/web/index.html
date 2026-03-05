@@ -1610,11 +1610,21 @@
                 for (let i = 0; i < visiblePeaks.length; i++) {
                     const peakTime = viewStartSec + ((i / visiblePeaks.length) * viewDuration);
                     const normalized = visiblePeaks[i] / localMax;
-                    const barHeight = Math.max(1, normalized * (height - 25));
+
+                    // Si el pico es exactamente 0 (Secuestro de Hardware), forzamos una línea plana de 2px
+                    const barHeight = visiblePeaks[i] === 0 ? 2 : Math.max(1, normalized * (height - 25));
+
                     const x = i * step;
                     const y = ((height - 25) - barHeight) / 2;
 
-                    ctx.fillStyle = peakTime <= currentPlayTime ? '#d32f2f' : '#4caf50';
+                    if (visiblePeaks[i] === 0) {
+                        // ZONA MUERTA (Micrófono Robado o Silenciado): Gris Azulado
+                        ctx.fillStyle = peakTime <= currentPlayTime ? '#546e7a' : '#b0bec5';
+                    } else {
+                        // ZONA ACTIVA: Verde (Pendiente) o Rojo (Reproducido)
+                        ctx.fillStyle = peakTime <= currentPlayTime ? '#d32f2f' : '#4caf50';
+                    }
+
                     ctx.fillRect(x, y, Math.max(1, step - 0.5), barHeight);
                 }
             }

@@ -1817,3 +1817,21 @@ En visualización de datos de onda, el "Zoom/Aspect Ratio" debe mandar sobre la 
 **🎓 Lecciones Aprendidas:**
 - Renuncia al `<input type="time">` de HTML para "Duraciones". Los navegadores se empeñan en convertirlos en "Horas del Día" (AM/PM) inyectando selectores inusables.
 - Visualización de Datos Cíclica: El Zoom siempre debe prevalecer sobre la escala. El Eje Y debe doblarse siempre sobre sí mismo para que una onda ínfima se dibuje enorme y llene el frame, pintando sus 3 marcas de nivel encima de su pico, no debajo de barreras abstractas vacías.
+
+---
+
+## 🚀 Desfibrilador de Micrófono y Zonas Muertas [v1.4.0] | 05/03/2026
+
+**📜 El Problema:**
+1. **Robo de Hardware y Colapso Crítico:** Cuando el usuario iniciaba una actividad invasiva con prioridad de foreground (por ejemplo, hablar por teléfono, grabar una nota de voz de WhatsApp o iniciar la app de la Cámara), el sistema operativo Android despojaba implacablemente al Oído del Abuelo del objeto micrófono temporalmente.
+2. **Crash Silencioso y Cese de Vigilancia:** Antes del Desfibrilador, este despojo de jerarquía causaba que el driver subyacente de `AudioRecord` devolviera un `ERROR_DEAD_OBJECT` y la aplicación se colgaba irrecuperablemente en la sombra sin que el usuario lo supiera.
+3. **Invisibilidad Analítica (API 29 Privacy):** En las versiones modernas de Android 10, el robo temporal inyecta simplemente 'silencio absoluto' por motivos de privacidad en lugar de crashear, lo que impedía que el usuario entendiera a simple vista qué pasó durante esos segundos de vacío cuando analizaba una grabación.
+
+**🛠️ La Solución:**
+1. **Bucle Desfibrilador Agnóstico:** Se refactorizó por completo el corazón multihilo del `AudioSentinel.java`. Se envolvió el proceso extractivo completo en un anillo auto-curable de jerarquía superior que reevalúa al `AudioRecord` en cada interrupción. Si se capta una desconexión corrupta (Error < 0), la aplicación ya no suelta la toalla; ahora extirpa y libera quirúrgicamente los fragmentos de memoria muertos, duerme 3 segundos para conservar batería y reintenta reinicializar todo el sistema de audio, resucitando implacablemente.
+2. **Zonas Muertas en el Visualizador (UI):** Se modificó la rutina `drawForensicWaveform()` en el renderizador web. Como el sistema Android no crashea en la API 29 sino que devuelve "ceros perfectos" cuando se activa otra app telefónica o de cámara, el espectro visual de onda interceptará el número 0 inyectando en su lugar una raya fina en bloque al 100% de alto codificada cromáticamente en un gris inerte (`#546e7a`). Esto permite que el humano diferencie visualmente en un segundo, al mirar el historial, cuándo fue un secuestro o una llamada entrante en medio de otra grabación.
+3. **Ascensión a `microphone` Manifest:** El Servicio Foreground adoptó la tipología dual `dataSync|microphone` (revocado temporalmente porque API 29 no lo soporta en `<service>`, pero es bueno tener constancia que a partir de API 30 es un escudo necesario contra Doze).
+
+**🎓 Lecciones Aprendidas:**
+- A nivel defensivo de hilos críticos en Java sin interfaz gráfica, la resurrección activa y bruta (Try-Catch-Wait) siempre prevalece frente a delegarle el control a `BroadcastReceivers` en diferido o a callbacks perezosos de hardware del framework oficial.
+- La Privacidad de Android 9/10 te enseña valiosísimas simulaciones en falso del sistema: Tu hilo puede no romperse, pero tu hardware puede mentirte inyectándote una onda perfecta de "vacío absoluto" si tus permisos quedan subyugados al dialer telefónico. Traducirlo a una interfaz visual ("línea plana") salva mucha confusión de debug.

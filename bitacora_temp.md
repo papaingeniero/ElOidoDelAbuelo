@@ -1,16 +1,15 @@
-## 🚀 v1.3.0 Grabación Programada y Escalas Analíticas | 05/03/2026
+## 🚀 Desfibrilador de Micrófono y Zonas Muertas [v1.4.0] | 05/03/2026
 
-**📜 El Problema (Contexto Histórico):**
-1. **Delegación Temporal:** El usuario necesitaba poder indicar al dispositivo que grabase el audio ambiente en un lapso futuro sin estar presente para pulsar el botón manualmente. Las grabaciones automáticas por decibelios (Spike) no bastaban si el ruido a vigilar era bajo pero sostenido.
-2. **Despliegue UI de Estado Hostil:** Al forzar el reloj interno del móvil a grabar, el backend devolvía al frontend un "Grabar = True", colisionando gráficamente en un cartel rojo de `GRABACIÓN MANUAL FORZADA` que generaba gran confusión.
-3. **Escala Analítica Muerta:** En la validación forense de pistas previas, las ondas se dibujaban aisladas. La mente humana no lograba decodificar la magnitud acústica de los valles sin una cuadrícula matemática que apoyase la visión.
+**📜 El Problema:**
+1. **Robo de Hardware y Colapso Crítico:** Cuando el usuario iniciaba una actividad invasiva con prioridad de foreground (por ejemplo, hablar por teléfono, grabar una nota de voz de WhatsApp o iniciar la app de la Cámara), el sistema operativo Android despojaba implacablemente al Oído del Abuelo del objeto micrófono temporalmente.
+2. **Crash Silencioso y Cese de Vigilancia:** Antes del Desfibrilador, este despojo de jerarquía causaba que el driver subyacente de `AudioRecord` devolviera un `ERROR_DEAD_OBJECT` y la aplicación se colgaba irrecuperablemente en la sombra sin que el usuario lo supiera.
+3. **Invisibilidad Analítica (API 29 Privacy):** En las versiones modernas de Android 10, el robo temporal inyecta simplemente 'silencio absoluto' por motivos de privacidad en lugar de crashear, lo que impedía que el usuario entendiera a simple vista qué pasó durante esos segundos de vacío cuando analizaba una grabación.
 
 **🛠️ La Solución:**
-1. **Modal de Programación:** Se diseñó un temporizador (Hora de Inicio y HH:MM de duración) enviando Intents al `AlarmManager` para despertarse matemáticamente vía PendingIntent en background.
-2. **Subyugación de Threads:** Se estableció un orden jerárquico. Las grabaciones automáticas son abortadas y sobreescritas si chocan con una grabación programada. Las programadas son ignoradas si el usuario ya está grabando manualmente en primer plano.
-3. **Segmentación y UI:** El backend emite ahora un flag `isScheduledRecording=true`. El Dashboard lo intercepta y pinta un amistoso escudo ambarino `🟡 ESTADO: GRABACIÓN PROGRAMADA ACTIVA` para diferenciar a las máquinas del humano.
-4. **Onda Cuartil Estética (El Eje Y):** La forma de onda del Canvas se hace zoom al 100% de alto y superpone 3 líneas base horizontales al 25%, 50% y 75% del volumen del pico máximo del audio en curso, rotulando los márgenes para calibrar cada evento auditivo a una escala de bolsillo propia.
+1. **Bucle Desfibrilador Agnóstico:** Se refactorizó por completo el corazón multihilo del `AudioSentinel.java`. Se envolvió el proceso extractivo completo en un anillo auto-curable de jerarquía superior que reevalúa al `AudioRecord` en cada interrupción. Si se capta una desconexión corrupta (Error < 0), la aplicación ya no suelta la toalla; ahora extirpa y libera quirúrgicamente los fragmentos de memoria muertos, duerme 3 segundos para conservar batería y reintenta reinicializar todo el sistema de audio, resucitando implacablemente.
+2. **Zonas Muertas en el Visualizador (UI):** Se modificó la rutina `drawForensicWaveform()` en el renderizador web. Como el sistema Android no crashea en la API 29 sino que devuelve "ceros perfectos" cuando se activa otra app telefónica o de cámara, el espectro visual de onda interceptará el número 0 inyectando en su lugar una raya fina en bloque al 100% de alto codificada cromáticamente en un gris inerte (`#546e7a`). Esto permite que el humano diferencie visualmente en un segundo, al mirar el historial, cuándo fue un secuestro o una llamada entrante en medio de otra grabación.
+3. **Ascensión a `microphone` Manifest:** El Servicio Foreground adoptó la tipología dual `dataSync|microphone` (revocado temporalmente porque API 29 no lo soporta en `<service>`, pero es bueno tener constancia que a partir de API 30 es un escudo necesario contra Doze).
 
 **🎓 Lecciones Aprendidas:**
-- Renuncia al `<input type="time">` de HTML para "Duraciones". Los navegadores se empeñan en convertirlos en "Horas del Día" (AM/PM) inyectando selectores inusables.
-- Visualización de Datos Cíclica: El Zoom siempre debe prevalecer sobre la escala. El Eje Y debe doblarse siempre sobre sí mismo para que una onda ínfima se dibuje enorme y llene el frame, pintando sus 3 marcas de nivel encima de su pico, no debajo de barreras abstractas vacías.
+- A nivel defensivo de hilos críticos en Java sin interfaz gráfica, la resurrección activa y bruta (Try-Catch-Wait) siempre prevalece frente a delegarle el control a `BroadcastReceivers` en diferido o a callbacks perezosos de hardware del framework oficial.
+- La Privacidad de Android 9/10 te enseña valiosísimas simulaciones en falso del sistema: Tu hilo puede no romperse, pero tu hardware puede mentirte inyectándote una onda perfecta de "vacío absoluto" si tus permisos quedan subyugados al dialer telefónico. Traducirlo a una interfaz visual ("línea plana") salva mucha confusión de debug.

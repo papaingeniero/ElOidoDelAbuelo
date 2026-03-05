@@ -237,65 +237,101 @@ public class AudioSentinel {
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
 
         try {
-            audioRecord = new AudioRecord(
-                    MediaRecorder.AudioSource.MIC,
-                    SAMPLE_RATE,
-                    CHANNEL_CONFIG,
-                    AUDIO_FORMAT,
-                    bufferSize);
-
-            if (audioRecord.getState() != AudioRecord.STATE_INITIALIZED) {
-                Log.e(TAG, "AudioRecord no inicializado");
-                return;
-            }
-
-            audioRecord.startRecording();
-            short[] buffer = new short[bufferSize / 2];
-            byte[] byteBuffer = new byte[bufferSize]; // Para escritura WAV
-            byte[] reusableByteBufferOut = new byte[bufferSize * 2];
-
             while (isRunning) {
-                // 1. Lectura de Preferencias desde RAM (Eco-Mode V31)
-                // NO consultamos SharedPreferences.getXXX en cada ciclo
-                boolean micEnabled = micEnabledCached;
-                boolean autoDetection = autoDetectionCached;
-                boolean forceRecord = forceRecordCached;
-                boolean shieldEnabled = shieldEnabledCached;
-                int spikeThreshold = spikeThresholdCached;
-                int requiredSpikes = requiredSpikesCached;
-                int shieldWindowMs = shieldWindowMsCached;
-                int recordDurationMs = recordDurationMsCached;
+                // ➔ FASE 1: DESFIBRILADOR (Inicialización y Reconexión en Caliente)
+                audioRecord = new AudioRecord(
+                        MediaRecorder.AudioSource.MIC,
+                        SAMPLE_RATE,
+                        CHANNEL_CONFIG,
+                        AUDIO_FORMAT,
+                        bufferSize);
 
-                boolean hasListeners = !liveListeners.isEmpty();
-
-                // 2. Modo Kill Switch (Micrófono Apagado)
-                if (!micEnabled) {
-                    if (isRecording) {
-                        // Forzar cierre si se apaga de golpe
-                        isRecording = false;
-                        isRecordingStatus = false;
-                        if (codec != null) {
-                            try {
-                                codec.stop();
-                                codec.release();
-                            } catch (Exception e) {
-                            }
-                            codec = null;
-                        }
-                        if (fos != null) {
-                            try {
-                                fos.close();
-                            } catch (IOException e) {
-                            }
-                            fos = null;
-                        }
+                if (audioRecord.getState() != AudioRecord.STATE_INITIALIZED) {
+                    Log.e(TAG, "AudioRecord Inicialización Fallida (Hardware ocupado). Reintentando en 3s...");
+                    // Limpieza segura del cadáver
+                    try {
+                        audioRecord.release();
+                    } catch (Exception ignored) {
                     }
-                    // Leemos el buffer para drenarlo de la RAM y evitar Crash/Overflow en Xiaomi
+                    audioRecord = null;
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException ie) {
+                        break;
+                    }
+                    continue; // Volver al inicio del bucle maestro para reintentar
                 }
 
-                // Leer audio (Esto bloqueará el hilo eficientemente)
-                int readResult = audioRecord.read(buffer, 0, buffer.length);
-                if (readResult > 0) {
+                // Hardware capturado con éxito
+                audioRecord.startRecording();
+                Log.i(TAG, "🎤 Hardware Microfónico Capturado y a la escucha.");
+
+                short[] buffer = new short[bufferSize / 2];
+                byte[] byteBuffer = new byte[bufferSize]; // Para escritura WAV
+                byte[] reusableByteBufferOut = new byte[bufferSize * 2];
+                boolean isHardwareCrashed = false;
+
+                // ➔ FASE 2: BUCLE DE VIGILANCIA (El "Mientras" interno original)
+                while (isRunning && !isHardwareCrashed) {
+                    // 1. Lectura de Preferencias desde RAM (Eco-Mode V31)
+                    boolean micEnabled = micEnabledCached;
+                    boolean autoDetection = autoDetectionCached;
+                    boolean forceRecord = forceRecordCached;
+                    boolean shieldEnabled = shieldEnabledCached;
+                    int spikeThreshold = spikeThresholdCached;
+                    int requiredSpikes = requiredSpikesCached;
+                    int shieldWindowMs = shieldWindowMsCached;
+                    int recordDurationMs = recordDurationMsCached;
+
+                    boolean hasListeners = !liveListeners.isEmpty();
+
+                    // 2. Modo Kill Switch (Micrófono Apagado Lógicamente)
+                    if (!micEnabled) {
+                        if (isRecording) {
+                            isRecording = false;
+                            isRecordingStatus = false;
+                            if (codec != null) {
+                                try {
+                                    codec.stop();
+                                    codec.release();
+                                } catch (Exception ignored) {
+                                }
+                                codec = null;
+                            }
+                            if (fos != null) {
+                                try {
+                                    fos.close();
+                                } catch (IOException ignored) {
+                                }
+                                fos = null;
+                            }
+                        }
+                    }
+
+                    // ➔ LECTURA ACTIVA (Bloqueará el hilo eficientemente esperando bytes)
+                    int readResult = audioRecord.read(buffer, 0, buffer.length);
+
+                    // ➔ FASE 3: DETECCIÓN DE SECUESTRO (Dead Object)
+                    if (readResult <= 0) {
+                        if (readResult == AudioRecord.ERROR_DEAD_OBJECT
+                                || readResult == AudioRecord.ERROR_INVALID_OPERATION
+                                || readResult == AudioRecord.ERROR) {
+                            Log.e(TAG, "🚨 ERROR_DEAD_OBJECT (" + readResult
+                                    + "): ¡El Micrófono nos ha sido arrancado! Rompiendo hilo para resucitarlo.");
+                            isHardwareCrashed = true; // Forzar ruptura del bucle interno
+                            break;
+                        } else {
+                            // Errores menores o cortes benignos. Fallback original.
+                            Log.w(TAG, "AudioRecord fallback benigno en loop. readResult=" + readResult);
+                            try {
+                                Thread.sleep(50);
+                            } catch (Exception ignored) {
+                            }
+                            continue;
+                        }
+                    }
+
+                    // Si pasamos el cerrojo de la muerte, procesamos el audio normalmente...
                     long currentTime = System.currentTimeMillis();
 
                     // Si el micro está apagado por software, forzamos silencio matemático
@@ -530,14 +566,8 @@ public class AudioSentinel {
                         codec = null;
                         Log.d(TAG, "Codec Fantasma detenido.");
                     }
-                } else {
-                    Log.e(TAG, "AudioRecord fallback in loop. readResult=" + readResult);
-                    try {
-                        Thread.sleep(50);
-                    } catch (Exception e) {
-                    }
-                }
-            }
+                } // ➔ Fin del bucle maestro original // ➔ Fin del bucle interno
+            } // ➔ Fin del bucle Desfibrilador maestro
 
             // Cierre seguro
             if (codec != null) {

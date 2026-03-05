@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.0] - 2026-03-05
+### Added
+- **Desfibrilador de Hardware (Micrófono)**: Arquitectura de reconexión y tolerancia a fallos. Si otra aplicación (Llamadas, WhatsApp, Cámara) secuestra el micrófono: El sistema ahora absorbe graciosamente el silencio absoluto (0 dinámico) trazando una 'Zona Muerta Gris' en el visualizador web. Si por el contrario el framework MIUI lanza un `ERROR_DEAD_OBJECT`, el sistema destruye en caliente la pila de audio y resucita el micrófono reintentando cada 3 segundos hasta su recuperación, blindando al centinela.
+
 ## [v1.3.0] - 2026-03-05
 ### Added
 - **Grabación Programada Avanzada**: Se añadió un Modal al Dashboard para detonar grabaciones diferidas indicando HH:MM de duración. El backend (AudioSentinel + OidoService) gestiona alarmas, despierta el hilo y graba el bloque estipulado.
