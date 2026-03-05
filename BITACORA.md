@@ -1768,3 +1768,18 @@ Había un problema de "Frenesí Visual" en el Dashboard Web. Cuando el Reloj de 
 
 **🎓 Lecciones Aprendidas:**
 Los usuarios confían en la telemetría sólo cuando es matemáticamente franca. Si una acción del sistema en la sombra (Background) suplanta visualmente una acción del usuario (Foreground), la app es percibida como "hostil" o "poseída". Diferenciar el origen del mandato (Persona vs Cron jobs) en la jerarquía del JSON es una directiva suprema.
+
+---
+
+### 📏 v1.3.0-dev.5 | Calibración Cualitativa Forense (Eje Y)
+
+**📜 El Problema:**
+En la vista "Analizar Pista" (Modal Analítico), la onda de audio se renderizaba sobre un Canvas liso donde el único referente espacial era el eje del tiempo horizontal. Aunque existía un chivato que dictaba el "Pico Máximo", el usuario no tenía forma visual de percibir intuitivamente la magnitud de los valles ni los repuntes intermedios sin una referencia a escala, desaprovechando la curva de aprendizaje de decibelios del Vúmetro.
+
+**🛠️ La Solución:**
+1.  **Matriz de Referencia Base:** Se extendió el motor de renderizado `drawForensicWaveform` en Vanilla JS inyectándole una malla de coordenadas. 
+2.  **Umbrales Simétricos:** Dicha malla dibuja 5 líneas guía horizontales sutiles (`rgba(255, 255, 255, 0.15)`) para referenciar visualmente los cuartiles de volumen de hardware estandarizados: `0` (Centro neutral), `8k`, `16k`, `24k` y la línea máxima potencial `32k`.
+3.  **Filtrado de Ruido Relativo:** Para evitar que la onda "se ahogue" visualmente, si el audio tiene un volumen minúsculo (Pico absoluto, por ejemplo, 10000), el canvas auto-descarta instintivamente pintar referenciales superiores (16k, 24k, 32k) y escala la imagen para llenar el frame apoyándose visualmente contra el horizonte inferior más cercano visible.
+
+**🎓 Lecciones Aprendidas:**
+El cerebro humano entiende las magnitudes sonoras mediante relatividad escalar, no mediante números abstractos flotando en el vacío. Pintar rejillas de referencia estipuladas y atadas a ecosistemas ya entrenados por el usuario (la escala verde y amarilla del Vúmetro) transfiere ese conocimiento directamente a la topología forense.

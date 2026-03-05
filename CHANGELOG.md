@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.3.0-dev.5] - 2026-03-05
+### Added
+- **Escala de Amplitud (Eje Y)**: Añadido soporte gráfico cualitativo al reproductor de forma de onda forense en Modal. Al "Analizar Pista", ahora se traza un retículo de referencia horizontal (Línea central 0, y picos de 8k, 16k, 24k, 32k) respecto al volumen de las ondas graficadas para facilitar la comparativa de intensidad de sonido.
+
 ## [v1.3.0-dev.4] - 2026-03-05
 ### Added
 - **Estado de Grabación UI**: Se integró el flag `isScheduledRecording` desde `AudioSentinel` al `WebServer` y `index.html`. Ahora, cuando la Grabación Programada está activa y domina el micrófono, el Dashboard muestra explícitamente el badge `🟡 ESTADO: GRABACIÓN PROGRAMADA ACTIVA` en lugar de confundirlo con una grabación manual forzada, transparentando quién ordenó el arranque al usuario.

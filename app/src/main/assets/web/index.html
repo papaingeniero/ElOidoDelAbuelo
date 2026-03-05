@@ -1524,7 +1524,50 @@
             const viewDuration = viewEndSec - viewStartSec;
             if (viewDuration <= 0) return;
 
-            // 1. DIBUJAR REGLA DE TIEMPO (Eje X)
+            // 1. DIBUJAR ESCALA VERTICAL (Eje Y - Amplitud)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.font = '9px monospace';
+            ctx.textAlign = 'left';
+
+            const yTicks = [8000, 16000, 24000, 32000];
+            const yLabels = ['8k', '16k', '24k', '32k'];
+            const centerY = (height - 25) / 2;
+
+            // Línea del cero
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.stroke();
+            ctx.fillText('0', 2, centerY - 2);
+
+            for (let i = 0; i < yTicks.length; i++) {
+                if (yTicks[i] <= localMax * 1.1) { // Permitir dibujar la línea si está apenas por encima
+                    const norm = yTicks[i] / localMax;
+                    const offset = (norm * (height - 25)) / 2;
+
+                    // Línea Superior (Positiva)
+                    const yTop = centerY - offset;
+                    ctx.beginPath();
+                    ctx.moveTo(0, yTop);
+                    ctx.lineTo(width, yTop);
+                    ctx.stroke();
+                    ctx.fillText(yLabels[i], 2, yTop - 2);
+
+                    // Línea Inferior (Negativa)
+                    const yBot = centerY + offset;
+                    ctx.beginPath();
+                    ctx.moveTo(0, yBot);
+                    ctx.lineTo(width, yBot);
+                    ctx.stroke();
+                }
+            }
+
+            // Etiqueta de Pico Máximo Flotante
+            ctx.textAlign = 'right';
+            ctx.fillText('Pico Max: ' + localMax, width - 5, 12);
+
+            // 2. DIBUJAR REGLA DE TIEMPO (Eje X - Segundos)
             ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
             ctx.font = '10px monospace';
             ctx.textAlign = 'center';
