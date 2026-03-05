@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.3.0-dev.6] - 2026-03-05
+### Fixed
+- **Visibilidad Malla Forense (Eje Y)**: Corregido un bug donde el motor de escalado del Canvas (auto-zoom vertical) colapsaba el tamaño virtual de las guías de amplitud (8k, 16k...) y las empujaba fuera de los límites superior e inferior de la pantalla cuando el audio analizado tenía un volumen bajo. Ahora el renderizado aterriza en techos prediseñados (8k, 16k, 24k, 32k) garantizando que la malla y el contexto numérico siempre sean visibles.
+
 ## [v1.3.0-dev.5] - 2026-03-05
 ### Added
 - **Escala de Amplitud (Eje Y)**: Añadido soporte gráfico cualitativo al reproductor de forma de onda forense en Modal. Al "Analizar Pista", ahora se traza un retículo de referencia horizontal (Línea central 0, y picos de 8k, 16k, 24k, 32k) respecto al volumen de las ondas graficadas para facilitar la comparativa de intensidad de sonido.

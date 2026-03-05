@@ -1520,7 +1520,14 @@
                 return;
             }
 
-            const localMax = Math.max(...forensicPeaks, 100);
+            const maxPeak = Math.max(...forensicPeaks, 100);
+
+            // Determinar el "Techo del Canvas" (localMax) amarrado a la cuadrícula para evitar zooms exagerados
+            let localMax = 8000;
+            if (maxPeak > 8000) localMax = 16000;
+            if (maxPeak > 16000) localMax = 24000;
+            if (maxPeak > 24000) localMax = 32767;
+
             const viewDuration = viewEndSec - viewStartSec;
             if (viewDuration <= 0) return;
 
@@ -1542,7 +1549,7 @@
             ctx.fillText('0', 2, centerY - 2);
 
             for (let i = 0; i < yTicks.length; i++) {
-                if (yTicks[i] <= localMax * 1.1) { // Permitir dibujar la línea si está apenas por encima
+                if (yTicks[i] <= localMax) {
                     const norm = yTicks[i] / localMax;
                     const offset = (norm * (height - 25)) / 2;
 
@@ -1552,7 +1559,7 @@
                     ctx.moveTo(0, yTop);
                     ctx.lineTo(width, yTop);
                     ctx.stroke();
-                    ctx.fillText(yLabels[i], 2, yTop - 2);
+                    ctx.fillText(yLabels[i], 2, yTop + 8); // +8 para no solapar con el borde superior
 
                     // Línea Inferior (Negativa)
                     const yBot = centerY + offset;
@@ -1563,9 +1570,10 @@
                 }
             }
 
-            // Etiqueta de Pico Máximo Flotante
+            // Etiqueta de Pico Máximo Flotante real (Amber color)
             ctx.textAlign = 'right';
-            ctx.fillText('Pico Max: ' + localMax, width - 5, 12);
+            ctx.fillStyle = 'rgba(255, 179, 0, 0.9)';
+            ctx.fillText('Pico Max: ' + maxPeak, width - 5, 12);
 
             // 2. DIBUJAR REGLA DE TIEMPO (Eje X - Segundos)
             ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
