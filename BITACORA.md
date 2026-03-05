@@ -1783,3 +1783,18 @@ En la vista "Analizar Pista" (Modal Analítico), la onda de audio se renderizaba
 
 **🎓 Lecciones Aprendidas:**
 El cerebro humano entiende las magnitudes sonoras mediante relatividad escalar, no mediante números abstractos flotando en el vacío. Pintar rejillas de referencia estipuladas y atadas a ecosistemas ya entrenados por el usuario (la escala verde y amarilla del Vúmetro) transfiere ese conocimiento directamente a la topología forense.
+
+---
+
+### 📏 v1.3.0-dev.7 | Zoom Forense Total con Escala Dinámica (Cuartiles)
+
+**📜 El Problema:**
+En la iteración previa (dev.6), para asegurar que las guías métricas fueran siempre visibles, habíamos forzado al Canvas a usar techos rígidos (ej. si la onda llegaba a 3.000 de volumen, el techo mínimo era 8.000). El efecto inverso estético fue indeseado por el Operador: las ondas muy sutiles quedaban "esmagadas" y bajitas en el fondo de la pantalla, perdiendo la majestuosidad visual e impidiendo analizar la morfología acústica con precisión.
+
+**🛠️ La Solución:**
+1.  **Auto-Zoom al 100%:** Se revirtió el motor de renderizado al comportamiento original (`localMax = maxPeak`). Esto garantiza que la onda _siempre_ toque el techo del Canvas, independientemente de lo silenciosa que sea.
+2.  **Malla Adaptativa Fraccional:** En lugar de pintar guías ancladas a valores exactos del hardware (8k, 16k), la escala ahora es inteligente y genera 3 rayas horizontales situadas exactamente en el **25%**, **50%** y **75%** del Pico Máximo actual de esa captura en concreto.
+3.  **Etiquetado C-Scale:** Las etiquetas ahora auto-generan sus textos (ej: `1.5k` en lugar de `1500`) basándose en los tercios calculados del Pico Superior.
+
+**🎓 Lecciones Aprendidas:**
+En visualización de datos de onda, el "Zoom/Aspect Ratio" debe mandar sobre la escala, y no al revés. Es preferible adaptar el eje Y de la regla sobre la marcha que obligar a una miniatura a habitar un póster gigante vacío.

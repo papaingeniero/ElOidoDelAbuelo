@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.3.0-dev.7] - 2026-03-05
+### Fixed
+- **Estética de Onda Forense (Auto-Scale Y)**: Revertido el techo fijo de la malla. Para mantener la majestuosidad visual de la gráfica, la onda ahora vuelve a utilizar siempre el 100% de la altura de la pantalla (Auto-Zoom total). Para cuantificar este zoom, la rejilla de referencia (Eje Y) ahora se calcula de forma dinámica en tiempo real pintando sus tres guías cuartiles en el 25%, 50% y 75% del valor del Pico Máximo del evento bajo análisis.
+
 ## [v1.3.0-dev.6] - 2026-03-05
 ### Fixed
 - **Visibilidad Malla Forense (Eje Y)**: Corregido un bug donde el motor de escalado del Canvas (auto-zoom vertical) colapsaba el tamaño virtual de las guías de amplitud (8k, 16k...) y las empujaba fuera de los límites superior e inferior de la pantalla cuando el audio analizado tenía un volumen bajo. Ahora el renderizado aterriza en techos prediseñados (8k, 16k, 24k, 32k) garantizando que la malla y el contexto numérico siempre sean visibles.

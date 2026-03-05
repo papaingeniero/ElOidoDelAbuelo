@@ -1522,23 +1522,27 @@
 
             const maxPeak = Math.max(...forensicPeaks, 100);
 
-            // Determinar el "Techo del Canvas" (localMax) amarrado a la cuadrícula para evitar zooms exagerados
-            let localMax = 8000;
-            if (maxPeak > 8000) localMax = 16000;
-            if (maxPeak > 16000) localMax = 24000;
-            if (maxPeak > 24000) localMax = 32767;
+            // Revertimos: El techo del Canvas siempre abraza exhaustivamente la onda para aprovechar el zoom
+            const localMax = maxPeak;
 
             const viewDuration = viewEndSec - viewStartSec;
             if (viewDuration <= 0) return;
 
-            // 1. DIBUJAR ESCALA VERTICAL (Eje Y - Amplitud)
+            // 1. DIBUJAR ESCALA VERTICAL (Eje Y - Amplitud Dinámica)
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
             ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
             ctx.font = '9px monospace';
             ctx.textAlign = 'left';
 
-            const yTicks = [8000, 16000, 24000, 32000];
-            const yLabels = ['8k', '16k', '24k', '32k'];
+            // Generamos tres marcas cuartiles proporcionales al pico máximo actual
+            const yTicks = [
+                Math.round(localMax * 0.25),
+                Math.round(localMax * 0.50),
+                Math.round(localMax * 0.75)
+            ];
+            const formatTick = (val) => val >= 1000 ? (val / 1000).toFixed(1) + 'k' : val.toString();
+            const yLabels = yTicks.map(formatTick);
+
             const centerY = (height - 25) / 2;
 
             // Línea del cero
