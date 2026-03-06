@@ -1423,6 +1423,8 @@
         let forensicDuration = 0;
         let isWavePlaying = false;
         let waveFileName = "";
+        
+        let waveBaseTimestamp = 0;
 
         // VARIABLES PARA LA CÁMARA (ZOOM Y PAN)
         let viewStartSec = 0;
@@ -1450,8 +1452,21 @@
             document.getElementById('waveformModal').style.display = 'flex';
             document.body.classList.add('modal-open');
 
-            // Recuperar datos del JSON ya cargados en memoria
             const fileObj = globalHistoryFiles.find(f => f.name === fileName);
+            const dateMatch = fileName.match(/Oido_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})\./);
+            if (dateMatch) {
+                const year = parseInt(dateMatch[1], 10);
+                const month = parseInt(dateMatch[2], 10) - 1;
+                const day = parseInt(dateMatch[3], 10);
+                const hour = parseInt(dateMatch[4], 10);
+                const minute = parseInt(dateMatch[5], 10);
+                const second = parseInt(dateMatch[6], 10);
+                waveBaseTimestamp = new Date(year, month, day, hour, minute, second).getTime();
+            } else {
+                waveBaseTimestamp = fileObj && fileObj.timestamp ? fileObj.timestamp : Date.now();
+            }
+
+            // Recuperar datos del JSON ya cargados en memoria
             if (fileObj && fileObj.peaks && fileObj.peaks.length > 0) {
                 forensicPeaks = fileObj.peaks;
                 forensicDuration = (fileObj.durationMs || 0) / 1000;
@@ -1579,26 +1594,41 @@
             ctx.fillStyle = 'rgba(255, 179, 0, 0.9)';
             ctx.fillText('Pico Max: ' + maxPeak, width - 5, 12);
 
-            // 2. DIBUJAR REGLA DE TIEMPO (Eje X - Segundos)
+            // 2. DIBUJAR REGLA DE TIEMPO (Eje X - Absoluto)
             ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
             ctx.font = '10px monospace';
             ctx.textAlign = 'center';
 
-            let tickInterval = 1;
-            if (viewDuration > 300) tickInterval = 60;
-            else if (viewDuration > 60) tickInterval = 10;
-            else if (viewDuration > 10) tickInterval = 5;
+            const maxLabels = Math.max(1, width / 65);
+            const targetInterval = viewDuration / maxLabels;
+
+            const niceSteps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200];
+            let tickInterval = niceSteps[niceSteps.length - 1];
+            
+            for (let step of niceSteps) {
+                if (step >= targetInterval) {
+                    tickInterval = step;
+                    break;
+                }
+            }
 
             const firstTick = Math.ceil(viewStartSec / tickInterval) * tickInterval;
+            
             for (let t = firstTick; t <= viewEndSec; t += tickInterval) {
                 const x = ((t - viewStartSec) / viewDuration) * width;
                 ctx.fillRect(x, height - 15, 1, 15);
-                const m = Math.floor(t / 60).toString().padStart(2, '0');
-                const s = Math.floor(t % 60).toString().padStart(2, '0');
-                ctx.fillText(`${m}:${s}`, x, height - 18);
+                
+                const exactTimeMs = waveBaseTimestamp + (t * 1000);
+                const dateObj = new Date(exactTimeMs);
+                
+                const hh = dateObj.getHours().toString().padStart(2, '0');
+                const mm = dateObj.getMinutes().toString().padStart(2, '0');
+                const ss = dateObj.getSeconds().toString().padStart(2, '0');
+                
+                ctx.fillText(`${hh}:${mm}:${ss}`, x, height - 18);
             }
 
-            // 2. DIBUJAR PICOS VISIBLES
+            // 3. DIBUJAR PICOS VISIBLES
             const startIdx = Math.floor((viewStartSec / forensicDuration) * forensicPeaks.length);
             const endIdx = Math.ceil((viewEndSec / forensicDuration) * forensicPeaks.length);
             const visiblePeaks = forensicPeaks.slice(Math.max(0, startIdx), Math.min(forensicPeaks.length, endIdx));
