@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.4.1] - 2026-03-07
+### Added
+- **Eje X Absoluto (Forense)**: El visualizador de audio Canvas extrae en caliente la fecha de nacimiento real de los archivos .m4a y dibuja los instantes de reproducción en base a la línea temporal absoluta en formato `HH:MM:SS` (time-travel).
+- **Scale-X Adaptativo (Anti-colisión)**: Algoritmo restrictivo que calcula dinámicamente el `maxLabels` en función de los píxeles útiles de pantalla en web, logrando un trazado de los segundos estético sin ahogar los números de tiempo bajo un denso *Zoom-Out*.
+
 ## [v1.4.0] - 2026-03-05
 ### Added
 - **Desfibrilador de Hardware (Micrófono)**: Arquitectura de reconexión y tolerancia a fallos. Si otra aplicación (Llamadas, WhatsApp, Cámara) secuestra el micrófono: El sistema ahora absorbe graciosamente el silencio absoluto (0 dinámico) trazando una 'Zona Muerta Gris' en el visualizador web. Si por el contrario el framework MIUI lanza un `ERROR_DEAD_OBJECT`, el sistema destruye en caliente la pila de audio y resucita el micrófono reintentando cada 3 segundos hasta su recuperación, blindando al centinela.
