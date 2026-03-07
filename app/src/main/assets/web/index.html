@@ -715,7 +715,7 @@
                 00:00 / 00:00
             </div>
 
-            <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; align-items: center;">
+            <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 10px; align-items: center;">
                 <button class="settings-btn" style="margin:0; padding: 10px 15px; font-size: 1.2rem;"
                     onclick="seekWaveform(-5)">⏮ -5s</button>
                 <button id="wavePlayBtn" class="pill-btn"
@@ -723,6 +723,22 @@
                     onclick="toggleWaveformPlay()">▶️ PLAY</button>
                 <button class="settings-btn" style="margin:0; padding: 10px 15px; font-size: 1.2rem;"
                     onclick="seekWaveform(5)">+5s ⏭</button>
+            </div>
+
+            <div
+                style="display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; align-items: center; flex-wrap: wrap;">
+                <button class="settings-btn" style="margin:0; padding: 8px 12px; font-size: 1rem;"
+                    onclick="seekWaveform(-30)">-30s</button>
+                <button class="settings-btn" style="margin:0; padding: 8px 12px; font-size: 1rem;"
+                    onclick="seekWaveform(-20)">-20s</button>
+                <button class="settings-btn" style="margin:0; padding: 8px 12px; font-size: 1rem;"
+                    onclick="seekWaveform(-10)">-10s</button>
+                <button class="settings-btn" style="margin:0; padding: 8px 12px; font-size: 1rem;"
+                    onclick="seekWaveform(10)">+10s</button>
+                <button class="settings-btn" style="margin:0; padding: 8px 12px; font-size: 1rem;"
+                    onclick="seekWaveform(20)">+20s</button>
+                <button class="settings-btn" style="margin:0; padding: 8px 12px; font-size: 1rem;"
+                    onclick="seekWaveform(30)">+30s</button>
             </div>
         </div>
     </div>
