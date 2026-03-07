@@ -2188,41 +2188,25 @@
             let tempWorker = null;
             let workerUrl = null;
 
-            // 1. FREEZE Y DESCARGA DEL MOTOR NATIVO (Libera AVFoundation en iOS)
-            let savedTime = 0;
-            if (forensicAudio) {
-                savedTime = forensicAudio.currentTime || 0;
-                forensicAudio.pause();
-                forensicAudio.removeAttribute('src');
-                forensicAudio.load();
-                forensicAudio = null;
-                isWavePlaying = false;
-                const playBtn = document.getElementById('wavePlayBtn');
-                if (playBtn) playBtn.innerHTML = '▶️ PLAY';
-            }
-
             try {
-                // 2. EXTRACCIÓN ÚNICA (Caché en RAM principal)
-                if (currentVadAudioUrl !== forensicAudioUrl || !cachedPcmData || cachedPcmData.length === 0) {
-                    btn.innerHTML = '⏳ Decodificando Audio...';
-                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                    let localCtx = new AudioContextClass({ sampleRate: 16000 });
+                btn.innerHTML = '⏳ Extrayendo Audio...';
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                let localCtx = new AudioContextClass({ sampleRate: 16000 });
+                
+                const response = await fetch(forensicAudioUrl);
+                let arrayBuffer = await response.arrayBuffer();
+                let tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
+                
+                // Extracción con Zero-Copy de la RAM nativa
+                let pcmData = tempAudioBuffer.getChannelData(0).slice();
+                
+                await localCtx.close();
+                localCtx = null;
+                arrayBuffer = null;
+                tempAudioBuffer = null;
 
-                    const response = await fetch(forensicAudioUrl);
-                    let arrayBuffer = await response.arrayBuffer();
-                    let tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
-
-                    cachedPcmData = tempAudioBuffer.getChannelData(0).slice();
-
-                    await localCtx.close();
-                    localCtx = null;
-                    arrayBuffer = null;
-                    tempAudioBuffer = null;
-                    currentVadAudioUrl = forensicAudioUrl;
-                }
-
-                // 3. WORKER KAMIKAZE CON PING-PONG ZERO-COPY
-                btn.innerHTML = '🧠 Iniciando Motor WASM...';
+                btn.innerHTML = '🧠 Arrancando IA...';
+                
                 const workerCode = `
                     importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
                     importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
@@ -2240,32 +2224,45 @@
                                     negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
                                 });
                                 
-                                const generator = myvad.run(e.data.pcmData, 16000);
-                                let segments = [];
-                                for await (const segment of generator) {
-                                    segments.push({ start: segment.start / 1000, end: segment.end / 1000 });
+                                const sampleRate = 16000;
+                                const chunkSize = sampleRate * 15; // Trocear en bloques de 15 segundos
+                                let allSegments = [];
+                                const totalChunks = Math.ceil(e.data.pcmData.length / chunkSize);
+                                
+                                // Procesamiento secuencial para mantener el consumo de RAM plano
+                                for (let i = 0; i < totalChunks; i++) {
+                                    const offset = i * chunkSize;
+                                    const chunk = e.data.pcmData.slice(offset, offset + chunkSize);
+                                    const generator = myvad.run(chunk, sampleRate);
+                                    for await (const segment of generator) {
+                                        const absStart = (offset / sampleRate) + (segment.start / 1000);
+                                        const absEnd = (offset / sampleRate) + (segment.end / 1000);
+                                        allSegments.push({ start: absStart, end: absEnd });
+                                    }
+                                    // Enviar telemetría al hilo principal
+                                    postMessage({ status: 'progress', percent: Math.round(((i + 1) / totalChunks) * 100) });
                                 }
                                 
-                                // Devolver la posesión de la RAM al hilo principal (Zero-Copy)
-                                postMessage({ status: 'done', segments: segments, pcmData: e.data.pcmData }, [e.data.pcmData.buffer]);
+                                postMessage({ status: 'done', segments: allSegments });
                             }
                         } catch (err) {
                             postMessage({ status: 'error', error: err.message || String(err) });
                         }
                     };
                 `;
-
+                
                 const blob = new Blob([workerCode], { type: 'application/javascript' });
                 workerUrl = URL.createObjectURL(blob);
                 tempWorker = new Worker(workerUrl);
 
-                btn.innerHTML = '🧠 Analizando Red Neuronal...';
+                btn.innerHTML = '🧠 Analizando (0%)...';
 
                 await new Promise((resolve, reject) => {
                     tempWorker.onmessage = (e) => {
-                        if (e.data.status === 'done') {
+                        if (e.data.status === 'progress') {
+                            btn.innerHTML = '🧠 Analizando (' + e.data.percent + '%)...';
+                        } else if (e.data.status === 'done') {
                             vadSegments = e.data.segments;
-                            cachedPcmData = e.data.pcmData; // Recuperar la RAM intacta
                             resolve();
                         } else if (e.data.status === 'error') {
                             reject(new Error(e.data.error));
@@ -2273,15 +2270,16 @@
                     };
                     tempWorker.onerror = (err) => reject(new Error("Worker Crash: WebKit ha abatido el sub-proceso."));
 
-                    // Transferir posesión de la memoria al Worker
-                    tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: cachedPcmData }, [cachedPcmData.buffer]);
+                    // Desvincular array en el hilo principal para liberar RAM instantáneamente
+                    tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: pcmData }, [pcmData.buffer]);
+                    pcmData = null; 
                 });
 
             } catch (e) {
                 console.error("Error en VAD:", e);
                 alert("Error Ejecutando Red Neuronal:\\n" + (e.message || String(e)));
-                cachedPcmData = null; // Reset de seguridad en caso de fallo crítico
             } finally {
+                // Ejecución forzosa del recolector y destrucción del contexto
                 if (tempWorker) {
                     tempWorker.terminate();
                     tempWorker = null;
@@ -2289,13 +2287,6 @@
                 if (workerUrl) {
                     URL.revokeObjectURL(workerUrl);
                 }
-
-                // 4. RESUCITAR EL REPRODUCTOR NATIVO EN LA POSICIÓN EXACTA
-                initForensicAudio();
-                forensicAudio.addEventListener('loadedmetadata', () => {
-                    if (savedTime > 0) forensicAudio.currentTime = savedTime;
-                }, { once: true });
-
                 btn.innerHTML = originalText;
                 btn.disabled = false;
                 drawForensicWaveform();

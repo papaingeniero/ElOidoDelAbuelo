@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.22-dev.1] - 2026-03-07
+### Changed
+- **VAD por Fragmentación (Chunking)**: Refactorización monumental de la inferencia WebAssembly de la IA. Los audios se procesan en lotes secuenciales inmutables de 15 segundos, aplanando violentamente la curva de consumo RAM de iOS y añadiendo telemetría de progreso (0% a 100%) en la intefaz web.
+
 ## [v1.4.21] - 2026-03-07
 ### Changed
 - **Ping-Pong Zero-Copy & AVFoundation Freeze**: Cirugía de precisión contra los solapamientos de memoria de iOS.

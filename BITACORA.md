@@ -2099,3 +2099,17 @@ Implementación de Arquitectura de Evasión de Solapamientos y Memoria Destructi
 
 ### 🎓 Lecciones Aprendidas
 - **Los navegadores móviles mienten**: Mantener en pausa una etiqueta `<audio>` en iOS no libera la memoria gráfica/nativa asociada, sólo suspende el reloj. Es crítico destruir activamente el enlace de recurso del DOM antes de entrar en tareas intensivas de memoria para evitar crasheos silenciosos por límites del sistema operativo.
+
+## 🚀 VAD por Fragmentación (Chunking) v1.4.22-dev.1 | 07/03/2026
+### 📜 El Problema
+A pesar de las liberaciones de RAM de iOS (`AVFoundation Freeze` y `Zero-Copy`), Safari colapsaba irremediablemente al procesar audios grandes (p.ej > 2 minutos). El motor de inferencia ONNX instanciado en WebAssembly trataba de asignar un bloque secuencial de memoria gigantesco para cargar el tensor complejo de toda la onda de sonido de una sola pasada. Este pico voraz de memoria excedía sistemáticamente el umbral *Jetsam*, resultando en reciclaje tab del navegador de iOS.
+
+### 🛠️ La Solución
+Implementación de Arquitectura "VAD por Fragmentación Secuencial" (Chunking):
+1. **Despiece Quirúrgico**: En lugar de alimentar a la bestia (ONNX) con toda la res (el audio completo), troceamos el PCM Data en fragmentos (`chunks`) digeribles de 15 segundos (`sampleRate * 15`).
+2. **Plano Constante de Memoria**: Un bucle secular procesa iterativamente los trozos. Tras cada pasada, la recolección de basura WASM desecha la memoria tensorial. Esto aplana la curva de consumo RAM, manteniéndola constante sin importar la longitud original del audio.
+3. **Mapeo Relativo a Absoluto**: El Worker recalcula meticulosamente las marcas de tiempo (`segment.start` y `segment.end`) relativas a su `chunk` para desplazarlas al offset absoluto correspondiente al fichero completo con matemática de precisión (`absStart` y `absEnd`).
+4. **Telemetría Transparente**: Aprovechando el procesamiento en lotes, inyectamos telemetría (`postMessage({ status: 'progress', percent: ... })`) al hilo principal, permitiendo a la UI mostrar el porcentaje de avance del modelo neuronal al usuario.
+
+### 🎓 Lecciones Aprendidas
+- **La voracidad del I.A. no escala linealmente**: En entornos restringidos, el tamaño del tensor de entrada dicta el OOM. "Divide y Vencerás" ya no es sólo algoritmia, es supervivencia básica de memoria en WebKit. El procesamiento Batch-by-Batch es innegociable para IAs en el cliente móvil.
