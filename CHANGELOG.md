@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.11] - 2026-03-07
+### Fixed
+- **WebKit Jetsam OOM Crash (Safari iOS)**: Subsanado un desbordamiento crítico de memoria RAM en el navegador tras encadenar múltiples análisis por IA. Se implementó un patrón Singleton para reciclar de manera global el Buffer WASM de `ONNXRuntime` y se acuchilló asíncronamente el hilo del `AudioContext.close()` tras la decodificación silenciando de raíz la proliferación de Daemons huérfanos de Audio.
+
 ## [v1.4.10] - 2026-03-07
 ### Fixed
 - **Motor Web VAD (ONNX)**: Resuelto el fallo de ejecución reportado durante el análisis. Se extrajo la sintaxis oficial de `@ricky0123/vad-web@0.0.19` directamente desde su compilado NPM (TypeScript) para usar el generador asíncrono correcto (`NonRealTimeVAD.new`) en lugar de viejas interfaces obsoletas. Se forzó además el ruteo de `window.ort.env.wasm.wasmPaths` al CDN para evitar errores 404 del NanoHTTPD de Android.

@@ -1498,6 +1498,8 @@
         let forensicAudio = null;
         let forensicAudioUrl = ''; // URL para crear el Audio solo en PLAY
         let vadSegments = []; // Array para guardar los segmentos {start, end}
+        let globalVAD = null;     // CACHE para evitar iOS Safari Jetsam OOM
+        let globalVADThreshold = null;
         let forensicPeaks = [];
         let forensicDuration = 0;
         let isWavePlaying = false;
@@ -2179,27 +2181,36 @@
             vadSegments = [];
             try {
                 // 1. Descargar audio y decodificar a 16kHz (Formato requerido por Silero)
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                const audioCtx = new AudioContextClass({ sampleRate: 16000 });
                 const response = await fetch(forensicAudioUrl);
                 const arrayBuffer = await response.arrayBuffer();
                 const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
                 const pcmData = audioBuffer.getChannelData(0); // Float32Array
+
+                // CRITICAL FIX: Cerrar el thread de Audio para no apilar y colapsar Safari iOS
+                if (audioCtx.close) {
+                    await audioCtx.close();
+                }
 
                 // Configurar WebAssembly Paths explícitamente para evitar 404s en el NanoHTTPD
                 if (window.ort && window.ort.env && window.ort.env.wasm) {
                     window.ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
                 }
 
-                // 2. Procesamiento local con Red Neuronal
-                btn.innerHTML = '🧠 Inicializando Tensor...';
-                const myvad = await vad.NonRealTimeVAD.new({
-                    modelURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/silero_vad.onnx',
-                    positiveSpeechThreshold: threshold,
-                    negativeSpeechThreshold: Math.max(0.1, threshold - 0.1)
-                });
+                // 2. Procesamiento local con Red Neuronal usando Singleton (Evita JS OOM Crash en Móviles)
+                if (!globalVAD || globalVADThreshold !== threshold) {
+                    btn.innerHTML = '🧠 Inicializando Tensor...';
+                    globalVAD = await vad.NonRealTimeVAD.new({
+                        modelURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/silero_vad.onnx',
+                        positiveSpeechThreshold: threshold,
+                        negativeSpeechThreshold: Math.max(0.1, threshold - 0.1)
+                    });
+                    globalVADThreshold = threshold;
+                }
 
                 btn.innerHTML = '🧠 Analizando matriz PCM...';
-                const generator = myvad.run(pcmData, 16000);
+                const generator = globalVAD.run(pcmData, 16000);
 
                 vadSegments = [];
                 for await (const segment of generator) {
