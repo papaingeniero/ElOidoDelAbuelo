@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.3] - 2026-03-07
+### Added
+- **Controles de Salto Extendido (+/- 10s, 20s, 30s)**: Añadida en la vista web de escrutinio de grabaciones (`index.html`) una nueva sub-botonera de desplazamiento rápido, agilizando diametralmente la navegación y el `scrubbing` a lo largo de largas muestras de audio sin saturar el cliente de pulsaciones limitadas a 5s.
+
 ## [v1.4.2] - 2026-03-07
 ### Changed
 - **Contraste de Regla (Canvas)**: Corregida opacidad deficitaria en las etiquetas del Eje X temporal que dificultaba su lectura en gráficas densas. Elevadas de Alfa `0.4` a `1.0` (Blanco Puro Sólido).
