@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.9] - 2026-03-07
+### Added
+- **Inteligencia Artificial VAD Offline (Silero)**: Inyección directa en el Web Dashboard de un motor de IA nativo en el FrontEnd mediante `onnxruntime-web` y `vad-web`. Analiza los archivos de audio detectando habla humana pura y pinta el segmento en Rojo Carmesí Forense sobre el canvas, aislando las voces del ruido ambiental sin necesidad de escuchar minutos de grabaciones en estático. Todo ejecutado 100% de manera local y descentralizada en el Navegador del operador sin pingear APIs externas de Nube.
+
 ## [v1.4.8] - 2026-03-07
 ### Fixed
 - **Scroll iOS Safari Bloqueado (Terminal Web)**: Resuelto un _scroll trap_ crónico en dispositivos Apple donde el modal de Logs (Terminal) se congelaba e impedía deslizar el texto con el dedo. Se inyectó `-webkit-overflow-scrolling: touch` y se bloqueó programáticamente el desbordamiento fantasma de su contenedor padre (`overflow: hidden;`).

@@ -475,6 +475,10 @@
             -webkit-tap-highlight-color: transparent;
         }
     </style>
+
+    <!-- VAD Web Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js"></script>
 </head>
 
 <body>
@@ -729,6 +733,21 @@
                     <p id="jsonProgressText"
                         style="color: var(--status-green); font-size: 0.9rem; margin-top: 10px; display:none;">0%</p>
                 </div>
+            </div>
+
+            <div id="vadPanel"
+                style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333;">
+                <div style="flex: 1; margin-right: 15px;">
+                    <label
+                        style="color: #bbb; font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 5px;">Sensibilidad
+                        IA (0.1 Paranoico - 0.9 Estricto): <span id="vadThreshVal"
+                            style="color: #f5a623;">0.5</span></label>
+                    <input type="range" id="inpVadThresh" min="0.1" max="0.9" step="0.1" value="0.5"
+                        style="width: 100%;" oninput="document.getElementById('vadThreshVal').innerText=this.value">
+                </div>
+                <button id="btnScanIA" class="settings-btn"
+                    style="background: #f5a623; color: black; margin: 0; padding: 12px 20px; font-weight: bold;"
+                    onclick="runVADScanner()">🧠 Analizar Voces (IA)</button>
             </div>
 
             <div style="text-align: center; margin-bottom: 15px; font-family: monospace; font-size: 1.2rem; color: #ccc;"
@@ -1478,6 +1497,7 @@
         // --- REPRODUCTOR DE ONDA FORENSE (LIGHTWEIGHT STREAMING ENGINE) ---
         let forensicAudio = null;
         let forensicAudioUrl = ''; // URL para crear el Audio solo en PLAY
+        let vadSegments = []; // Array para guardar los segmentos {start, end}
         let forensicPeaks = [];
         let forensicDuration = 0;
         let isWavePlaying = false;
@@ -1567,6 +1587,7 @@
         }
 
         function closeWaveform() {
+            vadSegments = [];
             if (typeof jsonGenTimer !== 'undefined' && jsonGenTimer) clearInterval(jsonGenTimer);
             if (forensicAudio) {
                 forensicAudio.pause();
@@ -1706,12 +1727,22 @@
                     const x = i * step;
                     const y = ((height - 25) - barHeight) / 2;
 
+                    let isVoice = false;
+                    for (let v = 0; v < vadSegments.length; v++) {
+                        if (peakTime >= vadSegments[v].start && peakTime <= vadSegments[v].end) {
+                            isVoice = true; break;
+                        }
+                    }
+
                     if (visiblePeaks[i] === 0) {
-                        // ZONA MUERTA (Micrófono Robado o Silenciado): Gris Azulado
+                        // ZONA MUERTA (Secuestro de micro): Gris Azulado
                         ctx.fillStyle = peakTime <= currentPlayTime ? '#546e7a' : '#b0bec5';
+                    } else if (isVoice) {
+                        // 🧠 HABLA HUMANA DETECTADA (IA): Rojo Carmesí Forense
+                        ctx.fillStyle = peakTime <= currentPlayTime ? '#b71c1c' : '#ff1744';
                     } else {
-                        // ZONA ACTIVA: Verde (Pendiente) o Rojo (Reproducido)
-                        ctx.fillStyle = peakTime <= currentPlayTime ? '#d32f2f' : '#4caf50';
+                        // RUIDO GENERAL: Verde/Gris apagado
+                        ctx.fillStyle = peakTime <= currentPlayTime ? '#2e7d32' : '#81c784';
                     }
 
                     ctx.fillRect(x, y, Math.max(1, step - 0.5), barHeight);
@@ -2137,6 +2168,50 @@
             document.getElementById('logsModal').style.display = 'flex';
             fetchLogs();
         });
+
+        async function runVADScanner() {
+            if (!forensicAudioUrl) return;
+            const btn = document.getElementById('btnScanIA');
+            const originalText = btn.innerHTML;
+            const threshold = parseFloat(document.getElementById('inpVadThresh').value);
+            btn.innerHTML = '⏳ Descargando y Analizando...';
+            btn.disabled = true;
+            vadSegments = [];
+            try {
+                // 1. Descargar audio y decodificar a 16kHz (Formato requerido por Silero)
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                const response = await fetch(forensicAudioUrl);
+                const arrayBuffer = await response.arrayBuffer();
+                const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                const pcmData = audioBuffer.getChannelData(0); // Float32Array
+
+                // 2. Procesamiento por bloques (Chunks) para no colapsar la RAM de Safari iOS
+                btn.innerHTML = '🧠 Ejecutando Red Neuronal...';
+                const myvad = await vad.Offline.create({ positiveSpeechThreshold: threshold, negativeSpeechThreshold: threshold - 0.1 });
+                // NOTA: Para no bloquear el Main Thread del navegador, cedemos el control cada poco
+                // procesando el PCM directo o pasándole el buffer si la librería lo soporta offline.
+                // (Ricky0123 soporta processAudio de un Float32Array puro)
+                // Extraemos los timestamps donde prob > threshold
+
+                // Debido a la API de vad-web offline, lo más seguro es usar utils:
+                const results = await vad.utils.processAudio(pcmData, 16000, {
+                    positiveSpeechThreshold: threshold,
+                    negativeSpeechThreshold: Math.max(0.1, threshold - 0.1)
+                });
+                // ProcessAudio devuelve los eventos de habla en un array de speech_start / speech_end
+                if (results && results.length > 0) {
+                    vadSegments = results.map(r => ({ start: r.start, end: r.end }));
+                    console.log("VAD Segments:", vadSegments);
+                }
+                drawForensicWaveform(); // Forzar repintado con los segmentos de IA
+            } catch (e) {
+                console.error("Error en VAD:", e);
+                alert("Error al ejecutar la Inteligencia Artificial local.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
     </script>
 
 </body>
