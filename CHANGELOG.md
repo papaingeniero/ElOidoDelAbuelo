@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.33] - 2026-03-08
+### Fixed
+- **OOM Root Cause (Ghost Reference)**: `const channelData` retenía ~80MB del AudioBuffer en scope impidiendo GC. Cambiado a `let` y anulado tras el streaming. `decoded` anulado antes de WASM. Pausa GC de 2s para Safari.
+
 ## [v1.4.32] - 2026-03-08
 ### Fixed
 - **OOM WASM Linear Memory Leak**: Worker Kamikaze + 1.5s respiro post-terminate. WASM linear memory crece durante 84+ inferencias y nunca decrece, así que el Worker se destruye tras cada scan con un delay de 1.5s antes de redibujar, dando a iOS tiempo para liberar.

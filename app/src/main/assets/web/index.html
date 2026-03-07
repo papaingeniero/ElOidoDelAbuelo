@@ -2236,8 +2236,11 @@
                 let decoded = await localCtx.decodeAudioData(arrayBuffer);
                 arrayBuffer = null; // Liberar comprimido
 
-                const channelData = decoded.getChannelData(0);
+                let channelData = decoded.getChannelData(0);
                 const totalSamples = channelData.length;
+
+                // Liberar AudioBuffer nativo ANTES de iniciar WASM
+                decoded = null;
 
                 // Cerrar AudioContext ANTES de iniciar WASM (libera motor nativo de Apple)
                 // El AudioBuffer y su channelData sobreviven al cierre del contexto
@@ -2325,8 +2328,10 @@
 
                 vadSegments = allSegments;
 
-                // Liberar AudioBuffer explícitamente
-                decoded = null;
+                // PURGA TOTAL: Cortar TODAS las referencias al AudioBuffer decodificado
+                // channelData es un view del AudioBuffer — si no se anula, el GC no puede liberar los ~80MB
+                channelData = null;
+                allSegments = null;
 
             } catch (e) {
                 console.error("Error en VAD:", e);
@@ -2337,8 +2342,8 @@
                 if (tempWorker) { tempWorker.terminate(); tempWorker = null; }
                 if (tempWorkerUrl) { URL.revokeObjectURL(tempWorkerUrl); tempWorkerUrl = null; }
 
-                // Respiro agresivo: WASM linear memory solo se libera asíncronamente
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                // Respiro agresivo: Safari necesita tiempo para GC de los ~80MB del AudioBuffer
+                await new Promise(resolve => setTimeout(resolve, 2000));
 
                 btn.innerHTML = originalText;
                 btn.disabled = false;
