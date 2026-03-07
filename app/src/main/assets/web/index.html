@@ -1785,12 +1785,16 @@
                 drawForensicWaveform();
             };
             forensicAudio.onloadedmetadata = function () {
-                // Actualizar duración si venimos de un fallback (peaks.length <= 1 o duration <= 1)
                 if (forensicDuration <= 1 || isNaN(forensicDuration) || forensicPeaks.length <= 1) {
                     forensicDuration = forensicAudio.duration;
-                    drawForensicWaveform();
-                    updateWaveTimeDisplay();
                 }
+                // ⏳ RECUPERACIÓN DE POSICIÓN TRAS IA
+                if (window.vadSavedTime && window.vadSavedTime > 0) {
+                    forensicAudio.currentTime = window.vadSavedTime;
+                    window.vadSavedTime = 0; // Consumido
+                }
+                drawForensicWaveform();
+                updateWaveTimeDisplay();
                 waveLoading.style.display = 'none';
             };
             forensicAudio.onerror = function () {
@@ -2303,11 +2307,8 @@
                 if (tempWorker) { tempWorker.terminate(); tempWorker = null; }
                 if (workerUrl) { URL.revokeObjectURL(workerUrl); }
 
-                // Resucitar silenciosamente el audio de Apple para poder darle a PLAY sin perder la posición
-                initForensicAudio();
-                forensicAudio.addEventListener('loadedmetadata', () => {
-                    if (window.vadSavedTime > 0) forensicAudio.currentTime = window.vadSavedTime;
-                }, { once: true });
+                // ⛔ PROHIBIDO AUTO-RESUCITAR EL AUDIO AQUÍ. 
+                // Se instanciará únicamente mediante Lazy-Load cuando el usuario pulse PLAY manual.
 
                 btn.innerHTML = originalText;
                 btn.disabled = false;

@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.23] - 2026-03-07
+### Fixed
+- **Jetsam OOM por Carrera Inversa (Strict Lazy Load)**: Prohibición de instanciar `AVFoundation` dentro del bloque `finally` del Web Worker. El reproductor nativo sólo se aloja en RAM mediante una carga perezosa (Lazy Initialize) cuando el usuario pulsa en PLAY, previniendo el pico de memoria concurrente contra un WASM que aún no termina de reciclar.
+
 ## [v1.4.22] - 2026-03-07
 ### Fixed
 - **Regresión OOM en Safari iOS**: Restaurada la lógica vital de "GC Breath" (pausa de 800ms post-AVFoundation destroy) y la caché Zero-Copy que se habían perdido en el snapshot anterior.
