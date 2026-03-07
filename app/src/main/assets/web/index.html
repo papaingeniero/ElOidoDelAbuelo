@@ -1500,6 +1500,7 @@
         let vadSegments = []; // Array para guardar los segmentos {start, end}
         let globalVAD = null;     // CACHE para evitar iOS Safari Jetsam OOM
         let globalVADThreshold = null;
+        let globalAudioCtx = null; // CACHE para evitar leak de AudioContext en WebKit
         let forensicPeaks = [];
         let forensicDuration = 0;
         let isWavePlaying = false;
@@ -2182,21 +2183,20 @@
             vadSegments = [];
             try {
                 // 1. Descargar audio y decodificar a 16kHz (Formato requerido por Silero)
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                const audioCtx = new AudioContextClass({ sampleRate: 16000 });
+                if (!globalAudioCtx) {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    globalAudioCtx = new AudioContextClass({ sampleRate: 16000 });
+                }
                 const response = await fetch(forensicAudioUrl);
                 let arrayBuffer = await response.arrayBuffer();
-                let audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-                let pcmData = audioBuffer.getChannelData(0); // Float32Array
+                let tempAudioBuffer = await globalAudioCtx.decodeAudioData(arrayBuffer);
 
-                // CRITICAL FIX: Cerrar el thread de Audio para no apilar y colapsar Safari iOS
-                if (audioCtx.close) {
-                    await audioCtx.close();
-                }
+                // CRITICAL FIX: Clonar el Float32Array para romper la referencia al gigantesco AudioBuffer nativo de WebKit
+                let pcmData = new Float32Array(tempAudioBuffer.getChannelData(0));
 
-                // Forzar liberación de memoria intermedia (ArrayBuffer ya no hace falta)
+                // Forzar liberación absoluta de las estructuras nativas puente
+                tempAudioBuffer = null;
                 arrayBuffer = null;
-                audioBuffer = null;
 
                 // Configurar WebAssembly Paths explícitamente para evitar 404s en el NanoHTTPD
                 if (window.ort && window.ort.env && window.ort.env.wasm) {

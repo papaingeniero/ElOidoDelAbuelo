@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.13] - 2026-03-07
+### Fixed
+- **WebKit DecodeAudioData Memory Leak**: Segundo ataque estructural al Out Of Memory (OOM) de Safari iOS. Se ha convertido el `AudioContext` en un Singleton global debido a que WebKit tiene un bug crónico eliminando contextos efímeros. Adicionalmente, se ejecuta un *Deep Clone* (`new Float32Array(...)`) sobre el resultado de `decodeAudioData` para romper la fuerte dependencia léxica que ataba la variable al gigantesco `AudioBuffer` original, forzando su aniquilación inmediata de la RAM antes de llamar al motor ONNX.
+
 ## [v1.4.12] - 2026-03-07
 ### Fixed
 - **WebKit Media Daemon Leak**: Subsanado un segundo vector de desbordamiento de RAM (Out Of Memory) en Safari iOS. Se descubrió que el recolector de basura no eliminaba los `Float32Array` PCM gigantes tras el análisis, ni el `<audio>` nativo al cerrar el archivo. Se forzó `pcmData = null` tras el pase de la IA, y se inyectaron directivas de WebKit (`removeAttribute('src')` y `.load()`) al cerrar el modal para aniquilar el buffer de medios retenido.

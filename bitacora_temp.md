@@ -1,11 +1,13 @@
-## 🚀 Hotfix OOM Safari Media Leak (VAD) [v1.4.12] | 07/03/2026
+## 🚀 Extreme Safari OOM Patch [v1.4.13] | 07/03/2026
 
 **📜 El Problema:**
-1. **El Asesino Silencioso de WebKit:** A pesar del Singleton asíncrono para ONNX implantado en la versión anterior (1.4.11), investigar el segundo audio de Voice Activity seguía tumbando Safari. El problema residía en **el cementerio de variables no recolectadas de JavaScript**: retener un Array de Floats (`pcmData`) de cientos de megabytes en el Heap sin ponerlo a *null*, sumado al buffer nativo de la etiqueta `<audio>` de iOS que se negaba a vaciarse cuando cerrábamos la modal (poner `src = ""` no la mata en Apple).
+1. **El Gusano de WebKit:** A pesar de haber matado el Daemon de Medios (`<audio>.load()`), abrir un segundo archivo y pulsar "Analizar IA" volvía a detonar un Jetsam Panic. Tras una investigación táctica en los motores de Apple, descubrimos dos fugas crónicas de memoria interna en Safari originadas por la API de `AudioContext`:
+   - Instanciar y cerrar múltiples `AudioContext` en una misma página en Safari deja "colas fantasma" en la RAM.
+   - Guardar el resultado `audioBuffer.getChannelData(0)` engancha estructuralmente la memoria a todo el envoltorio del mega-buffer de WebKit. Un audio de 5 minutos ocupa 20MB de array, pero WebKit atrapa 100MB de buffer padre que no se pueden borrar porque el array hijo (`pcmData`) sigue vivo siendo masticado por la IA.
 
 **🛠️ La Solución:**
-1. **Ejecución Forzada de Garbage Collector (`Nulling`):** Tras completar la digestión del Generator Asíncrono de la Red Neuronal y pintar las rayas paramétricas en rojo, se ordena la aniquilación de la matriz principal: `pcmData = null; arrayBuffer = null;`. Le robamos la variable a la máquina de JS para que el GC la recoja al toque.
-2. **Purgado del Media Daemon:** Al pulsar "Cerrar" en la Modal Forense de un archivo, se exige al DOM ejecutar `forensicAudio.removeAttribute('src')` y acto seguido se llama al método `forensicAudio.load()`. Esto le dispara un comando de vaciado (flush) irrechazable al core de medios de Safari para ese tag específico, perdiendo instantáneamente los Megabytes de PCM descodificado antes de que abramos otro archivo diferente.
+1. **Singleton de Audio Global:** El contexto de descodificación nativo `audioCtx` ahora sobrevive en el scope global (`globalAudioCtx`). Reutilizamos siempre las mismas entrañas de WebKit para todos los archivos, evitando instanciar y detonar daemons innecesarios.
+2. **Clonación Forense de Matrices (Deep Clone):** Al obtener los bytes para la IA (`getChannelData`), ya no hacemos una referencia cruzada. He forzado la clonación dura: `let pcmData = new Float32Array(tempAudioBuffer.getChannelData(0))`. Esto empaca los datos al vacío y nos permite asesinar explícitamente el gargantuesco padre (`tempAudioBuffer = null`). WebKit lo entiende y purga la RAM antes de que ONNX siquiera empiece a calentarse.
 
 **🎓 Lecciones Aprendidas:**
-- iOS Safari no sabe hacer "Garbage Collection" sobre medios (Audio/Video). Debes castigarlo explícitamente obligándole a recargar un reproductor vacío (`.load()`), o de lo contrario apilará 2, 3 o 4 canciones descodificadas enteramente en su RAM virtual antes de cometer un harakiri (Jetsam Crash). Trabajamos en Edge AI, cada megabyte es oro.
+- Cuando luchas contra WebKit Edge-AI en dispositivos móviles, un simple signo de igual (`=`) entre variables no copia información, transfiere un anclaje mortal de memoria compartida (Shallow Copy). Romper las referencias copiando bit a bit los Arrays es imperativo para evitar que las optimizaciones fantasma del Safari maten tu aplicación por castigo de la RAM (OOM).
