@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.4.22] - 2026-03-07
+### Fixed
+- **Regresión OOM en Safari iOS**: Restaurada la lógica vital de "GC Breath" (pausa de 800ms post-AVFoundation destroy) y la caché Zero-Copy que se habían perdido en el snapshot anterior.
+- **Cabezal de reproducción parpadeante**: Modificado el motor Canvas para dibujar un "cabezal fantasma" leyendo `window.vadSavedTime` mientras el motor nativo de audio está congelado, mejorando enormemente la fluidez de la UI.
+
 ## [v1.4.22-dev.1] - 2026-03-07
 ### Changed
 - **VAD por Fragmentación (Chunking)**: Refactorización monumental de la inferencia WebAssembly de la IA. Los audios se procesan en lotes secuenciales inmutables de 15 segundos, aplanando violentamente la curva de consumo RAM de iOS y añadiendo telemetría de progreso (0% a 100%) en la intefaz web.

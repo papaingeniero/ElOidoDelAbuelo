@@ -1759,12 +1759,13 @@
             }
 
             // 3. DIBUJAR CABEZAL DE REPRODUCCIÓN
-            if (forensicAudio && !isNaN(forensicAudio.currentTime)) {
-                if (forensicAudio.currentTime >= viewStartSec && forensicAudio.currentTime <= viewEndSec) {
-                    const currentPlayX = ((forensicAudio.currentTime - viewStartSec) / viewDuration) * width;
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(currentPlayX - 1, 0, 2, height);
-                }
+            let currentPlayTimeToDraw = null;
+            if (forensicAudio && !isNaN(forensicAudio.currentTime)) { currentPlayTimeToDraw = forensicAudio.currentTime; }
+            else if (window.vadSavedTime && window.vadSavedTime > 0) { currentPlayTimeToDraw = window.vadSavedTime; }
+            if (currentPlayTimeToDraw !== null && currentPlayTimeToDraw >= viewStartSec && currentPlayTimeToDraw <= viewEndSec) {
+                const currentPlayX = ((currentPlayTimeToDraw - viewStartSec) / viewDuration) * width;
+                ctx.fillStyle = 'white';
+                ctx.fillRect(currentPlayX - 1, 0, 2, height);
             }
         }
 
@@ -2188,25 +2189,45 @@
             let tempWorker = null;
             let workerUrl = null;
 
-            try {
-                btn.innerHTML = '⏳ Extrayendo Audio...';
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                let localCtx = new AudioContextClass({ sampleRate: 16000 });
-                
-                const response = await fetch(forensicAudioUrl);
-                let arrayBuffer = await response.arrayBuffer();
-                let tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
-                
-                // Extracción con Zero-Copy de la RAM nativa
-                let pcmData = tempAudioBuffer.getChannelData(0).slice();
-                
-                await localCtx.close();
-                localCtx = null;
-                arrayBuffer = null;
-                tempAudioBuffer = null;
+            // 1. FREEZE Y DESCARGA NATIVA (Anti-Overlap de Apple)
+            if (forensicAudio) {
+                btn.innerHTML = '⏳ Purgando RAM...';
+                window.vadSavedTime = forensicAudio.currentTime || 0;
+                forensicAudio.pause();
+                forensicAudio.removeAttribute('src');
+                forensicAudio.load();
+                forensicAudio = null;
+                isWavePlaying = false;
+                const playBtn = document.getElementById('wavePlayBtn');
+                if (playBtn) playBtn.innerHTML = '▶️ PLAY';
 
-                btn.innerHTML = '🧠 Arrancando IA...';
-                
+                await new Promise(resolve => setTimeout(resolve, 800)); // GC Breath
+            } else if (!window.vadSavedTime) {
+                window.vadSavedTime = 0;
+            }
+
+            try {
+                // 2. EXTRACCIÓN ÚNICA CON CACHÉ ZERO-COPY
+                if (currentVadAudioUrl !== forensicAudioUrl || !cachedPcmData || cachedPcmData.length === 0) {
+                    btn.innerHTML = '⏳ Decodificando Audio...';
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    let localCtx = new AudioContextClass({ sampleRate: 16000 });
+
+                    const response = await fetch(forensicAudioUrl);
+                    let arrayBuffer = await response.arrayBuffer();
+                    let tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
+
+                    cachedPcmData = tempAudioBuffer.getChannelData(0).slice();
+
+                    await localCtx.close();
+                    localCtx = null;
+                    arrayBuffer = null;
+                    tempAudioBuffer = null;
+                    currentVadAudioUrl = forensicAudioUrl;
+                }
+
+                // 3. WORKER KAMIKAZE + CHUNKING
+                btn.innerHTML = '🧠 Iniciando Motor WASM...';
                 const workerCode = `
                     importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
                     importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
@@ -2225,11 +2246,10 @@
                                 });
                                 
                                 const sampleRate = 16000;
-                                const chunkSize = sampleRate * 15; // Trocear en bloques de 15 segundos
+                                const chunkSize = sampleRate * 15; // Trozos de 15s para aplanar el consumo
                                 let allSegments = [];
                                 const totalChunks = Math.ceil(e.data.pcmData.length / chunkSize);
                                 
-                                // Procesamiento secuencial para mantener el consumo de RAM plano
                                 for (let i = 0; i < totalChunks; i++) {
                                     const offset = i * chunkSize;
                                     const chunk = e.data.pcmData.slice(offset, offset + chunkSize);
@@ -2239,18 +2259,18 @@
                                         const absEnd = (offset / sampleRate) + (segment.end / 1000);
                                         allSegments.push({ start: absStart, end: absEnd });
                                     }
-                                    // Enviar telemetría al hilo principal
                                     postMessage({ status: 'progress', percent: Math.round(((i + 1) / totalChunks) * 100) });
                                 }
                                 
-                                postMessage({ status: 'done', segments: allSegments });
+                                // Devolver la RAM intacta al hilo principal
+                                postMessage({ status: 'done', segments: allSegments, pcmData: e.data.pcmData }, [e.data.pcmData.buffer]);
                             }
                         } catch (err) {
                             postMessage({ status: 'error', error: err.message || String(err) });
                         }
                     };
                 `;
-                
+
                 const blob = new Blob([workerCode], { type: 'application/javascript' });
                 workerUrl = URL.createObjectURL(blob);
                 tempWorker = new Worker(workerUrl);
@@ -2263,30 +2283,32 @@
                             btn.innerHTML = '🧠 Analizando (' + e.data.percent + '%)...';
                         } else if (e.data.status === 'done') {
                             vadSegments = e.data.segments;
+                            cachedPcmData = e.data.pcmData; // Recuperamos la propiedad del array
                             resolve();
                         } else if (e.data.status === 'error') {
                             reject(new Error(e.data.error));
                         }
                     };
-                    tempWorker.onerror = (err) => reject(new Error("Worker Crash: WebKit ha abatido el sub-proceso."));
+                    tempWorker.onerror = (err) => reject(new Error("Worker Crash"));
 
-                    // Desvincular array en el hilo principal para liberar RAM instantáneamente
-                    tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: pcmData }, [pcmData.buffer]);
-                    pcmData = null; 
+                    // Desvincular array enviándolo al Worker (Zero-Copy)
+                    tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: cachedPcmData }, [cachedPcmData.buffer]);
                 });
 
             } catch (e) {
                 console.error("Error en VAD:", e);
-                alert("Error Ejecutando Red Neuronal:\\n" + (e.message || String(e)));
+                alert("Error:\\n" + (e.message || String(e)));
+                cachedPcmData = null;
             } finally {
-                // Ejecución forzosa del recolector y destrucción del contexto
-                if (tempWorker) {
-                    tempWorker.terminate();
-                    tempWorker = null;
-                }
-                if (workerUrl) {
-                    URL.revokeObjectURL(workerUrl);
-                }
+                if (tempWorker) { tempWorker.terminate(); tempWorker = null; }
+                if (workerUrl) { URL.revokeObjectURL(workerUrl); }
+
+                // Resucitar silenciosamente el audio de Apple para poder darle a PLAY sin perder la posición
+                initForensicAudio();
+                forensicAudio.addEventListener('loadedmetadata', () => {
+                    if (window.vadSavedTime > 0) forensicAudio.currentTime = window.vadSavedTime;
+                }, { once: true });
+
                 btn.innerHTML = originalText;
                 btn.disabled = false;
                 drawForensicWaveform();

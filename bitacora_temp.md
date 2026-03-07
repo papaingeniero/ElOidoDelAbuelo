@@ -1,14 +1,14 @@
-## 🚀 AVFoundation Freeze & Ping-Pong Zero-Copy v1.4.21 | 07/03/2026
+## 🚀 Fusión Maestra: Chunking + GC Breath + ZeroCopy v1.4.22 | 07/03/2026
+
 ### 📜 El Problema
-A pesar de destruir el Worker en la versión v1.4.20, iOS Safari continuaba sufriendo eventos `Jetsam` (Out-Of-Memory) ocasionales al re-escanear. El cuello de botella real de WebKit radica en la superposición de recursos: el motor nativo de reproducción de iOS (`AVFoundation`, anclado al tag `<audio>`) mantenía retenidos pesados buffers multimedia en memoria bloqueada del sistema mientras simultáneamente se le exigía a la pestaña del navegador ramificar un Web Worker y compilar el pesado runtime WASM (40MB+) para la inferencia ONNX. La suma de ambas reservas colapsaba el hard-limit de la aplicación.
+Durante la implementación del Chunking en la `v1.4.22-dev.1`, se sobrescribió accidentalmente la lógica vital del `"GC Breath"` (la pausa para destruir AVFoundation) y la caché `Zero-Copy` que evitaba duplicar la RAM. Esta regresión provocó que, aunque el Chunking funcionaba aislando la RAM de WASM, la RAM total del tab en Safari iOS explotara nuevamente (`Jetsam OOM`) por el solapamiento del búfer multimedia nativo activo con el proceso de Web Worker. Además, al destruir silenciosamente la etiqueta `<audio>` para purgar RAM, el cabezal de reproducción desaparecía temporalmente de la UI.
 
 ### 🛠️ La Solución
-Implementación de Arquitectura de Evasión de Solapamientos y Memoria Destructiva:
-1. **AVFoundation Freeze**: Antes de invocar a WebAssembly, forzamos un desahucio completo del reproductor nativo. Purgamos su fuente (`removeAttribute('src')`) y forzamos su re-lectura (`load()`). Durante los dolorosos segundos de análisis WASM, la RAM de AVFoundation queda garantizada en cero.
-2. **Ping-Pong Zero-Copy**: Implementado en el Worker Kamikaze para evadir el duplicado de memoria (clone-by-value). Mandar 120 segundos de PCM al Worker duplica la memoria asignada si no hay "Transferencia de Posesión". 
-    - a) El Hilo Principal cede la propiedad bruta de la RAM (`postMessage(..., [cachedPcmData.buffer])`).
-    - b) El Worker finaliza y re-transfiere la propiedad de vuelta intacta (`postMessage(..., [e.data.pcmData.buffer])`).
-3. **Resurrección del Dominio (Restauración de Estado)**: En el bloque `finally`, tras la completa aniquilación del WASM, el reproductor nativo es reiniciado de cero y su aguja es colocada matemáticamente en el `currentTime` original (`savedTime`) sin que el usuario lo note.
+Se ha implementado una arquitectura de "Fusión Maestra" en el `runVADScanner` que une las tres principales contramedidas Anti-OOM:
+1. **GC Breath (Respiración de Purga)**: Se destruye el objeto `<audio>` y se inyecta una pausa explícita (`await new Promise(resolve => setTimeout(resolve, 800))`) dándole tiempo al Garbage Collector del sistema base de iOS (y a WebKit) para asimilar la liberación masiva de RAM del motor AVFoundation antes de despertar al gigante de WebAssembly.
+2. **Caché Zero-Copy Intacta**: El PCM extraído se desvincula desde el tab principal mandándose como *Transferable Object* hacia el Web Worker (`[cachedPcmData.buffer]`). Una vez que el motor ONNX termina la inferencia, se vuelve a transferir *íntegro* al Worker principal para una reutilización instantánea sin duplicar el peso en la memoria del navegador.
+3. **Chunking Constante**: Manteniendo la carga lineal de RAM al procesar fragmentos de 15 segundos dentro de la inferencia IA.
+4. **Preservación Visual (Cabezal Fantasma)**: Se ha modificado `drawForensicWaveform` para que, a pesar de que la fuente real nativa (`forensicAudio`) sea destruida temporalmente, el motor de Canvas lea el offset almacenado (`window.vadSavedTime`) y lo dibuje permanentemente para que el usuario jamás perciba la manipulación de recarga táctica.
 
 ### 🎓 Lecciones Aprendidas
-- **Los navegadores móviles mienten**: Mantener en pausa una etiqueta `<audio>` en iOS no libera la memoria gráfica/nativa asociada, sólo suspende el reloj. Es crítico destruir activamente el enlace de recurso del DOM antes de entrar en tareas intensivas de memoria para evitar crasheos silenciosos por límites del sistema operativo.
+- **Las contramedidas no son excluyentes, son acumulativas**: Resolver un problema en WASM (Chunking) no permite olvidar los problemas estructurales del host (AVFoundation Overlap). En plataformas empobrecidas como WebKit iOS, un `run()` pesado requiere silenciar el ecosistema circundante entero. Y darle tiempo (`setTimeout`) para que la RAM física respire.
