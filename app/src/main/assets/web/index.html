@@ -1423,7 +1423,7 @@
         let forensicDuration = 0;
         let isWavePlaying = false;
         let waveFileName = "";
-        
+
         let waveBaseTimestamp = 0;
 
         // VARIABLES PARA LA CÁMARA (ZOOM Y PAN)
@@ -1595,7 +1595,7 @@
             ctx.fillText('Pico Max: ' + maxPeak, width - 5, 12);
 
             // 2. DIBUJAR REGLA DE TIEMPO (Eje X - Absoluto)
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 1.0)';
             ctx.font = '10px monospace';
             ctx.textAlign = 'center';
 
@@ -1604,7 +1604,7 @@
 
             const niceSteps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200];
             let tickInterval = niceSteps[niceSteps.length - 1];
-            
+
             for (let step of niceSteps) {
                 if (step >= targetInterval) {
                     tickInterval = step;
@@ -1613,18 +1613,18 @@
             }
 
             const firstTick = Math.ceil(viewStartSec / tickInterval) * tickInterval;
-            
+
             for (let t = firstTick; t <= viewEndSec; t += tickInterval) {
                 const x = ((t - viewStartSec) / viewDuration) * width;
                 ctx.fillRect(x, height - 15, 1, 15);
-                
+
                 const exactTimeMs = waveBaseTimestamp + (t * 1000);
                 const dateObj = new Date(exactTimeMs);
-                
+
                 const hh = dateObj.getHours().toString().padStart(2, '0');
                 const mm = dateObj.getMinutes().toString().padStart(2, '0');
                 const ss = dateObj.getSeconds().toString().padStart(2, '0');
-                
+
                 ctx.fillText(`${hh}:${mm}:${ss}`, x, height - 18);
             }
 
@@ -1748,7 +1748,18 @@
                 const s = Math.floor(time % 60).toString().padStart(2, '0');
                 return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
             };
-            waveTimeDisplay.innerText = `${formatTime(forensicAudio ? forensicAudio.currentTime : 0)} / ${formatTime(forensicDuration)}`;
+
+            const current = forensicAudio ? forensicAudio.currentTime : 0;
+            const formattedCurrent = formatTime(current);
+            const formattedTotal = formatTime(forensicDuration);
+
+            const exactTimeMs = waveBaseTimestamp + (current * 1000);
+            const dateObj = new Date(exactTimeMs);
+            const hh = dateObj.getHours().toString().padStart(2, '0');
+            const mm = dateObj.getMinutes().toString().padStart(2, '0');
+            const ss = dateObj.getSeconds().toString().padStart(2, '0');
+
+            waveTimeDisplay.innerHTML = '<div style="font-size: 1.1em; color: #f5a623; font-weight: bold; margin-bottom: 4px;">⏱️ ' + hh + ':' + mm + ':' + ss + '</div><div style="font-size: 0.9em; opacity: 0.8;">' + formattedCurrent + ' / ' + formattedTotal + '</div>';
         }
 
         // --- LÓGICA MULTITÁCTIL, SCRUBBING Y ZOOM ---
