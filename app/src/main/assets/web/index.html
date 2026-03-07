@@ -2189,20 +2189,13 @@
             vadSegments = [];
             try {
                 // 1. Descargar audio temporal
-                if (!globalAudioCtx) {
-                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                    globalAudioCtx = new AudioContextClass({ sampleRate: 16000 });
-                }
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                let localCtx = new AudioContextClass({ sampleRate: 16000 });
                 const response = await fetch(forensicAudioUrl);
                 let arrayBuffer = await response.arrayBuffer();
-                let tempAudioBuffer = await globalAudioCtx.decodeAudioData(arrayBuffer);
-
-                // Clonar vector puro para transferirlo (Zero-Copy) al hilo aislado
-                let pcmData = new Float32Array(tempAudioBuffer.getChannelData(0));
-
-                // Destruir contenedor multimedia primario
-                tempAudioBuffer = null;
-                arrayBuffer = null;
+                const tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
+                const pcmData = tempAudioBuffer.getChannelData(0).slice(); // Evita retención del buffer
+                await localCtx.close(); localCtx = null; arrayBuffer = null;
 
                 // 2. Levantar Hilo Aislado (Web Worker) para Sandbox WASM
                 if (vadWorker) vadWorker.terminate();
@@ -2210,34 +2203,35 @@
                 btn.innerHTML = '🧠 Arrancando Motor Neuronal Aislado...';
 
                 const workerCode = `
-                    importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
-                    importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
-                    
-                    onmessage = async function(e) {
-                        try {
-                            if (e.data.action === 'run') {
-                                ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
-                                ort.env.wasm.numThreads = 1; // Strict single-threading to avoid memory explosion
-                                
-                                const myvad = await vad.NonRealTimeVAD.new({
-                                    modelURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/silero_vad.onnx',
-                                    positiveSpeechThreshold: e.data.threshold,
-                                    negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
-                                });
-                                
-                                const pcmData = e.data.pcmData;
-                                const generator = myvad.run(pcmData, 16000);
-                                let segments = [];
-                                for await (const segment of generator) {
-                                    segments.push({ start: segment.start / 1000, end: segment.end / 1000 });
-                                }
-                                postMessage({ status: 'done', segments: segments });
-                            }
-                        } catch (err) {
-                            postMessage({ status: 'error', error: err.message || String(err) });
-                        }
-                    };
-                `;
+importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
+importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
+
+onmessage = async function(e) {
+    try {
+        if (e.data.action === 'run') {
+            ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
+            ort.env.wasm.numThreads = 1;
+            
+            const pcmData = e.data.pcmData;
+            // Usamos la API real del bundle
+            const results = await vad.utils.processAudio(pcmData, 16000, {
+                positiveSpeechThreshold: e.data.threshold,
+                negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
+            });
+            
+            if (!results) {
+                postMessage({ status: 'done', segments: [] });
+                return;
+            }
+            
+            let segments = results.map(r => ({ start: r.start, end: r.end }));
+            postMessage({ status: 'done', segments: segments });
+        }
+    } catch (err) {
+        postMessage({ status: 'error', error: err.message || String(err) });
+    }
+};
+`;
 
                 const blob = new Blob([workerCode], { type: 'application/javascript' });
                 vadWorker = new Worker(URL.createObjectURL(blob));
@@ -2246,8 +2240,6 @@
 
                 // 🔥 MAGIA DE SAFARI: Transferir `pcmData.buffer` desvincula físicamente la memoria del hilo principal.
                 vadWorker.postMessage({ action: 'run', threshold: threshold, pcmData: pcmData }, [pcmData.buffer]);
-
-                pcmData = null; // Ya no le pertenece a la ventana principal, liberado 100%.
 
                 await new Promise((resolve, reject) => {
                     vadWorker.onmessage = (e) => {
