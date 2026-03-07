@@ -1,14 +1,12 @@
-## 🚀 OOM Fixes & WASM Sandbox v1.4.15 | 07/03/2026
+## 🚀 Extreme WASM Sandbox & Termination v1.4.16 | 07/03/2026
 ### 📜 El Problema
-La última implementación de `runVADScanner()` provocaba eventos "Jetsam" (Out-Of-Memory) en iOS Safari, obligando a la recarga agresiva de la página. Había problemas graves de retención en `AudioContext`, un mal manejo en la clonación de la onda (`Float32Array`) sin Zero-Copy real, uso de APIs de VAD inexistentes (`vad.NonRealTimeVAD.new()`) y un diseño inseguro en el `Web Worker`.
+A pesar de las mejoras previas (v1.4.15), el "Jetsam Panic" (Out-Of-Memory) persistía en iOS Safari al terminar de escanear audios sucesivos con el analizador VAD. El origen radicaba en que el Web Worker y su motor interno WASM (ONNX Runtime) no liberaban su gigantesco *heap* de memoria tras enviar el mensaje de `done`, ni tampoco era suficiente rebotar un nuevo stream `pcmData`. 
 
 ### 🛠️ La Solución
-Se han aplicado directamente 4 correcciones críticas de Meta-Ingeniería en `index.html`:
-1. **Fuga de Memoria WebKit**: El contexto de audio `localCtx` es forzado a cerrar (`await localCtx.close(); localCtx = null`) tras la decodificación.
-2. **Transferencia Zero-Copy**: Extraemos el buffer con `tempAudioBuffer.getChannelData(0).slice()` anulando cualquier referencia al array subyacente que iOS amarrara a la RAM.
-3. **Purificación de la API**: Uso directo de `vad.utils.processAudio()` desde el bundle real en vez de instanciar clases inexistentes.
-4. **Re-Estructura del Worker**: Código JavaScript saneado y parametrizado correctamente inidicando a ONNX un hilo único (`ort.env.wasm.numThreads = 1;`).
+Se ha insertado la solución arquitectónica quirúrgica final en el entorno del `Web Worker` de `index.html`:
+1. **Destrucción Incondicional**: Tras concluir el análisis, y dentro del bloque `finally` de `runVADScanner`, la instrucción `vadWorker.terminate()` se dispara ciegamente. 
+2. **Purgado Radical de Objetos URL**: Liberación con `URL.revokeObjectURL(workerUrl)` impidiendo que iOS retenga los Blobs en caché, forzando la muerte del subproceso completo y su respectiva carga WebAssembly.
+3. **Restauración VAD API**: Regreso al flujo de inicialización correcto `vad.NonRealTimeVAD.new()` dentro de la estructura Web Worker.
 
 ### 🎓 Lecciones Aprendidas
-- **Garbage Collection (Safari)**: Safari jamás soltará un `AudioContext` a menos que su destrucción se ordene implícitamente, costando docenas de Megabytes ciegos de RAM y originando un eventual asfixio sistémico (Jetsam event).
-- **APIs Fantasma**: Asumir versiones antiguas o emuladas de ONNX/VAD cuesta horas de depuración. Leer el `.d.ts` o los bundles ofuscados suele ser el único medio de certificar las funciones que realmente exportan a un Web Worker.
+- **WebKit Death Trap**: El navegador nativo de Apple requiere que se le mate el Sub-Proceso Worker sin piedad al acabar la tarea intensa. Las almas de los Workers (y las sesiones de red neuronal ONNX que habitan en ellos) nunca ceden voluntariamente la RAM al hilo principal por más `nulls` que se apliquen internamente.

@@ -2187,59 +2187,66 @@
             btn.innerHTML = '⏳ Preparando Extractor...';
             btn.disabled = true;
             vadSegments = [];
+
+            let workerUrl = null;
             try {
-                // 1. Descargar audio temporal
                 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
                 let localCtx = new AudioContextClass({ sampleRate: 16000 });
                 const response = await fetch(forensicAudioUrl);
                 let arrayBuffer = await response.arrayBuffer();
-                const tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
-                const pcmData = tempAudioBuffer.getChannelData(0).slice(); // Evita retención del buffer
-                await localCtx.close(); localCtx = null; arrayBuffer = null;
+                let tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
 
-                // 2. Levantar Hilo Aislado (Web Worker) para Sandbox WASM
+                // Copia pura para aislar la memoria y transferirla al Worker
+                let pcmData = tempAudioBuffer.getChannelData(0).slice();
+
+                // Destruir la tubería multimedia de Safari INMEDIATAMENTE
+                await localCtx.close();
+                localCtx = null;
+                arrayBuffer = null;
+                tempAudioBuffer = null;
+
                 if (vadWorker) vadWorker.terminate();
 
                 btn.innerHTML = '🧠 Arrancando Motor Neuronal Aislado...';
 
                 const workerCode = `
-importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
-importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
-
-onmessage = async function(e) {
-    try {
-        if (e.data.action === 'run') {
-            ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
-            ort.env.wasm.numThreads = 1;
-            
-            const pcmData = e.data.pcmData;
-            // Usamos la API real del bundle
-            const results = await vad.utils.processAudio(pcmData, 16000, {
-                positiveSpeechThreshold: e.data.threshold,
-                negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
-            });
-            
-            if (!results) {
-                postMessage({ status: 'done', segments: [] });
-                return;
-            }
-            
-            let segments = results.map(r => ({ start: r.start, end: r.end }));
-            postMessage({ status: 'done', segments: segments });
-        }
-    } catch (err) {
-        postMessage({ status: 'error', error: err.message || String(err) });
-    }
-};
-`;
+                    importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
+                    importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
+                    
+                    onmessage = async function(e) {
+                        try {
+                            if (e.data.action === 'run') {
+                                // Limitar a un hilo para evitar explosión de memoria en WebKit
+                                ort.env.wasm.numThreads = 1;
+                                ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
+                                
+                                const myvad = await vad.NonRealTimeVAD.new({
+                                    positiveSpeechThreshold: e.data.threshold,
+                                    negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
+                                });
+                                
+                                const generator = myvad.run(e.data.pcmData, 16000);
+                                let segments = [];
+                                for await (const segment of generator) {
+                                    segments.push({ start: segment.start / 1000, end: segment.end / 1000 });
+                                }
+                                postMessage({ status: 'done', segments: segments });
+                            }
+                        } catch (err) {
+                            postMessage({ status: 'error', error: err.message || String(err) });
+                        }
+                    };
+                `;
 
                 const blob = new Blob([workerCode], { type: 'application/javascript' });
-                vadWorker = new Worker(URL.createObjectURL(blob));
+                workerUrl = URL.createObjectURL(blob);
+                vadWorker = new Worker(workerUrl);
 
                 btn.innerHTML = '🧠 Analizando y Purificando RAM...';
 
-                // 🔥 MAGIA DE SAFARI: Transferir `pcmData.buffer` desvincula físicamente la memoria del hilo principal.
+                // Transferencia Zero-Copy (Desvincula pcmData de la memoria principal)
                 vadWorker.postMessage({ action: 'run', threshold: threshold, pcmData: pcmData }, [pcmData.buffer]);
+                pcmData = null;
 
                 await new Promise((resolve, reject) => {
                     vadWorker.onmessage = (e) => {
@@ -2251,17 +2258,26 @@ onmessage = async function(e) {
                         }
                     };
                     vadWorker.onerror = (err) => {
-                        reject(new Error("Worker Crash: WebKit ha abatido el sub-proceso por RAM."));
+                        reject(new Error("Worker Crash: WebKit ha abatido el sub-proceso."));
                     };
                 });
 
-                console.log("VAD Segments (Worker):", vadSegments);
-                drawForensicWaveform(); // Forzar repintado con los segmentos de IA
+                console.log("VAD Segments:", vadSegments);
+                drawForensicWaveform();
+
             } catch (e) {
-                console.error("Error en VAD Worker:", e);
-                let msg = e.message || String(e);
-                alert("Error Ejecutando Red Neuronal:\n" + msg);
+                console.error("Error en VAD:", e);
+                alert("Error Ejecutando Red Neuronal:\\n" + (e.message || String(e)));
             } finally {
+                // 🔥 LA MAGIA CONTRA EL OOM DE IOS: Asesinato incondicional del Worker
+                if (vadWorker) {
+                    vadWorker.terminate();
+                    vadWorker = null;
+                }
+                if (workerUrl) {
+                    URL.revokeObjectURL(workerUrl);
+                }
+
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             }

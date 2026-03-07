@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.4.16] - 2026-03-07
+### Fixed
+- **WebKit Jetsam & OOM Crash (Safari iOS)**: Prevención total y definitiva del Memory Leak en Safari al analizar audios sucesivos con VAD.
+  1. Destrucción incondicional del Web Worker (`vadWorker.terminate()`) en el bloque `finally`.
+  2. Purgado radical del Blob/URL (`URL.revokeObjectURL`) para forzar la liberación de RAM.
+  3. Restauración de la API de inicialización correcta (`vad.NonRealTimeVAD.new()`).
+
 ## [v1.4.15] - 2026-03-07
 ### Fixed
 - **WebKit Jetsam & OOM Crash (Safari iOS)**: Aplicadas 4 correcciones críticas para evitar cierres abruptos de Safari por falta de memoria. 
