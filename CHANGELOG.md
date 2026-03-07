@@ -1,5 +1,13 @@
 # Changelog
 
+## [v1.4.15] - 2026-03-07
+### Fixed
+- **WebKit Jetsam & OOM Crash (Safari iOS)**: Aplicadas 4 correcciones críticas para evitar cierres abruptos de Safari por falta de memoria. 
+  1. Se fuerza la destrucción explícita de `AudioContext` tras extraer el PCM.
+  2. Uso de transferencia Zero-Copy real mediante extracción con `.slice()` sin retener el clon léxico.
+  3. Reestructuración integral del `Web Worker` de ejecución VAD, usando `vad.utils.processAudio` del bundle oficial para evitar alucinaciones API.
+  4. Rediseño general de la memoria del Motor VAD Neuronal garantizando purga estricta 100%.
+
 ## [v1.4.14] - 2026-03-07
 ### Fixed
 - **Anti-Jetsam WASM Sandbox**: Implementada la máxima defensa contra desbordamientos de Memoria en Safari iOS. Se ha encapsulado íntegramente la red neuronal VAD (ONNXRuntime) y el Motor WebAssembly en un `Web Worker` aislado. 
