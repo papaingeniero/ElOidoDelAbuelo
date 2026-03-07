@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.4.19] - 2026-03-07
+### Changed
+- **VAD Smart Cache (Anti-Jetsam)**: Arquitectura rediseñada para instanciar el Motor WASM y el AudioContext de Safari de forma inteligente y diferida.
+  1. Doble caché global (`cachedPcmData`, `currentVadAudioUrl`) evita re-descargas y re-decodificaciones.
+  2. El Web Worker y el ONNX Runtime permanecen dormidos pero vivos hasta que se cambia de archivo, evitando OOM por inicializaciones consecutivas.
+  3. Ejecución controlada de la recolección de basura nativa (`vadWorker.terminate()`) únicamente al cerrar el modal modal (`closeWaveform()`).
+
 ## [v1.4.18] - 2026-03-07
 ### Fixed
 - **WebKit Jetsam & OOM Crash (Safari iOS)**: Prevención total definitiva del Memory Leak por contención de nodos multimedia en Safari.

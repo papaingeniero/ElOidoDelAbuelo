@@ -1,11 +1,12 @@
-## 🚀 AudioContext Strict Annihilation v1.4.18 | 07/03/2026
+## 🚀 VAD Smart Cache v1.4.19 | 07/03/2026
 ### 📜 El Problema
-Los Jetsam (Out-Of-Memory crasheos) regresaron en iOS Safari debido a una contención microscópica. Aunque liberábamos el Worker de manera impecable, el cordón umbilical del procesamiento de ondas (`localCtx`) se anudaba a la memoria compartida impidiendo un barrido de recolección de basura eficiente, ahogando al dispositivo nativo en RAM retenida por buffers previos decodificados.
+A pesar de aniquilar el Buffer (`AudioContext`) de manera precoz, se evidenciaba un evento Jetsam (crasheo por OOM) latente en iOS Safari si el usuario "jugaba" deslizando repetidamente el control de umbral (Sensibilidad VAD). El origen residía en que la función `runVADScanner()` descargaba el `.m4a`, lo decodificaba a PCM, y levantaba la superestructura WASM de cero en cada simple solicitud del usuario, agotando el límite de recursos en ciclos consecutivos rápidos.
 
 ### 🛠️ La Solución
-He aplicado la demolición exacta y cronometrada de todos los punteros multimedia:
-1. **Asesinato Precursor**: La línea `await localCtx.close()` se ejecuta fulminantemente de inmediato tras expropiar un `.slice()` del array de canal, garantizando desconexión nativa.
-2. **Transferencia Destructiva**: Se anula formalmente a los portadores (`arrayBuffer`, `tempAudioBuffer`, `localCtx`) estableciéndolos en `null` previamente de concebir al instanciador del Sandbox (`vadWorker`).
+Implementación de un sistema **Smart Cache** (Arquitectura de Instanciación Diferida):
+1. **Doble Caché Global**: Inyección de las variables `cachedPcmData` y `currentVadAudioUrl`. Solo se decodifica y transfiere el audio (`slice`) si la URL diverge del escaneo inmediato anterior.
+2. **Reutilización del Motor WASM**: El Web Worker (`vadWorker`) y el modelo neuronal interno (`myvad = vad.NonRealTimeVAD.new()`) ya no son exterminados tras cada éxito. El worker permanece vivo, y la red neuronal se reconstruye en su sub-proceso únicamente si el valor de `e.data.threshold` varía (mediante variable reactiva `lastThreshold`).
+3. **Limpieza Controlada**: `closeWaveform()` asume la responsabilidad final de purgar `cachedPcmData` y ejecutar un glorioso pero retardado `vadWorker.terminate()` en el momento en el que el audio forense se oculta.
 
 ### 🎓 Lecciones Aprendidas
-- **Desgarro Limpio en WebKit**: Extraer DataCruda mediante `.slice()` y apuñalar instantáneamente al `AudioContext` en vez de esperar al tramo de ejecución WebAssembly final reduce a un instante efímero la ventana de pico expansivo en RAM, cortando el apalancamiento que lleva a los fatídicos *Jetsam Panics* de iOS Safari al escanear audios encadenados.
+- **Destrucción diferida es más amable que Destrucción Reactiva**: Aunque iOS requiere la aniquilación de la sesión WebAssembly para limpiar la RAM, hacerlo de manera prematura por cada "Re-Scan" colapsa la inicialización de motores de Sandbox a alta velocidad. Es estrictamente mejor congelar el Worker vivo para reutilización inmediata y desintegrarlo de la memoria solamente cuando el usuario pulsa en la 'X' para marcharse y descartar la tarea modal subyacente.
