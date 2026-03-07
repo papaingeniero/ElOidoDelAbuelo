@@ -1,11 +1,11 @@
-## 🚀 Blob Worker URL Fix v1.4.17 | 07/03/2026
+## 🚀 AudioContext Strict Annihilation v1.4.18 | 07/03/2026
 ### 📜 El Problema
-Tras la monumental hazaña de contener a Safari encapsulando todo el Motor VAD en un Sandbox Web Worker (v1.4.16), nos enfrentamos a las consecuencias de haber instanciado ese código nativo desde el vacío de un Objeto de Dominio Local (`new Blob`). Este objeto efímero no cuenta con una "Carpeta Raíz" (Base URL); por lo tanto, cuando el núcleo neuronal precompilado de `@ricky0123/vad-web` pretendía descargar su pesada matriz tensorial (`silero_vad.onnx`) llamando a `/` (su padre absoluto), colapsaba exclamando categóricamente `URL is not valid`.
+Los Jetsam (Out-Of-Memory crasheos) regresaron en iOS Safari debido a una contención microscópica. Aunque liberábamos el Worker de manera impecable, el cordón umbilical del procesamiento de ondas (`localCtx`) se anudaba a la memoria compartida impidiendo un barrido de recolección de basura eficiente, ahogando al dispositivo nativo en RAM retenida por buffers previos decodificados.
 
 ### 🛠️ La Solución
-Intervención estructural y forzado directo de rutas. Se han inyectado en la API del Worker parámetros rigurosamente acotados dentro del generador principal de instanciación VAD:
-1. `modelURL` establecido apuntando tajantemente al dominio principal HTTPS de `jsdelivr`.
-2. `workletURL` redirigido para blindar posibles fugas al importar submódulos paralelos.
+He aplicado la demolición exacta y cronometrada de todos los punteros multimedia:
+1. **Asesinato Precursor**: La línea `await localCtx.close()` se ejecuta fulminantemente de inmediato tras expropiar un `.slice()` del array de canal, garantizando desconexión nativa.
+2. **Transferencia Destructiva**: Se anula formalmente a los portadores (`arrayBuffer`, `tempAudioBuffer`, `localCtx`) estableciéndolos en `null` previamente de concebir al instanciador del Sandbox (`vadWorker`).
 
 ### 🎓 Lecciones Aprendidas
-- **El Vacío Terapéutico del Blob**: Construir un Worker inyectándole Strings desde JavaScript salva vidas en entornos sin empaquetadores como WebPack o Node JS. Sin embargo, roba a las herramientas foráneas de todo rastro contextual. Proporcionar "Coordenadas UTM" (`modelURL`) es un deber inapelable al tratar con bibliotecas remotas estáticas a nivel Frontend.
+- **Desgarro Limpio en WebKit**: Extraer DataCruda mediante `.slice()` y apuñalar instantáneamente al `AudioContext` en vez de esperar al tramo de ejecución WebAssembly final reduce a un instante efímero la ventana de pico expansivo en RAM, cortando el apalancamiento que lleva a los fatídicos *Jetsam Panics* de iOS Safari al escanear audios encadenados.

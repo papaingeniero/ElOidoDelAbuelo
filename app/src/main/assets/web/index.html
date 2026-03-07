@@ -2190,16 +2190,18 @@
 
             let workerUrl = null;
             try {
+                // 1. Aislamiento de Memoria (Anti-Jetsam)
                 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
                 let localCtx = new AudioContextClass({ sampleRate: 16000 });
+
                 const response = await fetch(forensicAudioUrl);
                 let arrayBuffer = await response.arrayBuffer();
                 let tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
 
-                // Copia pura para aislar la memoria y transferirla al Worker
+                // 2. Extracción pura y Zero-Copy
                 let pcmData = tempAudioBuffer.getChannelData(0).slice();
 
-                // Destruir la tubería multimedia de Safari INMEDIATAMENTE
+                // 3. Asesinato INMEDIATO del motor de audio (Libera RAM instantáneamente en Safari)
                 await localCtx.close();
                 localCtx = null;
                 arrayBuffer = null;
@@ -2219,7 +2221,6 @@
                                 ort.env.wasm.numThreads = 1;
                                 ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
                                 
-                                // INYECCIÓN DE RUTAS ABSOLUTAS PARA EVITAR EL CRASHEO DEL BLOB
                                 const myvad = await vad.NonRealTimeVAD.new({
                                     modelURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/silero_vad.onnx',
                                     workletURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/vad.worklet.bundle.min.js',
@@ -2246,7 +2247,7 @@
 
                 btn.innerHTML = '🧠 Analizando y Purificando RAM...';
 
-                // Transferencia Zero-Copy (Desvincula pcmData de la memoria principal)
+                // Transferencia destructiva al Hilo
                 vadWorker.postMessage({ action: 'run', threshold: threshold, pcmData: pcmData }, [pcmData.buffer]);
                 pcmData = null;
 
@@ -2271,7 +2272,7 @@
                 console.error("Error en VAD:", e);
                 alert("Error Ejecutando Red Neuronal:\\n" + (e.message || String(e)));
             } finally {
-                // 🔥 LA MAGIA CONTRA EL OOM DE IOS: Asesinato incondicional del Worker
+                // Ejecución forzosa del subproceso para limpiar el 100% de la RAM
                 if (vadWorker) {
                     vadWorker.terminate();
                     vadWorker = null;
@@ -2279,7 +2280,6 @@
                 if (workerUrl) {
                     URL.revokeObjectURL(workerUrl);
                 }
-
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             }

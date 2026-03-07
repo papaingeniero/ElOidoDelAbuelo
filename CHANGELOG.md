@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.4.18] - 2026-03-07
+### Fixed
+- **WebKit Jetsam & OOM Crash (Safari iOS)**: Prevención total definitiva del Memory Leak por contención de nodos multimedia en Safari.
+  1. Asesinato incondicional de la API nativa de audio (`await localCtx.close()`) inmediatamente después del Zero-Copy.
+  2. Nulificación manual destructiva (`arrayBuffer = null; localCtx = null;`) anterior a cualquier instanciación de red neuronal.
+
 ## [v1.4.17] - 2026-03-07
 ### Fixed
 - **Blob Worker URL Crash**: Subsanado fallo `URL is not valid` originado debido a que los hilos WASM instanciados a partir de un Blob perdían el contexto base del servidor. 
