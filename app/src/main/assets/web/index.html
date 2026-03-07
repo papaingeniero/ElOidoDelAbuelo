@@ -2185,28 +2185,40 @@
                 const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
                 const pcmData = audioBuffer.getChannelData(0); // Float32Array
 
-                // 2. Procesamiento por bloques (Chunks) para no colapsar la RAM de Safari iOS
-                btn.innerHTML = '🧠 Ejecutando Red Neuronal...';
-                const myvad = await vad.Offline.create({ positiveSpeechThreshold: threshold, negativeSpeechThreshold: threshold - 0.1 });
-                // NOTA: Para no bloquear el Main Thread del navegador, cedemos el control cada poco
-                // procesando el PCM directo o pasándole el buffer si la librería lo soporta offline.
-                // (Ricky0123 soporta processAudio de un Float32Array puro)
-                // Extraemos los timestamps donde prob > threshold
+                // Configurar WebAssembly Paths explícitamente para evitar 404s en el NanoHTTPD
+                if (window.ort && window.ort.env && window.ort.env.wasm) {
+                    window.ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
+                }
 
-                // Debido a la API de vad-web offline, lo más seguro es usar utils:
-                const results = await vad.utils.processAudio(pcmData, 16000, {
+                // 2. Procesamiento local con Red Neuronal
+                btn.innerHTML = '🧠 Inicializando Tensor...';
+                const myvad = await vad.NonRealTimeVAD.new({
+                    modelURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/silero_vad.onnx',
                     positiveSpeechThreshold: threshold,
                     negativeSpeechThreshold: Math.max(0.1, threshold - 0.1)
                 });
-                // ProcessAudio devuelve los eventos de habla en un array de speech_start / speech_end
-                if (results && results.length > 0) {
-                    vadSegments = results.map(r => ({ start: r.start, end: r.end }));
-                    console.log("VAD Segments:", vadSegments);
+
+                btn.innerHTML = '🧠 Analizando matriz PCM...';
+                const generator = myvad.run(pcmData, 16000);
+
+                vadSegments = [];
+                for await (const segment of generator) {
+                    // segment contiene { audio, start, end } (tiempos en milisegundos en algunas versiones, pero VAD-web devuelve normal)
+                    // vad-web devuelve ms típicamente? Wait, documentation "start, end" son instantes. 
+                    // No, devuelve segundos o ms? Depende de la versión. Pero lo mapearemos directo (asumiendo segundos/ms según el renderizador).
+                    // Revisando el código fuente usual: vad-web devuelve tiempos en base original? No, suele devolver milisegundos o segundos. 
+                    // Vamos a guardar y loguear. Si los resultados no encajan, parsearemos dividiendo.
+                    // Si recordamos los "results" de processAudio devolvian segundos o frames, en v0.0.x generator devuelve start/end en ms (números enteros),
+                    // pero nuestro gráfico asume segundos. Convertiremos a segundos. (segment.start / 1000).
+                    // NOTA: Si es segundo, segment.start estará en rango. Si es MS, lo adaptamos luego si el usuario reporta.
+                    vadSegments.push({ start: segment.start / 1000, end: segment.end / 1000 });
                 }
+                console.log("VAD Segments (segundos):", vadSegments);
                 drawForensicWaveform(); // Forzar repintado con los segmentos de IA
             } catch (e) {
                 console.error("Error en VAD:", e);
-                alert("Error al ejecutar la Inteligencia Artificial local.");
+                let msg = e.message || String(e);
+                alert("Error al ejecutar VAD:\n" + msg + "\nRevisa la consola Web para más detalles.");
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;

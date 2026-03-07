@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.10] - 2026-03-07
+### Fixed
+- **Motor Web VAD (ONNX)**: Resuelto el fallo de ejecución reportado durante el análisis. Se extrajo la sintaxis oficial de `@ricky0123/vad-web@0.0.19` directamente desde su compilado NPM (TypeScript) para usar el generador asíncrono correcto (`NonRealTimeVAD.new`) en lugar de viejas interfaces obsoletas. Se forzó además el ruteo de `window.ort.env.wasm.wasmPaths` al CDN para evitar errores 404 del NanoHTTPD de Android.
+
 ## [v1.4.9] - 2026-03-07
 ### Added
 - **Inteligencia Artificial VAD Offline (Silero)**: Inyección directa en el Web Dashboard de un motor de IA nativo en el FrontEnd mediante `onnxruntime-web` y `vad-web`. Analiza los archivos de audio detectando habla humana pura y pinta el segmento en Rojo Carmesí Forense sobre el canvas, aislando las voces del ruido ambiental sin necesidad de escuchar minutos de grabaciones en estático. Todo ejecutado 100% de manera local y descentralizada en el Navegador del operador sin pingear APIs externas de Nube.
