@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.8] - 2026-03-07
+### Fixed
+- **Scroll iOS Safari Bloqueado (Terminal Web)**: Resuelto un _scroll trap_ crónico en dispositivos Apple donde el modal de Logs (Terminal) se congelaba e impedía deslizar el texto con el dedo. Se inyectó `-webkit-overflow-scrolling: touch` y se bloqueó programáticamente el desbordamiento fantasma de su contenedor padre (`overflow: hidden;`).
+
 ## [v1.4.7] - 2026-03-07
 ### Added
 - **Consola Web de Logs (logToWeb)**: Inyectado un buffer circular in-RAM que captura en tiempo real los eventos críticos del sistema Android (FRP, AlarmManager, Codecs ADTS) y los vuelca en formato JSON. Se ha diseñado un panel web estético (modal oscuro con estilo Terminal) conectable desde los Ajustes, permitiendo diagnosticar errores a distancia (Headless Debug) desde dondequiera sin enchufar el móvil.

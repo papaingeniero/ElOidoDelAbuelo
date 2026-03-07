@@ -1,12 +1,11 @@
-## 🚀 Consola Web de Logs (logToWeb) [v1.4.7] | 07/03/2026
+## 🚀 Desbloqueo de Scroll en iOS (Consola) [v1.4.8] | 07/03/2026
 
 **📜 El Problema:**
-1. **Opacidad del Sistema en Producción:** Tras instalar el Oído del Abuelo en un Android que va a fungir como centinela en un rincón oscuro de una habitación, el análisis de incidencias y la trazabilidad del sistema (e.g., saber si FRP ha fallado con su *Backoff* exponencial u obtener errores en la codificación AAC nativa) era ciega. Depurar desde el Mac exigía enchufar físicamente el cable USB e invocar a `logcat`, derribando la premisa de monitorización distribuida sigilosa.
+1. **Trampas de Desplazamiento (Scroll Traps) en WebKit:** Inmediatamente después del lanzamiento de la Consola Web de Logs (v1.4.7), las interfaces táctiles en iPhones (Safari iOS) reportaron fallos críticos de interacción. Al tocar el bloque `<pre>` que renderiza el historial del sistema, la pantalla no bajaba. Esto sucedía porque Safari entra en pánico funcional cuando dos contenedores FlexBox anidados compiten con las directivas de `overflow-y: auto`.
 
 **🛠️ La Solución:**
-1. **Buffer Circular de Memoria In-RAM:** Se inyectó el motor central `logToWeb` en la clase base `WebServer.java`. Interceptamos todas las emisiones del núcleo del ecosistema (AudioSentinel, OidoService, FRPManager, AppReceivers), guardándolas crónicamente en una estructura de lista enlazada ligera (`LinkedList<String>`) capada en hardware a un máximo de 100 líneas (Zero-MemoryLeak-Guarantee).
-2. **Endpoint JSON Táctico:** Implementación robusta de la ruta HTTP `/api/logs` capaz de expulsar este buffer cronológico bajo demanda en formato serializado JSON.
-3. **Consola en Dashboard Web:** Se inyectó un nuevo terminal estético, negro/verde neón (`#logsModal`), atado remotamente a la API. Toda la lógica nativa del lado servidor queda ahora visualmente depurada a distancia simplemente haciendo clic en un nuevo botón "VER LOGS DE DEBUG" presente en los "Ajustes del Centinela".
+1. **Aislamiento de Cajas Negras CSS:** Intervención directa en el DOM nativo (`index.html`). Primero se equipó el contenedor interior (`<pre id="logsContainer">`) con aceleración táctil de hardware propietaria de Apple (`-webkit-overflow-scrolling: touch`) y confinamiento de rebote (`overscroll-behavior: contain`).
+2. **Mutilación de Herencia en el Padre:** El `.modal-content` estructural de la ventana global tenía un comportamiento de scroll heredado implícito. Se le forzó un `overflow: hidden;` en línea. Ahora, Safari entiende orgánicamente que el desplazamiento "pertenece" legal y exclusivamente al bloque de texto verde oscuro y transfiere la fricción del dedo perfectamente.
 
 **🎓 Lecciones Aprendidas:**
-- Exponer el `logcat` Android en una vista web (VNC-Light) no necesita volcar pesados archivos al disco persistente del móvil y gastar I/O SSD, sino centralizar las llamadas de eventos hacia un Array RAM circular. La telemetría debe ser efímera y de acceso instantáneo para diagnóstico reactivo táctico *in-situ*, resolviendo el problema histórico empírico del acople físico.
+- Cuando desarrolles en el stack tecnológico moderno, las reglas de FlexBox en Google Chrome no aplican en Apple Safari bajo los mismos axiomas mecánicos. Las aplicaciones Web-Móviles híbridas exigen un cuidado enfermizo con los `overflow`, donde "congelar a los abuelos para permitir que los nietos bailen" es la única topología CSS táctil robusta.
