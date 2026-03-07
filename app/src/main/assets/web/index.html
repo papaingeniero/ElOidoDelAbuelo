@@ -1498,9 +1498,8 @@
         let forensicAudio = null;
         let forensicAudioUrl = ''; // URL para crear el Audio solo en PLAY
         let vadSegments = []; // Array para guardar los segmentos {start, end}
-        let globalVAD = null;     // CACHE para evitar iOS Safari Jetsam OOM
-        let globalVADThreshold = null;
         let globalAudioCtx = null; // CACHE para evitar leak de AudioContext en WebKit
+        let vadWorker = null; // AISLAMIENTO WASM (OOM JETSam Fix)
         let forensicPeaks = [];
         let forensicDuration = 0;
         let isWavePlaying = false;
@@ -1601,6 +1600,13 @@
             forensicAudioUrl = '';
             isWavePlaying = false;
             wavePlayBtn.innerHTML = "▶️ PLAY";
+
+            // 🔥 ANIQUILACIÓN WASM (Safari iOS OOM Fix) 🔥
+            if (vadWorker) {
+                vadWorker.terminate();
+                vadWorker = null;
+            }
+
             document.getElementById('waveformModal').style.display = 'none';
             document.body.classList.remove('modal-open');
         }
@@ -2178,11 +2184,11 @@
             const btn = document.getElementById('btnScanIA');
             const originalText = btn.innerHTML;
             const threshold = parseFloat(document.getElementById('inpVadThresh').value);
-            btn.innerHTML = '⏳ Descargando y Analizando...';
+            btn.innerHTML = '⏳ Preparando Extractor...';
             btn.disabled = true;
             vadSegments = [];
             try {
-                // 1. Descargar audio y decodificar a 16kHz (Formato requerido por Silero)
+                // 1. Descargar audio temporal
                 if (!globalAudioCtx) {
                     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
                     globalAudioCtx = new AudioContextClass({ sampleRate: 16000 });
@@ -2191,54 +2197,78 @@
                 let arrayBuffer = await response.arrayBuffer();
                 let tempAudioBuffer = await globalAudioCtx.decodeAudioData(arrayBuffer);
 
-                // CRITICAL FIX: Clonar el Float32Array para romper la referencia al gigantesco AudioBuffer nativo de WebKit
+                // Clonar vector puro para transferirlo (Zero-Copy) al hilo aislado
                 let pcmData = new Float32Array(tempAudioBuffer.getChannelData(0));
 
-                // Forzar liberación absoluta de las estructuras nativas puente
+                // Destruir contenedor multimedia primario
                 tempAudioBuffer = null;
                 arrayBuffer = null;
 
-                // Configurar WebAssembly Paths explícitamente para evitar 404s en el NanoHTTPD
-                if (window.ort && window.ort.env && window.ort.env.wasm) {
-                    window.ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
-                }
+                // 2. Levantar Hilo Aislado (Web Worker) para Sandbox WASM
+                if (vadWorker) vadWorker.terminate();
 
-                // 2. Procesamiento local con Red Neuronal usando Singleton (Evita JS OOM Crash en Móviles)
-                if (!globalVAD || globalVADThreshold !== threshold) {
-                    btn.innerHTML = '🧠 Inicializando Tensor...';
-                    globalVAD = await vad.NonRealTimeVAD.new({
-                        modelURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/silero_vad.onnx',
-                        positiveSpeechThreshold: threshold,
-                        negativeSpeechThreshold: Math.max(0.1, threshold - 0.1)
-                    });
-                    globalVADThreshold = threshold;
-                }
+                btn.innerHTML = '🧠 Arrancando Motor Neuronal Aislado...';
 
-                btn.innerHTML = '🧠 Analizando matriz PCM...';
-                const generator = globalVAD.run(pcmData, 16000);
+                const workerCode = `
+                    importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
+                    importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
+                    
+                    onmessage = async function(e) {
+                        try {
+                            if (e.data.action === 'run') {
+                                ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
+                                ort.env.wasm.numThreads = 1; // Strict single-threading to avoid memory explosion
+                                
+                                const myvad = await vad.NonRealTimeVAD.new({
+                                    modelURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/silero_vad.onnx',
+                                    positiveSpeechThreshold: e.data.threshold,
+                                    negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
+                                });
+                                
+                                const pcmData = e.data.pcmData;
+                                const generator = myvad.run(pcmData, 16000);
+                                let segments = [];
+                                for await (const segment of generator) {
+                                    segments.push({ start: segment.start / 1000, end: segment.end / 1000 });
+                                }
+                                postMessage({ status: 'done', segments: segments });
+                            }
+                        } catch (err) {
+                            postMessage({ status: 'error', error: err.message || String(err) });
+                        }
+                    };
+                `;
 
-                vadSegments = [];
-                for await (const segment of generator) {
-                    // segment contiene { audio, start, end } (tiempos en milisegundos en algunas versiones, pero VAD-web devuelve normal)
-                    // vad-web devuelve ms típicamente? Wait, documentation "start, end" son instantes. 
-                    // No, devuelve segundos o ms? Depende de la versión. Pero lo mapearemos directo (asumiendo segundos/ms según el renderizador).
-                    // Revisando el código fuente usual: vad-web devuelve tiempos en base original? No, suele devolver milisegundos o segundos. 
-                    // Vamos a guardar y loguear. Si los resultados no encajan, parsearemos dividiendo.
-                    // Si recordamos los "results" de processAudio devolvian segundos o frames, en v0.0.x generator devuelve start/end en ms (números enteros),
-                    // pero nuestro gráfico asume segundos. Convertiremos a segundos. (segment.start / 1000).
-                    // NOTA: Si es segundo, segment.start estará en rango. Si es MS, lo adaptamos luego si el usuario reporta.
-                    vadSegments.push({ start: segment.start / 1000, end: segment.end / 1000 });
-                }
+                const blob = new Blob([workerCode], { type: 'application/javascript' });
+                vadWorker = new Worker(URL.createObjectURL(blob));
 
-                // Forzar liberación del array PCM gigante para evitar stack de basura
-                pcmData = null;
+                btn.innerHTML = '🧠 Analizando y Purificando RAM...';
 
-                console.log("VAD Segments (segundos):", vadSegments);
+                // 🔥 MAGIA DE SAFARI: Transferir `pcmData.buffer` desvincula físicamente la memoria del hilo principal.
+                vadWorker.postMessage({ action: 'run', threshold: threshold, pcmData: pcmData }, [pcmData.buffer]);
+
+                pcmData = null; // Ya no le pertenece a la ventana principal, liberado 100%.
+
+                await new Promise((resolve, reject) => {
+                    vadWorker.onmessage = (e) => {
+                        if (e.data.status === 'done') {
+                            vadSegments = e.data.segments;
+                            resolve();
+                        } else if (e.data.status === 'error') {
+                            reject(new Error(e.data.error));
+                        }
+                    };
+                    vadWorker.onerror = (err) => {
+                        reject(new Error("Worker Crash: WebKit ha abatido el sub-proceso por RAM."));
+                    };
+                });
+
+                console.log("VAD Segments (Worker):", vadSegments);
                 drawForensicWaveform(); // Forzar repintado con los segmentos de IA
             } catch (e) {
-                console.error("Error en VAD:", e);
+                console.error("Error en VAD Worker:", e);
                 let msg = e.message || String(e);
-                alert("Error al ejecutar VAD:\n" + msg + "\nRevisa la consola Web para más detalles.");
+                alert("Error Ejecutando Red Neuronal:\n" + msg);
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;

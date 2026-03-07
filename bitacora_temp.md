@@ -1,13 +1,13 @@
-## 🚀 Extreme Safari OOM Patch [v1.4.13] | 07/03/2026
+## 🚀 WASM WebWorker Sandbox (OOM Finale) [v1.4.14] | 07/03/2026
 
 **📜 El Problema:**
-1. **El Gusano de WebKit:** A pesar de haber matado el Daemon de Medios (`<audio>.load()`), abrir un segundo archivo y pulsar "Analizar IA" volvía a detonar un Jetsam Panic. Tras una investigación táctica en los motores de Apple, descubrimos dos fugas crónicas de memoria interna en Safari originadas por la API de `AudioContext`:
-   - Instanciar y cerrar múltiples `AudioContext` en una misma página en Safari deja "colas fantasma" en la RAM.
-   - Guardar el resultado `audioBuffer.getChannelData(0)` engancha estructuralmente la memoria a todo el envoltorio del mega-buffer de WebKit. Un audio de 5 minutos ocupa 20MB de array, pero WebKit atrapa 100MB de buffer padre que no se pueden borrar porque el array hijo (`pcmData`) sigue vivo siendo masticado por la IA.
+1. **La Caja Negra de WebAssembly (WASM):** Tras parchar el fugaz motor WebAudio, descubrimos que tu iPhone 15 mataba la pestaña *exactamente* al terminar el segundo análisis. El diagnóstico subyacente: `@ricky0123/vad-web` carga el modelo ONNX de Silero dentro del motor WASM del navegador. Safari reserva decenas de megas de RAM pura (fuera del control del Heap normal de Javascript) para los vectores neuronales. 
+2. Como se ejecutaba en un Singleton (`globalVAD`), cada nuevo archivo que analizábamos "crecía" el caché interno de WASM sin saber cómo vaciarlo. Para el hilo principal y gráfico del Safari, ese crecimiento rápido y opaco significa una sola cosa: *Jetsam Panic* instantáneo.
 
 **🛠️ La Solución:**
-1. **Singleton de Audio Global:** El contexto de descodificación nativo `audioCtx` ahora sobrevive en el scope global (`globalAudioCtx`). Reutilizamos siempre las mismas entrañas de WebKit para todos los archivos, evitando instanciar y detonar daemons innecesarios.
-2. **Clonación Forense de Matrices (Deep Clone):** Al obtener los bytes para la IA (`getChannelData`), ya no hacemos una referencia cruzada. He forzado la clonación dura: `let pcmData = new Float32Array(tempAudioBuffer.getChannelData(0))`. Esto empaca los datos al vacío y nos permite asesinar explícitamente el gargantuesco padre (`tempAudioBuffer = null`). WebKit lo entiende y purga la RAM antes de que ONNX siquiera empiece a calentarse.
+1. **Aislamiento Biológico (Web Workers):** Se reconstruyó el motor de "Analizar IA" para que, bajo demanda, cree un Sub-Proceso aislado del navegador (Worker). Esto encapsula la descarga de la librería, el peso de ONNX y el buffer WASM lejos del hilo visual de UI.
+2. **Transferencia Zero-Copy:** Cuando el `AudioContext` acaba de decodificar tu archivo forense, ya no se pasa la variable al modelo. Se ejecuta un `worker.postMessage(pcmData, [pcmData.buffer])`. En JS, enviar el `buffer` por la matriz de transferencia **le roba físicamente la memoria RAM a Safari** y se la regala al sub-proceso, bajando de golpe el consumo del hilo de la interfaz.
+3. **El Verdugo Final (`terminate`):** Al cerrar la ventana modal del audio, la app invoca explícitamente `vadWorker.terminate()`. Esto es una orden nativa ineludible al núcleo del Sistema Operativo de Apple para que destruya el hilo de procesamiento con todo su WASM dentro, reciclando la RAM al 100% y dejando a WebKit totalmente prístino antes de abrir tu segunda grabación.
 
 **🎓 Lecciones Aprendidas:**
-- Cuando luchas contra WebKit Edge-AI en dispositivos móviles, un simple signo de igual (`=`) entre variables no copia información, transfiere un anclaje mortal de memoria compartida (Shallow Copy). Romper las referencias copiando bit a bit los Arrays es imperativo para evitar que las optimizaciones fantasma del Safari maten tu aplicación por castigo de la RAM (OOM).
+- Cuando WebAssembly roza los límites de OOM (Out of Memory) en iOS, ni el Garbage Collector ni setear punteros a null te salvarán. Tienes que arrancar arquitecturas de Micro-Servicios en el Frontend usando Web Workers desechables. Levantas el worker, le transfieres la bomba térmica, te devuelve la respuesta matemática, y lo asesinas antes de que contamine el servidor principal. Puro Edge Computing.

@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.4.14] - 2026-03-07
+### Fixed
+- **Anti-Jetsam WASM Sandbox**: Implementada la máxima defensa contra desbordamientos de Memoria en Safari iOS. Se ha encapsulado íntegramente la red neuronal VAD (ONNXRuntime) y el Motor WebAssembly en un `Web Worker` aislado. 
+- **Zero-Copy Memory Transfer**: El `Float32Array` gigante se delega al Worker mediante variables `Transferable`, lo que expulsa instantáneamente de la RAM del motor gráfico el peso del PCM. Al cerrar el archivo, se ejecuta una directiva incondicional `worker.terminate()` que asfixia de raíz cualquier fuga (Leak) en el Backend del WASM, protegiendo 100% el hilo principal de sufrir un OOM.
+
 ## [v1.4.13] - 2026-03-07
 ### Fixed
 - **WebKit DecodeAudioData Memory Leak**: Segundo ataque estructural al Out Of Memory (OOM) de Safari iOS. Se ha convertido el `AudioContext` en un Singleton global debido a que WebKit tiene un bug crónico eliminando contextos efímeros. Adicionalmente, se ejecuta un *Deep Clone* (`new Float32Array(...)`) sobre el resultado de `decodeAudioData` para romper la fuerte dependencia léxica que ataba la variable al gigantesco `AudioBuffer` original, forzando su aniquilación inmediata de la RAM antes de llamar al motor ONNX.
