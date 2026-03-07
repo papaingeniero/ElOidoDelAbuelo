@@ -1,56 +1,5 @@
 # Bitácora de Desarrollo: El Oído del Abuelo
 
-## 🚀 Maximización Vertical en Entornos Apaisados [v1.4.6] | 07/03/2026
-
-**📜 El Problema:**
-1. **Gravedad Vertical Fija:** Tras expandir satisfactoriamente el modal reproductor hacia los costados en modo apaisado (v1.4.5), un nuevo cuello de botella visual emergió en el eje Y. El contenedor principal `.modal` conservaba una propiedad histórica de `padding-top: 60px` concebida para evitar colapsar la barra superior (Top-Bar) cuando el teléfono se usa de pie. Al inclinar el teléfono, donde la pantalla pierde drásticamente su altura física total, esos 60px fijos representaban un desperdicio del 20% del área vertical útil, obligando a la interfaz a mostrarse comprimida y "caída" hacia el fondo.
-
-**🛠️ La Solución:**
-1. **Media Query Reactiva:** Se ha incrustado una regla nativa `@media screen and (orientation: landscape) and (max-height: 600px)` en la cabecera CSS del `index.html`.
-2. **Deflación de Márgenes:** Bajo esta condición de apaisamiento, el `padding-top` del lienzo oscuro (`.modal`) se colapsa instantáneamente de 60px a meramente `5px`. Adicionalmente, se constriñen los rellenos internos de la submáscara `#waveformModal .modal-content` a `10px`.
-3. **Efecto Visual:** Ahora, al rotar el equipo, no sólo el analizador espectrográfico abarca del extremo izquierdo al derecho, sino que salta como un resorte hacia el techo del teléfono, exprimiendo hasta el último píxel cristalino del terminal para visualizar las ondas de audio.
-
-**🎓 Lecciones Aprendidas:**
-- Cuando desarrollamos interfaces HTML/CSS enlazadas a un hardware nativo específico (Xiaomi Redmi 9C), las CSS *Media-Queries* por orientación (`landscape` vs `portrait`) son la única línea de defensa arquitectónica contra el constreñimiento matemático cuando los ejes XYZ del mundo real cambian drásticamente de polaridad.
-
-## 🚀 Expansión Apaisada del Modal Forense [v1.4.5] | 07/03/2026
-
-**📜 El Problema:**
-1. **Desperdicio de Espacio Lateral en Horizontal:** Al rotar el teléfono Xiaomi (o cualquier otro dispositivo moderno) a formato apaisado (Landscape), el modal que contiene el renderizador Canvas y el reproductor de ondas mantenía fijada herencia vertical antigua (`max-width: 400px`). Por consiguiente, la caja flotante quedaba estrangulada en el centro de la pantalla, dejando enormes márgenes negros vacíos a izquierda y derecha, obligando al usuario a desplazar un gráfico constreñido cuando tenía el triple de píxeles disponibles.
-
-**🛠️ La Solución:**
-1. **Desbloqueo de Geometría Relativa:** Se ha sobreescrito la política CSS en línea estructural de `#waveformModal .modal-content`. Ahora porta conscientemente la directiva `width: 95%; max-width: 1000px;`.
-   - **En Vertical (Portrait):** El 95% de un móvil es ~370px, por lo que sigue luciendo perfecto y proporcional.
-   - **En Apaisado (Landscape):** Al girar, el 95% del ancho nativo rebasa la penalización de los 400px, y el renderizador Canvas reacciona automáticamente estirando el espectrograma audio-forense a todo lo largo de la pantalla (ganando más de +450px extra de ondas visibles simultáneas).
-
-**🎓 Lecciones Aprendidas:**
-- Las ventanas modales diseñadas con enfoque "Mobile-First" vertical acostumbran a fosilizar parámetros de contención `max-width` que previenen su colapso en pantallas gigantes o de ordenador. No obstante, en un contexto forense (Canvas HTML5 / Gráficos), el eje `X` (Tiempo) es lo más valioso del mundo. Si el usuario gira el teléfono, su intención es clara: quiere *VER* más lejos. Romper la "zona segura" de 400px del modal cuando gira físicamente su pantalla es un mandamiento imperativo de UX (Experiencia de Usuario).
-
-## 🚀 Ajuste de Responsividad (Botonera) [v1.4.4] | 07/03/2026
-
-**📜 El Problema:**
-1. **Desbordamiento Flexbox en iOS:** Al revisar la nueva matriz táctil de saltos de tiempo prolongados (v1.4.3), Safari Mobile en pantallas contenidas (ej. iPhone 15) renderizaba al menos los dos últimos botones (`+20s` y `+30s`) en una segunda línea, reventando el *layout* vertical del reproductor y perdiendo la estética de "panel de control único". El atributo original `flex-wrap: wrap` junto con anchos de *padding* muy altos (12px) provocaban este desbordamiento.
-
-**🛠️ La Solución:**
-1. **Contención Horizontal Rigurosa:** Se reescribió la estructura `.css` integrada de la botonera inferior de Scrubbing. Se reemplazó el `flex-wrap: wrap` por `white-space: nowrap`, se constriñó el botón con propiedes `flex: 1` y `max-width: 55px`, y se comprimieron dramáticamente sus rellenos (`padding: 8px 4px`). Esta geometría obliga al motor WebKit de Safari a agrupar con consistencia perfecta los seis botones en una única línea transversal, maximizando el espacio útil del teléfono del investigador.
-
-**🎓 Lecciones Aprendidas:**
-- Lo que cabe de sobra en el renderizador de sobremesa y en los densos paneles de Android a veces choca frontalmente con los densos píxeles independientes de Apple (`pt`). Nunca hay que dar la responsividad por garantizada a base de magia flex sin forzar límites nativos (`max-width`) y empaquetados forzosos o un test físico en el navegador safari móvil final.
-
-## 🚀 Controles de Búsqueda Extendida [v1.4.3] | 07/03/2026
-
-**📜 El Problema:**
-1. **Navegación Lenta en Audios Densos:** El equipo y los usuarios advirtieron que para grabaciones forenses extensas (de varios minutos o incluso horas), los botones base de `⏮ -5s` y `+5s ⏭` resultaban insuficientes. Desplazarse grandes segmentos implicaba interactuar compulsivamente repetidas veces con el botón, derivando en frustración y lentitud en el análisis de una grabación.
-
-**🛠️ La Solución:**
-1. **Panel de Salto Multi-Resolución:** Se inyectó una fila inferior de botones debajo de los controles principales de reproducción en `index.html`. Esta nueva "botonera táctica" cuenta con 6 botones nuevos dedicados a dar saltos en el espectrograma (Scrubbing) de alta velocidad (`-30s`, `-20s`, `-10s`, `+10s`, `+20s`, `+30s`). Se han estilizado con `flex-wrap` y un margen comprimido (`gap: 8px`) para que el renderizado de la interfaz fluya en un dispositivo estrecho como el Xiaomi Redmi 9C sin empujar la onda fuera de la pantalla.
-2. **Reutilización del Motor de Scrub:** Todos los botones fueron enganchados directamente contra la función nativa `seekWaveform(seconds)` que re-dibuja de manera óptima y atómica el Canvas con la nueva `currentTime` e invoca inteligentemente al `drawForensicWaveform()`.
-
-**🎓 Lecciones Aprendidas:**
-- Acondicionar la interfaz del lado del cliente (Web UI distribuida a través del NanoHTTPD) con nuevas bondades no requiere reconstruir el `OidoService` backend en Android, siendo una táctica de *Desacoplamiento Front-Back*. Hemos ampliado la capacidad de rastreo forense sin tocar una sola API de audio de bajo nivel.
-
-
-
 ## 🚀 Inicio del Proyecto | 19-Feb-2026
 ### 📜 El Problema
 Necesitamos establecer una base sólida para el proyecto 'El Oído del Abuelo', asegurando compatibilidad estricta con Android 10 (API 29) y un entorno limpio.
@@ -1909,3 +1858,52 @@ En visualización de datos de onda, el "Zoom/Aspect Ratio" debe mandar sobre la 
 
 **🎓 Lecciones Aprendidas:**
 - Cuando elevas un sistema analítico desde relacional (empezar en cero) a absoluto (horas del mundo real), toda la Interfaz de Usuario aledaña sufre disonancia cognitiva si no sube en la misma "gravedad semántica". Unificar la matemática del visor de horas superior con las variables de base del componente Canvas ha integrado herméticamente la experiencia de rastreo forense.
+
+## 🚀 Controles de Búsqueda Extendida [v1.4.3] | 07/03/2026
+
+**📜 El Problema:**
+1. **Navegación Lenta en Audios Densos:** El equipo y los usuarios advirtieron que para grabaciones forenses extensas (de varios minutos o incluso horas), los botones base de `⏮ -5s` y `+5s ⏭` resultaban insuficientes. Desplazarse grandes segmentos implicaba interactuar compulsivamente repetidas veces con el botón, derivando en frustración y lentitud en el análisis de una grabación.
+
+**🛠️ La Solución:**
+1. **Panel de Salto Multi-Resolución:** Se inyectó una fila inferior de botones debajo de los controles principales de reproducción en `index.html`. Esta nueva "botonera táctica" cuenta con 6 botones nuevos dedicados a dar saltos en el espectrograma (Scrubbing) de alta velocidad (`-30s`, `-20s`, `-10s`, `+10s`, `+20s`, `+30s`). Se han estilizado con `flex-wrap` y un margen comprimido (`gap: 8px`) para que el renderizado de la interfaz fluya en un dispositivo estrecho como el Xiaomi Redmi 9C sin empujar la onda fuera de la pantalla.
+2. **Reutilización del Motor de Scrub:** Todos los botones fueron enganchados directamente contra la función nativa `seekWaveform(seconds)` que re-dibuja de manera óptima y atómica el Canvas con la nueva `currentTime` e invoca inteligentemente al `drawForensicWaveform()`.
+
+**🎓 Lecciones Aprendidas:**
+- Acondicionar la interfaz del lado del cliente (Web UI distribuida a través del NanoHTTPD) con nuevas bondades no requiere reconstruir el `OidoService` backend en Android, siendo una táctica de *Desacoplamiento Front-Back*. Hemos ampliado la capacidad de rastreo forense sin tocar una sola API de audio de bajo nivel.
+
+## 🚀 Ajuste de Responsividad (Botonera) [v1.4.4] | 07/03/2026
+
+**📜 El Problema:**
+1. **Desbordamiento Flexbox en iOS:** Al revisar la nueva matriz táctil de saltos de tiempo prolongados (v1.4.3), Safari Mobile en pantallas contenidas (ej. iPhone 15) renderizaba al menos los dos últimos botones (`+20s` y `+30s`) en una segunda línea, reventando el *layout* vertical del reproductor y perdiendo la estética de "panel de control único". El atributo original `flex-wrap: wrap` junto con anchos de *padding* muy altos (12px) provocaban este desbordamiento.
+
+**🛠️ La Solución:**
+1. **Contención Horizontal Rigurosa:** Se reescribió la estructura `.css` integrada de la botonera inferior de Scrubbing. Se reemplazó el `flex-wrap: wrap` por `white-space: nowrap`, se constriñó el botón con propiedes `flex: 1` y `max-width: 55px`, y se comprimieron dramáticamente sus rellenos (`padding: 8px 4px`). Esta geometría obliga al motor WebKit de Safari a agrupar con consistencia perfecta los seis botones en una única línea transversal, maximizando el espacio útil del teléfono del investigador.
+
+**🎓 Lecciones Aprendidas:**
+- Lo que cabe de sobra en el renderizador de sobremesa y en los densos paneles de Android a veces choca frontalmente con los densos píxeles independientes de Apple (`pt`). Nunca hay que dar la responsividad por garantizada a base de magia flex sin forzar límites nativos (`max-width`) y empaquetados forzosos o un test físico en el navegador safari móvil final.
+
+## 🚀 Expansión Apaisada del Modal Forense [v1.4.5] | 07/03/2026
+
+**📜 El Problema:**
+1. **Desperdicio de Espacio Lateral en Horizontal:** Al rotar el teléfono Xiaomi (o cualquier otro dispositivo moderno) a formato apaisado (Landscape), el modal que contiene el renderizador Canvas y el reproductor de ondas mantenía fijada herencia vertical antigua (`max-width: 400px`). Por consiguiente, la caja flotante quedaba estrangulada en el centro de la pantalla, dejando enormes márgenes negros vacíos a izquierda y derecha, obligando al usuario a desplazar un gráfico constreñido cuando tenía el triple de píxeles disponibles.
+
+**🛠️ La Solución:**
+1. **Desbloqueo de Geometría Relativa:** Se ha sobreescrito la política CSS en línea estructural de `#waveformModal .modal-content`. Ahora porta conscientemente la directiva `width: 95%; max-width: 1000px;`.
+   - **En Vertical (Portrait):** El 95% de un móvil es ~370px, por lo que sigue luciendo perfecto y proporcional.
+   - **En Apaisado (Landscape):** Al girar, el 95% del ancho nativo rebasa la penalización de los 400px, y el renderizador Canvas reacciona automáticamente estirando el espectrograma audio-forense a todo lo largo de la pantalla (ganando más de +450px extra de ondas visibles simultáneas).
+
+**🎓 Lecciones Aprendidas:**
+- Las ventanas modales diseñadas con enfoque "Mobile-First" vertical acostumbran a fosilizar parámetros de contención `max-width` que previenen su colapso en pantallas gigantes o de ordenador. No obstante, en un contexto forense (Canvas HTML5 / Gráficos), el eje `X` (Tiempo) es lo más valioso del mundo. Si el usuario gira el teléfono, su intención es clara: quiere *VER* más lejos. Romper la "zona segura" de 400px del modal cuando gira físicamente su pantalla es un mandamiento imperativo de UX (Experiencia de Usuario).
+
+## 🚀 Maximización Vertical en Entornos Apaisados [v1.4.6] | 07/03/2026
+
+**📜 El Problema:**
+1. **Gravedad Vertical Fija:** Tras expandir satisfactoriamente el modal reproductor hacia los costados en modo apaisado (v1.4.5), un nuevo cuello de botella visual emergió en el eje Y. El contenedor principal `.modal` conservaba una propiedad histórica de `padding-top: 60px` concebida para evitar colapsar la barra superior (Top-Bar) cuando el teléfono se usa de pie. Al inclinar el teléfono, donde la pantalla pierde drásticamente su altura física total, esos 60px fijos representaban un desperdicio del 20% del área vertical útil, obligando a la interfaz a mostrarse comprimida y "caída" hacia el fondo.
+
+**🛠️ La Solución:**
+1. **Media Query Reactiva:** Se ha incrustado una regla nativa `@media screen and (orientation: landscape) and (max-height: 600px)` en la cabecera CSS del `index.html`.
+2. **Deflación de Márgenes:** Bajo esta condición de apaisamiento, el `padding-top` del lienzo oscuro (`.modal`) se colapsa instantáneamente de 60px a meramente `5px`. Adicionalmente, se constriñen los rellenos internos de la submáscara `#waveformModal .modal-content` a `10px`.
+3. **Efecto Visual:** Ahora, al rotar el equipo, no sólo el analizador espectrográfico abarca del extremo izquierdo al derecho, sino que salta como un resorte hacia el techo del teléfono, exprimiendo hasta el último píxel cristalino del terminal para visualizar las ondas de audio.
+
+**🎓 Lecciones Aprendidas:**
+- Cuando desarrollamos interfaces HTML/CSS enlazadas a un hardware nativo específico (Xiaomi Redmi 9C), las CSS *Media-Queries* por orientación (`landscape` vs `portrait`) son la única línea de defensa arquitectónica contra el constreñimiento matemático cuando los ejes XYZ del mundo real cambian drásticamente de polaridad.
