@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.4.2] - 2026-03-07
+### Changed
+- **Contraste de Regla (Canvas)**: Corregida opacidad deficitaria en las etiquetas del Eje X temporal que dificultaba su lectura en gráficas densas. Elevadas de Alfa `0.4` a `1.0` (Blanco Puro Sólido).
+- **HUD Bi-Línea Absoluta (Forense)**: Descartado el contador de tiempo de bloque simple `XX / YY`. Ahora el reproductor de la onda forense incluye un Head-Up-Display incrustado de 2 líneas diferenciadas, calculando automáticamente y pre-fijando la Hora Absoluta Local (`HH:MM:SS`) en su frontispicio, permitiendo ubicar audios en su franja nocturna o diurna sin consultar el título base del clip original.
+
 ## [v1.4.1] - 2026-03-07
 ### Added
 - **Eje X Absoluto (Forense)**: El visualizador de audio Canvas extrae en caliente la fecha de nacimiento real de los archivos .m4a y dibuja los instantes de reproducción en base a la línea temporal absoluta en formato `HH:MM:SS` (time-travel).
