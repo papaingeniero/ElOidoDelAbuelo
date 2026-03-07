@@ -1,16 +1,19 @@
-## 🚀 Corrección Quirúrgica Anti-Neutered WebKit v1.4.29 | 07/03/2026
+## 🚀 Arquitectura Chunk Streaming (Anti-OOM Definitiva) v1.4.30 | 08/03/2026
 
 ### 📜 El Problema
-iOS Safari explota en la segunda invocación del análisis VAD tras ajustar la sensibilidad. El diagnóstico revela una colisión fundamental en el mecanismo de **Transferable Objects** específico de WebKit:
-1. **ArrayBuffer "Neutered" Zombie**: Cuando el Worker devuelve los datos PCM al hilo principal usando `postMessage({..., pcmData}, [pcmData.buffer])` (Transferable), seguido inmediatamente por `worker.terminate()`, WebKit ejecuta la terminación **síncronamente**, cortando la transferencia a medio vuelo. El `cachedPcmData` resultante queda con un `buffer.byteLength === 0` ("neutered"), provocando que la 2ª invocación intente transferir un ArrayBuffer vacío al Worker, lo que colapsa ONNX/WASM → Jetsam.
-2. **AVPlayer Zombie Concurrente**: El `forensicAudio` que creó el usuario al hacer Play/Pause retiene ~30-80MB de buffers nativos AVFoundation que compiten con el pico de WASM.
+Tras numerosas iteraciones, todas las arquitecturas anteriores compartían un defecto de diseño fundamental: **enviaban el Float32Array entero al Worker de golpe**, traspasando cientos de megabytes por la frontera del `postMessage`. Esto forzaba a elegir entre dos caminos perdedores:
+- **Transferable Objects** (`[buffer]`): Neutra el ArrayBuffer en el Main Thread. El Worker lo devuelve, pero `terminate()` en Safari corta la transferencia de vuelta → ArrayBuffer corrupto ("neutered zombie") → crash en la 2ª invocación.
+- **Structured Clone** (copiar): Duplica temporalmente el array entero en memoria (Main Thread + Worker). Para un archivo de 1 hora (~230MB), eso son ~460MB solo de PCM, más ~200MB de WASM = **660MB** → Jetsam inmediato en iOS.
 
-### 🛠️ La Solución (Fusión de 3 Correcciones Quirúrgicas)
-1. **Viaje Asimétrico de Datos (Ida ≠ Vuelta)**: Main→Worker usa Transferable Objects (`[cachedPcmData.buffer]`) para vaciar el hilo principal durante la inferencia WASM. Pero Worker→Main usa Structured Clone plano (`postMessage({..., pcmData})` SIN segundo argumento), garantizando que la copia llegue íntegra sin importar la carrera de terminación.
-2. **Rehidratación del Float32Array**: Al recibir los datos del Worker, se construye un array completamente nuevo (`cachedPcmData = new Float32Array(e.data.pcmData)`) con un ArrayBuffer virgen y propio, eliminando cualquier referencia transversal al Worker destruido.
-3. **Micro-Delay en terminate() (100ms)**: Se desacopla la ejecución de `terminate()` del flujo síncrono mediante `setTimeout(() => workerToKill.terminate(), 100)`, dando margen a Safari para finalizar internamente sus colas de mensajes pendientes antes de la aniquilación.
-4. **FREEZE de AVFoundation Preservado**: Se mantiene la destrucción preventiva del `<audio>` con respiro de 800ms para el GC de iOS, evitando el solapamiento crítico entre AVFoundation y WASM.
+### 🛠️ La Solución: Chunk Streaming (Fragmentación en el Borde del Mensaje)
+Se ha rediseñado por completo la comunicación Main Thread ↔ Worker:
+1. **`cachedPcmData` NUNCA cruza la frontera**: El Float32Array decodificado vive exclusivamente en el Main Thread. Jamás se transfiere ni se clona entero al Worker.
+2. **Protocolo de 2 Fases en el Worker**:
+   - `init`: El Worker descarga ONNX + Silero VAD y las compila en WASM **una sola vez**. Responde `ready`.
+   - `chunk`: El Main Thread extrae cortes de 15 segundos (`cachedPcmData.slice(offset, end)` ≈ 960KB) y los envía **uno a uno**. El Worker procesa cada micro-fragmento y devuelve solamente los segmentos detectados (pocos bytes).
+3. **Memoria Pico**: cachedPcmData (230MB) + Worker WASM (200MB) + 1 chunk en tránsito (1MB) = **~431MB**. Estable e idéntico en la 1ª, 2ª, o enésima invocación.
+4. **Terminación Segura**: `terminate()` se ejecuta inmediatamente sin micro-delay. No hay datos PCM en tránsito entre Worker y Main Thread que puedan corromperse.
 
 ### 🎓 Lecciones Aprendidas
-- **Transferable Objects son Asimétricos por Naturaleza en Safari**: La ida (Main→Worker) es segura porque el Worker está vivo y esperando. La vuelta (Worker→Main) es peligrosa si `terminate()` se ejecuta síncronamente antes de que el Engine complete la transferencia interna. Chrome es permisivo; Safari no perdona.
-- **El Segundo Viaje Siempre Debe Ser Structured Clone**: En entornos WebKit móviles donde `terminate()` es imprevisible, el coste de una copia estructurada (~50ms en un array de 50MB) es infinitamente preferible al riesgo de un ArrayBuffer neutered que provoca un crash OOM catastrófico.
+- **El Borde del Mensaje ES la Frontera de Memoria**: El verdadero enemigo nunca fue el Garbage Collector ni los Transferable Objects. Era **el tamaño del payload que cruzaba `postMessage`**. Fragmentar el dato ANTES de enviarlo (en vez de fragmentarlo dentro del Worker después de recibirlo entero) reduce el pico de memoria de `O(2N)` a `O(N + chunk)`.
+- **Un Archivo de 1 Hora Sobrevive**: Con un chunk de 15s, un audio de 60 minutos genera 240 micro-envíos de ~960KB. La huella de memoria pico permanece estable en ~431MB independientemente de la duración del archivo.

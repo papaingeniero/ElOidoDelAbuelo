@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.30] - 2026-03-08
+### Fixed
+- **OOM Definitivo (Chunk Streaming)**: `runVADScanner` ya no envía el Float32Array entero al Worker. El Main Thread fragmenta el audio en chunks de 15 segundos (~960KB) y los envía uno a uno. `cachedPcmData` nunca se transfiere ni se neutra. Memoria pico estable: `cachedPcmData + WASM + 1 chunk` (~431MB para 1 hora de audio).
+
 ## [v1.4.29] - 2026-03-07
 ### Fixed
 - **Crash Safari iOS en 2ª Invocación VAD (ArrayBuffer Neutered)**: Viaje asimétrico de datos: Transferable Objects solo en la ida (Main→Worker), Structured Clone en la vuelta (Worker→Main). Rehidratación del Float32Array con buffer virgen. Micro-delay de 100ms en `terminate()` para esquivar la carrera síncrona de WebKit.

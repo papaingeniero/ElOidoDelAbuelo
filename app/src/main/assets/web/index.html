@@ -2206,13 +2206,13 @@
                 const playBtn = document.getElementById('wavePlayBtn');
                 if (playBtn) playBtn.innerHTML = '▶️ PLAY';
 
-                await new Promise(resolve => setTimeout(resolve, 800)); // Respiro para GC de iOS
+                await new Promise(resolve => setTimeout(resolve, 800));
             } else if (!window.vadSavedTime) {
                 window.vadSavedTime = 0;
             }
 
             try {
-                // 2. EXTRACCIÓN ÚNICA CON CACHÉ
+                // 2. EXTRACCIÓN ÚNICA CON CACHÉ (cachedPcmData NUNCA se transfiere ni se neutra)
                 if (currentVadAudioUrl !== forensicAudioUrl || !cachedPcmData || cachedPcmData.length === 0) {
                     btn.innerHTML = '⏳ Decodificando Audio...';
                     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -2231,45 +2231,36 @@
                     currentVadAudioUrl = forensicAudioUrl;
                 }
 
-                // 3. WORKER KAMIKAZE + CHUNKING + RETORNO SEGURO (Structured Clone)
+                // 3. CHUNK STREAMING: Worker recibe chunks de 15s, no el array entero
                 btn.innerHTML = '🧠 Iniciando Motor WASM...';
                 const workerCode = `
                     importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
                     importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
-                    
+
+                    let myvad = null;
+
                     onmessage = async function(e) {
                         try {
-                            if (e.data.action === 'run') {
+                            if (e.data.action === 'init') {
                                 ort.env.wasm.numThreads = 1;
                                 ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
-                                
-                                const myvad = await vad.NonRealTimeVAD.new({
+                                myvad = await vad.NonRealTimeVAD.new({
                                     modelURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/silero_vad.onnx',
                                     workletURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/vad.worklet.bundle.min.js',
                                     positiveSpeechThreshold: e.data.threshold,
                                     negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
                                 });
-                                
-                                const sampleRate = 16000;
-                                const chunkSize = sampleRate * 15;
-                                let allSegments = [];
-                                const totalChunks = Math.ceil(e.data.pcmData.length / chunkSize);
-                                
-                                for (let i = 0; i < totalChunks; i++) {
-                                    const offset = i * chunkSize;
-                                    const chunk = e.data.pcmData.slice(offset, offset + chunkSize);
-                                    const generator = myvad.run(chunk, sampleRate);
-                                    for await (const segment of generator) {
-                                        const absStart = (offset / sampleRate) + (segment.start / 1000);
-                                        const absEnd = (offset / sampleRate) + (segment.end / 1000);
-                                        allSegments.push({ start: absStart, end: absEnd });
-                                    }
-                                    postMessage({ status: 'progress', percent: Math.round(((i + 1) / totalChunks) * 100) });
+                                postMessage({ status: 'ready' });
+                            } else if (e.data.action === 'chunk') {
+                                const generator = myvad.run(e.data.pcmChunk, 16000);
+                                let segments = [];
+                                for await (const seg of generator) {
+                                    segments.push({
+                                        start: e.data.offsetSec + (seg.start / 1000),
+                                        end: e.data.offsetSec + (seg.end / 1000)
+                                    });
                                 }
-                                
-                                // Viaje de vuelta: Structured Clone (SIN Transferable Objects)
-                                // WebKit/Safari corrompe el ArrayBuffer si se transfiere de vuelta y luego se hace terminate()
-                                postMessage({ status: 'done', segments: allSegments, pcmData: e.data.pcmData });
+                                postMessage({ status: 'chunkDone', segments: segments, chunkIndex: e.data.chunkIndex });
                             }
                         } catch (err) {
                             postMessage({ status: 'error', error: err.message || String(err) });
@@ -2281,38 +2272,53 @@
                 workerUrl = URL.createObjectURL(blob);
                 tempWorker = new Worker(workerUrl);
 
-                btn.innerHTML = '🧠 Analizando (0%)...';
-
+                // 3a. Inicializar modelo ONNX (una sola vez por escaneo)
                 await new Promise((resolve, reject) => {
                     tempWorker.onmessage = (e) => {
-                        if (e.data.status === 'progress') {
-                            btn.innerHTML = '🧠 Analizando (' + e.data.percent + '%)...';
-                        } else if (e.data.status === 'done') {
-                            vadSegments = e.data.segments;
-                            // Rehidratar un Float32Array fresco con ArrayBuffer propio (Anti-Neutered)
-                            cachedPcmData = new Float32Array(e.data.pcmData);
-                            resolve();
-                        } else if (e.data.status === 'error') {
-                            reject(new Error(e.data.error));
-                        }
+                        if (e.data.status === 'ready') resolve();
+                        else if (e.data.status === 'error') reject(new Error(e.data.error));
                     };
-                    tempWorker.onerror = (err) => reject(new Error("Worker Crash WebKit"));
-
-                    // Viaje de ida: SÍ destructivo (Transferable) para vaciar el Hilo Principal
-                    tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: cachedPcmData }, [cachedPcmData.buffer]);
+                    tempWorker.onerror = (err) => reject(new Error("Worker Init Crash"));
+                    tempWorker.postMessage({ action: 'init', threshold: threshold });
                 });
+
+                // 3b. Enviar chunks de 15 segundos uno a uno
+                const CHUNK_SEC = 15;
+                const SAMPLE_RATE = 16000;
+                const chunkSize = SAMPLE_RATE * CHUNK_SEC;
+                const totalChunks = Math.ceil(cachedPcmData.length / chunkSize);
+                let allSegments = [];
+
+                for (let i = 0; i < totalChunks; i++) {
+                    const offset = i * chunkSize;
+                    const end = Math.min(offset + chunkSize, cachedPcmData.length);
+                    const chunk = cachedPcmData.slice(offset, end);
+                    const offsetSec = offset / SAMPLE_RATE;
+
+                    btn.innerHTML = '🧠 Analizando (' + Math.round(((i) / totalChunks) * 100) + '%)...';
+
+                    await new Promise((resolve, reject) => {
+                        tempWorker.onmessage = (e) => {
+                            if (e.data.status === 'chunkDone') {
+                                allSegments.push(...e.data.segments);
+                                resolve();
+                            } else if (e.data.status === 'error') {
+                                reject(new Error(e.data.error));
+                            }
+                        };
+                        tempWorker.onerror = (err) => reject(new Error("Worker Chunk Crash"));
+                        tempWorker.postMessage({ action: 'chunk', pcmChunk: chunk, chunkIndex: i, offsetSec: offsetSec });
+                    });
+                }
+
+                vadSegments = allSegments;
 
             } catch (e) {
                 console.error("Error en VAD:", e);
                 alert("Error Ejecutando Red Neuronal:\\n" + (e.message || String(e)));
                 cachedPcmData = null;
             } finally {
-                // Micro-delay: dar margen a Safari para completar el postMessage de retorno
-                if (tempWorker) {
-                    const workerToKill = tempWorker;
-                    setTimeout(() => { workerToKill.terminate(); }, 100);
-                    tempWorker = null;
-                }
+                if (tempWorker) { tempWorker.terminate(); tempWorker = null; }
                 if (workerUrl) { URL.revokeObjectURL(workerUrl); }
 
                 btn.innerHTML = originalText;
