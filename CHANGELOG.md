@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.4.24] - 2026-03-07
+### Fixed
+- **Jetsam OOM por VRAM Leak**: Eliminación agresiva del Backing Store del Canvas gráfico forzando su desasignación (`waveCv.width = 0`), previniendo caídas puras por falta de memoria de video al hacer scroll en iOS.
+- **Librerías WASM Zombie**: Eliminados los `<script>` estáticos del modelo de lenguaje en el HTML base para erradicar su consumo inactivo en la memoria del hilo principal.
+
 ## [v1.4.23] - 2026-03-07
 ### Fixed
 - **Jetsam OOM por Carrera Inversa (Strict Lazy Load)**: Prohibición de instanciar `AVFoundation` dentro del bloque `finally` del Web Worker. El reproductor nativo sólo se aloja en RAM mediante una carga perezosa (Lazy Initialize) cuando el usuario pulsa en PLAY, previniendo el pico de memoria concurrente contra un WASM que aún no termina de reciclar.

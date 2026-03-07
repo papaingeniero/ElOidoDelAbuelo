@@ -471,14 +471,10 @@
         button {
             touch-action: manipulation;
             user-select: none;
-            -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent;
         }
     </style>
 
-    <!-- VAD Web Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js"></script>
+    <!-- WASM libraries removed to prevent Memory Leak in main thread; only loaded in Web Worker now. -->
 </head>
 
 <body>
@@ -1592,19 +1588,29 @@
         function closeWaveform() {
             vadSegments = [];
             if (typeof jsonGenTimer !== 'undefined' && jsonGenTimer) clearInterval(jsonGenTimer);
+
             if (forensicAudio) {
                 forensicAudio.pause();
-                forensicAudio.removeAttribute('src'); // Critical for Safari iOS memory
-                forensicAudio.load(); // Forces WebKit to drop the audio buffer
+                forensicAudio.removeAttribute('src');
+                forensicAudio.load();
                 forensicAudio = null;
             }
             forensicAudioUrl = '';
             isWavePlaying = false;
             wavePlayBtn.innerHTML = "▶️ PLAY";
 
-            // 🔥 ANIQUILACIÓN WASM (Safari iOS OOM Fix) 🔥
+            // Purga extrema de RAM
             cachedPcmData = null;
             currentVadAudioUrl = null;
+            window.vadSavedTime = 0;
+
+            // 🔥 TRUCO ANTI-JETSAM PARA SCROLL: Vaciar VRAM del Canvas
+            const waveCv = document.getElementById('waveCanvas');
+            if (waveCv) {
+                const w = waveCv.width;
+                waveCv.width = 0; // Obliga a WebKit a destruir el buffer de píxeles
+                waveCv.width = w;
+            }
 
             document.getElementById('waveformModal').style.display = 'none';
             document.body.classList.remove('modal-open');
