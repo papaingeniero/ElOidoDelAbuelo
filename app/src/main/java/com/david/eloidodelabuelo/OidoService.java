@@ -37,7 +37,7 @@ public class OidoService extends Service {
     public void onCreate() {
         super.onCreate();
         isServiceRunning = true;
-        Log.d(TAG, "onCreate: Iniciando servicio");
+        WebServer.logToWeb(TAG, "onCreate: Iniciando servicio");
 
         // 🛡️ BLINDAJE ANTI-DEEP SLEEP (CPU + 4G)
         android.os.PowerManager powerManager = (android.os.PowerManager) getSystemService(
@@ -64,9 +64,9 @@ public class OidoService extends Service {
         webServer = new WebServer(this, audioSentinel);
         try {
             webServer.start();
-            Log.d(TAG, "WebServer iniciado en el puerto 8080");
+            WebServer.logToWeb(TAG, "WebServer iniciado en el puerto 8080");
         } catch (IOException e) {
-            Log.e(TAG, "Error iniciando WebServer", e);
+            WebServer.logToWeb(TAG, "Error iniciando WebServer", e);
         }
 
         // Inicializar FRP
@@ -115,7 +115,7 @@ public class OidoService extends Service {
         if (alarmManager != null) {
             // Usar reloj RTC_WAKEUP exacto para saltar la hora con Doze mode override
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
-            Log.i(TAG, "📅 Grabacion Programada Activada en AlarmManager para el Timestamp: " + triggerAtMillis);
+            WebServer.logToWeb(TAG, "📅 Grabacion Programada Activada en AlarmManager para el Timestamp: " + triggerAtMillis);
         }
     }
 
@@ -126,7 +126,7 @@ public class OidoService extends Service {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         if (alarmManager != null) {
             alarmManager.cancel(pendingIntent);
-            Log.i(TAG, "🔕 Grabacion Programada Cancelada en AlarmManager");
+            WebServer.logToWeb(TAG, "🔕 Grabacion Programada Cancelada en AlarmManager");
         }
     }
 
@@ -135,7 +135,7 @@ public class OidoService extends Service {
         super.onDestroy();
         isServiceRunning = false;
         cancelRevivalAlarm();
-        Log.d(TAG, "onDestroy: Deteniendo servicio");
+        WebServer.logToWeb(TAG, "onDestroy: Deteniendo servicio");
 
         if (wakeLock != null && wakeLock.isHeld())
             wakeLock.release();
@@ -212,7 +212,7 @@ public class OidoService extends Service {
             } else {
                 alarmManager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAtMillis, pendingIntent);
             }
-            Log.d(TAG, "⏰ Desfibrilador programado para dentro de 15 minutos exactos.");
+            WebServer.logToWeb(TAG, "⏰ Desfibrilador programado para dentro de 15 minutos exactos.");
         }
     }
 
@@ -230,7 +230,7 @@ public class OidoService extends Service {
             if (pendingIntent != null) {
                 alarmManager.cancel(pendingIntent);
                 pendingIntent.cancel();
-                Log.d(TAG, "🛑 Desfibrilador (AlarmManager) cancelado por muerte voluntaria.");
+                WebServer.logToWeb(TAG, "🛑 Desfibrilador (AlarmManager) cancelado por muerte voluntaria.");
             }
         }
     }

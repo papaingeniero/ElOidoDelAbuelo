@@ -90,7 +90,7 @@ public class AudioSentinel {
                 recordDurationMsCached = sharedPreferences.getInt(PREF_RECORD_DURATION_MS, 15000);
                 break;
         }
-        Log.d(TAG, "Preferencia actualizada en RAM: " + key);
+        WebServer.logToWeb(TAG, "Preferencia actualizada en RAM: " + key);
     };
 
     private volatile double currentAmplitude = 0;
@@ -146,7 +146,7 @@ public class AudioSentinel {
             // Si el usuario está grabando manualmente (Botón Rojo activo), ignoramos la
             // programada.
             if (forceRecordCached) {
-                Log.i(TAG, "⏱️ Grabación Programada IGNORADA: Hay una grabación Manual activa.");
+                WebServer.logToWeb(TAG, "⏱️ Grabación Programada IGNORADA: Hay una grabación Manual activa.");
                 return;
             }
 
@@ -154,11 +154,11 @@ public class AudioSentinel {
             // de iniciar.
             if (isRecordingStatus) {
                 forceStopAndRestart = true;
-                Log.i(TAG, "⏱️ Grabación Automática interceptada por Grabación Programada.");
+                WebServer.logToWeb(TAG, "⏱️ Grabación Automática interceptada por Grabación Programada.");
             }
 
             scheduledRecordingEndTime = System.currentTimeMillis() + durationMs;
-            Log.i(TAG, "⏱️ Inyección de Grabación Programada por " + durationMs + "ms");
+            WebServer.logToWeb(TAG, "⏱️ Inyección de Grabación Programada por " + durationMs + "ms");
         }
     }
 
@@ -191,7 +191,7 @@ public class AudioSentinel {
 
         sentinelThread = new Thread(this::runSentinel);
         sentinelThread.start();
-        Log.d(TAG, "Centinela iniciado.");
+        WebServer.logToWeb(TAG, "Centinela iniciado.");
     }
 
     public void stop() {
@@ -200,7 +200,7 @@ public class AudioSentinel {
             try {
                 sentinelThread.join(1000);
             } catch (InterruptedException e) {
-                Log.e(TAG, "Error deteniendo hilo centinela", e);
+                WebServer.logToWeb(TAG, "Error deteniendo hilo centinela", e);
             }
         }
     }
@@ -210,7 +210,7 @@ public class AudioSentinel {
 
         int minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT);
         if (minBufferSize == AudioRecord.ERROR || minBufferSize == AudioRecord.ERROR_BAD_VALUE) {
-            Log.e(TAG, "Buffer size error");
+            WebServer.logToWeb(TAG, "Buffer size error");
             return;
         }
 
@@ -247,7 +247,7 @@ public class AudioSentinel {
                         bufferSize);
 
                 if (audioRecord.getState() != AudioRecord.STATE_INITIALIZED) {
-                    Log.e(TAG, "AudioRecord Inicialización Fallida (Hardware ocupado). Reintentando en 3s...");
+                    WebServer.logToWeb(TAG, "AudioRecord Inicialización Fallida (Hardware ocupado). Reintentando en 3s...");
                     // Limpieza segura del cadáver
                     try {
                         audioRecord.release();
@@ -264,7 +264,7 @@ public class AudioSentinel {
 
                 // Hardware capturado con éxito
                 audioRecord.startRecording();
-                Log.i(TAG, "🎤 Hardware Microfónico Capturado y a la escucha.");
+                WebServer.logToWeb(TAG, "🎤 Hardware Microfónico Capturado y a la escucha.");
 
                 short[] buffer = new short[bufferSize / 2];
                 byte[] byteBuffer = new byte[bufferSize]; // Para escritura WAV
@@ -316,7 +316,7 @@ public class AudioSentinel {
                         if (readResult == AudioRecord.ERROR_DEAD_OBJECT
                                 || readResult == AudioRecord.ERROR_INVALID_OPERATION
                                 || readResult == AudioRecord.ERROR) {
-                            Log.e(TAG, "🚨 ERROR_DEAD_OBJECT (" + readResult
+                            WebServer.logToWeb(TAG, "🚨 ERROR_DEAD_OBJECT (" + readResult
                                     + "): ¡El Micrófono nos ha sido arrancado! Rompiendo hilo para resucitarlo.");
                             isHardwareCrashed = true; // Forzar ruptura del bucle interno
                             break;
@@ -412,10 +412,10 @@ public class AudioSentinel {
                             codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC);
                             codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
                             codec.start();
-                            Log.d(TAG, "Grabación AAC iniciada: " + currentAacFile.getName());
+                            WebServer.logToWeb(TAG, "Grabación AAC iniciada: " + currentAacFile.getName());
                             spikeCount = 0;
                         } catch (IOException e) {
-                            Log.e(TAG, "Error iniciando MediaCodec/Archivo", e);
+                            WebServer.logToWeb(TAG, "Error iniciando MediaCodec/Archivo", e);
                             isRecording = false;
                             isRecordingStatus = false;
                             recordingStartTimestamp = null;
@@ -432,7 +432,7 @@ public class AudioSentinel {
                                 codec.stop();
                                 codec.release();
                             } catch (Exception e) {
-                                Log.e(TAG, "Error liberando codec", e);
+                                WebServer.logToWeb(TAG, "Error liberando codec", e);
                             }
                             codec = null;
                         }
@@ -440,7 +440,7 @@ public class AudioSentinel {
                             try {
                                 fos.close();
                             } catch (IOException e) {
-                                Log.e(TAG, "Error cerrando archivo aac", e);
+                                WebServer.logToWeb(TAG, "Error cerrando archivo aac", e);
                             }
                             fos = null;
                         }
@@ -461,15 +461,15 @@ public class AudioSentinel {
                                 FileWriter fw = new FileWriter(jsonFile);
                                 fw.write(sb.toString());
                                 fw.close();
-                                Log.d(TAG, "Chivato JSON guardado: " + jsonFile.getName() + " ("
+                                WebServer.logToWeb(TAG, "Chivato JSON guardado: " + jsonFile.getName() + " ("
                                         + (wavePeaks.size() / 2) + " picos)");
                             } catch (Exception e) {
-                                Log.e(TAG, "Error guardando chivato JSON", e);
+                                WebServer.logToWeb(TAG, "Error guardando chivato JSON", e);
                             }
                         }
                         wavePeaks.clear();
 
-                        Log.d(TAG, "Grabación AAC detenida.");
+                        WebServer.logToWeb(TAG, "Grabación AAC detenida.");
                     }
 
                     // 5. Procesamiento Multitarea: Inyección de ADTS (Disco + Red)
@@ -487,9 +487,9 @@ public class AudioSentinel {
                                 codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC);
                                 codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
                                 codec.start();
-                                Log.d(TAG, "Codec Fantasma (Vivo) iniciado.");
+                                WebServer.logToWeb(TAG, "Codec Fantasma (Vivo) iniciado.");
                             } catch (Exception e) {
-                                Log.e(TAG, "Error iniciando codec fantasma para red", e);
+                                WebServer.logToWeb(TAG, "Error iniciando codec fantasma para red", e);
                             }
                         }
 
@@ -564,7 +564,7 @@ public class AudioSentinel {
                         } catch (Exception e) {
                         }
                         codec = null;
-                        Log.d(TAG, "Codec Fantasma detenido.");
+                        WebServer.logToWeb(TAG, "Codec Fantasma detenido.");
                     }
                 } // ➔ Fin del bucle maestro original // ➔ Fin del bucle interno
             } // ➔ Fin del bucle Desfibrilador maestro
@@ -586,7 +586,7 @@ public class AudioSentinel {
             isRecordingStatus = false;
 
         } catch (Exception e) {
-            Log.e(TAG, "Excepción en bucle centinela", e);
+            WebServer.logToWeb(TAG, "Excepción en bucle centinela", e);
         } finally {
             if (audioRecord != null) {
                 try {
@@ -595,7 +595,7 @@ public class AudioSentinel {
                 } catch (Exception e) {
                 }
             }
-            Log.d(TAG, "Centinela detenido y recursos liberados.");
+            WebServer.logToWeb(TAG, "Centinela detenido y recursos liberados.");
         }
     }
 

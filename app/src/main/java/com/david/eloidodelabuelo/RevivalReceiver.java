@@ -14,20 +14,20 @@ public class RevivalReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Log.w(TAG, "⚡ ¡Desfibrilador Activado! Comprobando constantes vitales del OidoService...");
+        WebServer.logToWeb(TAG, "⚡ ¡Desfibrilador Activado! Comprobando constantes vitales del OidoService...");
 
         if (!OidoService.isServiceRunning) {
-            Log.e(TAG, "💀 OidoService detectado como CAÍDO. Iniciando protocolo de resurrección de emergencia (Operación Lázaro)...");
+            WebServer.logToWeb(TAG, "💀 OidoService detectado como CAÍDO. Iniciando protocolo de resurrección de emergencia (Operación Lázaro)...");
             
             Intent serviceIntent = new Intent(context, OidoService.class);
             try {
                 ContextCompat.startForegroundService(context, serviceIntent);
-                Log.i(TAG, "🚀 startForegroundService invocado explícitamente por el RevivalReceiver.");
+                WebServer.logToWeb(TAG, "🚀 startForegroundService invocado explícitamente por el RevivalReceiver.");
             } catch (Exception e) {
-                Log.e(TAG, "❌ Error crítico intentando resucitar el servicio", e);
+                WebServer.logToWeb(TAG, "❌ Error crítico intentando resucitar el servicio", e);
             }
         } else {
-            Log.d(TAG, "✅ OidoService está vivo y respirando. Falsa alarma.");
+            WebServer.logToWeb(TAG, "✅ OidoService está vivo y respirando. Falsa alarma.");
         }
 
         // 🔥 LA MAGIA: Volver a cargar el desfibrilador para dentro de 15 minutos

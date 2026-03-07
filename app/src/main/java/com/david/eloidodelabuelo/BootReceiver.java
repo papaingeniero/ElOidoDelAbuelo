@@ -15,7 +15,7 @@ public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-            Log.d(TAG, "¡Sistema arrancado! Iniciando El Oído del Abuelo en Segundo Plano...");
+            WebServer.logToWeb(TAG, "¡Sistema arrancado! Iniciando El Oído del Abuelo en Segundo Plano...");
 
             Intent serviceIntent = new Intent(context, OidoService.class);
 

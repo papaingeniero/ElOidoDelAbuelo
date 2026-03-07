@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.7] - 2026-03-07
+### Added
+- **Consola Web de Logs (logToWeb)**: Inyectado un buffer circular in-RAM que captura en tiempo real los eventos críticos del sistema Android (FRP, AlarmManager, Codecs ADTS) y los vuelca en formato JSON. Se ha diseñado un panel web estético (modal oscuro con estilo Terminal) conectable desde los Ajustes, permitiendo diagnosticar errores a distancia (Headless Debug) desde dondequiera sin enchufar el móvil.
+
 ## [v1.4.6] - 2026-03-07
 ### Changed
 - **Alineación Vertical Apaisada (Anti-Caída Modal)**: Implatada una nueva directiva CSS `@media (orientation: landscape)` que detecta la rotación física horizontal del móvil y anula los acolchados asimétricos y el padding superior de 60px del modal de reproduccion del Waveform. Esto fuerza a la caja principal a pegarse al borde superior de la pantalla, maximizando ferozmente los píxeles útiles verticales del visualizador forense.

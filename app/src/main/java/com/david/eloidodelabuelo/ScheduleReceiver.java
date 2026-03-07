@@ -12,7 +12,7 @@ public class ScheduleReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         long durationMs = intent.getLongExtra("durationMs", 0);
-        Log.i(TAG, "⏰ ¡Alarma Programada Despertada! Ejecutando OidoService por " + durationMs + "ms");
+        WebServer.logToWeb(TAG, "⏰ ¡Alarma Programada Despertada! Ejecutando OidoService por " + durationMs + "ms");
 
         // Al sonar la alarma, limpiamos las preferencias para que no vuelva a sonar o
         // aparecer en el dashboard como "futura"

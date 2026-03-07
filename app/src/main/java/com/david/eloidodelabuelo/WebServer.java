@@ -34,6 +34,24 @@ public class WebServer extends NanoHTTPD {
     private final AudioSentinel sentinel;
     private final long appStartTime = System.currentTimeMillis();
 
+    public static final java.util.LinkedList<String> logBuffer = new java.util.LinkedList<>();
+    private static final int MAX_LOGS = 100;
+
+    public static synchronized void logToWeb(String tag, String msg) {
+        String time = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(new java.util.Date());
+        logBuffer.add("[" + time + "] [" + tag + "] " + msg);
+        if (logBuffer.size() > MAX_LOGS) { logBuffer.removeFirst(); }
+        android.util.Log.d(tag, msg); // Mantenemos el log nativo por si conectamos el cable
+    }
+
+    public static synchronized void logToWeb(String tag, String msg, Throwable t) {
+        String time = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(new java.util.Date());
+        String fullMsg = msg + (t != null ? " | " + t.toString() : "");
+        logBuffer.add("[" + time + "] [" + tag + "] " + fullMsg);
+        if (logBuffer.size() > MAX_LOGS) { logBuffer.removeFirst(); }
+        android.util.Log.e(tag, msg, t); // Mantenemos el log nativo por si conectamos el cable
+    }
+
     // Cache de telemetría (Eco-Mode V27)
     private long lastHardwarePollTime = 0;
     private static final long POLL_INTERVAL_MS = 60000; // 1 minuto
@@ -66,10 +84,10 @@ public class WebServer extends NanoHTTPD {
                 cachedBatteryPct = scale > 0 ? (level * 100 / (float) scale) : -1;
                 cachedTempCelsiusFull = temp;
                 lastHardwarePollTime = now;
-                Log.d("WebServer", "Telemetría hardware refrescada: " + cachedBatteryPct + "%");
+                WebServer.logToWeb("WebServer", "Telemetría hardware refrescada: " + cachedBatteryPct + "%");
             }
         } catch (Exception e) {
-            Log.e("WebServer", "Error refrescando telemetría", e);
+            WebServer.logToWeb("WebServer", "Error refrescando telemetría", e);
         }
     }
 
@@ -88,7 +106,7 @@ public class WebServer extends NanoHTTPD {
                 generatingProgress = 0;
                 MediaExtractor extractor = new MediaExtractor();
                 MediaCodec codec = null;
-                Log.d("WebServer", "Iniciando reconstrucción para: " + audioFile.getName());
+                WebServer.logToWeb("WebServer", "Iniciando reconstrucción para: " + audioFile.getName());
                 try {
                     extractor.setDataSource(audioFile.getAbsolutePath());
                     int trackIndex = -1;
@@ -101,7 +119,7 @@ public class WebServer extends NanoHTTPD {
                         }
                     }
                     if (trackIndex < 0) {
-                        Log.e("WebServer", "No se encontró pista de audio en: " + audioFile.getName());
+                        WebServer.logToWeb("WebServer", "No se encontró pista de audio en: " + audioFile.getName());
                         return;
                     }
                     extractor.selectTrack(trackIndex);
@@ -121,12 +139,12 @@ public class WebServer extends NanoHTTPD {
                                 durationUs = Long.parseLong(durStr) * 1000;
                             mmr.release();
                         } catch (Exception mmrErr) {
-                            Log.w("WebServer", "Fallo mmr fallback: " + mmrErr.getMessage());
+                            WebServer.logToWeb("WebServer", "Fallo mmr fallback: " + mmrErr.getMessage());
                         }
                     }
 
                     if (durationUs <= 0) {
-                        Log.w("WebServer", "Duración no detectada, usando estimación por tamaño");
+                        WebServer.logToWeb("WebServer", "Duración no detectada, usando estimación por tamaño");
                         durationUs = (audioFile.length() / 32000) * 1000000; // Est. bruta (32KB/s)
                     }
 
@@ -135,7 +153,7 @@ public class WebServer extends NanoHTTPD {
                     codec = MediaCodec.createDecoderByType(mime);
                     codec.configure(format, null, null, 0);
                     codec.start();
-                    Log.d("WebServer", "Codec iniciado: " + mime + " Duración: " + durationMs + "ms");
+                    WebServer.logToWeb("WebServer", "Codec iniciado: " + mime + " Duración: " + durationMs + "ms");
 
                     MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
                     boolean isEOS = false;
@@ -190,7 +208,7 @@ public class WebServer extends NanoHTTPD {
                             if (durationUs > 0) {
                                 generatingProgress = (int) ((presentationTimeUs * 100) / durationUs);
                                 if (generatingProgress % 5 == 0) {
-                                    Log.d("WebServer", "Reconstrucción: " + generatingProgress + "%");
+                                    WebServer.logToWeb("WebServer", "Reconstrucción: " + generatingProgress + "%");
                                 }
                             }
                             codec.releaseOutputBuffer(outIndex, false);
@@ -208,7 +226,7 @@ public class WebServer extends NanoHTTPD {
                         } else {
                             iterationsWithoutOutput++;
                             if (iterationsWithoutOutput > 500) {
-                                Log.e("WebServer", "Codec stuck (500 iterations), abortando.");
+                                WebServer.logToWeb("WebServer", "Codec stuck (500 iterations), abortando.");
                                 break;
                             }
                         }
@@ -230,7 +248,7 @@ public class WebServer extends NanoHTTPD {
                     fw.write(sb.toString());
                     fw.close();
                 } catch (Exception e) {
-                    Log.e("WebServer", "Error JSON gen", e);
+                    WebServer.logToWeb("WebServer", "Error JSON gen", e);
                 } finally {
                     if (codec != null) {
                         try {
@@ -260,6 +278,11 @@ public class WebServer extends NanoHTTPD {
     @Override
     public Response serve(IHTTPSession session) {
         String uri = session.getUri();
+
+        if ("/api/logs".equals(uri)) {
+            org.json.JSONArray arr = new org.json.JSONArray(logBuffer);
+            return newFixedLengthResponse(Response.Status.OK, "application/json", arr.toString());
+        }
 
         if ("/api/status".equals(uri)) {
             try {
@@ -651,7 +674,7 @@ public class WebServer extends NanoHTTPD {
                     encodeAsGzipField.setAccessible(true);
                     encodeAsGzipField.setBoolean(r, false);
                 } catch (Exception e) {
-                    Log.e("WebServer", "Imposible anular GZIP por reflexión", e);
+                    WebServer.logToWeb("WebServer", "Imposible anular GZIP por reflexión", e);
                 }
 
                 return r;
@@ -666,7 +689,7 @@ public class WebServer extends NanoHTTPD {
 
         if ("/".equals(uri)) {
             try {
-                Log.d("WebServer", "Sirviendo Dashboard (root)");
+                WebServer.logToWeb("WebServer", "Sirviendo Dashboard (root)");
                 InputStream is = context.getAssets().open("web/index.html");
                 java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
                 int nRead;
@@ -682,7 +705,7 @@ public class WebServer extends NanoHTTPD {
                 r.addHeader("Pragma", "no-cache");
                 return r;
             } catch (IOException e) {
-                Log.e("WebServer", "Error cargando Dashboard", e);
+                WebServer.logToWeb("WebServer", "Error cargando Dashboard", e);
                 return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
                         "No se pudo cargar el Dashboard: " + e.getMessage());
             }

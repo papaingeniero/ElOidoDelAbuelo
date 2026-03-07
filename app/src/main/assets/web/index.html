@@ -642,6 +642,9 @@
                 <label style="color: var(--status-red); font-weight: bold;">⚠️ ZONA DE PELIGRO</label>
                 <button class="btn" style="background: var(--status-red); color: white; width: 100%; margin-top: 10px;"
                     onclick="deleteRecordings()">🗑️ Purgar Todo el Historial</button>
+                <button id="btnViewLogs"
+                    style="margin-top: 15px; width: 100%; background: #455a64; color: white; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">🖥️
+                    VER LOGS DE DEBUG</button>
             </div>
             <div class="btn-row" style="padding-bottom: 100px;">
                 <button class="btn btn-close" onclick="closeSettings()">Cancelar</button>
@@ -764,6 +767,22 @@
                     style="margin:0; padding: 8px 4px; font-size: 0.85rem; flex: 1; max-width: 55px;"
                     onclick="seekWaveform(30)">+30s</button>
             </div>
+        </div>
+    </div>
+
+    <div id="logsModal" class="modal" style="display: none; z-index: 3000;">
+        <div class="modal-content"
+            style="max-width: 90%; width: 600px; max-height: 80vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin: 0; color: #03dac6;">🖥️ Consola de Sistema</h3>
+                <span class="close-modal" style="font-size: 2rem; cursor: pointer;"
+                    onclick="document.getElementById('logsModal').style.display='none'">&times;</span>
+            </div>
+            <pre id="logsContainer"
+                style="background: #121212; color: #00ff00; padding: 10px; border-radius: 5px; overflow-y: auto; flex-grow: 1; font-size: 0.85em; white-space: pre-wrap; margin: 0; min-height: 300px;"></pre>
+            <button onclick="fetchLogs()"
+                style="margin-top: 10px; padding: 10px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight:bold;">🔄
+                Refrescar Logs</button>
         </div>
     </div>
 
@@ -2105,6 +2124,19 @@
                 }
             });
         }
+
+        function fetchLogs() {
+            fetch('/api/logs').then(r => r.json()).then(logs => {
+                const container = document.getElementById('logsContainer');
+                container.textContent = logs.join('\n');
+                container.scrollTop = container.scrollHeight;
+            }).catch(e => console.error('Error fetching logs', e));
+        }
+
+        document.getElementById('btnViewLogs').addEventListener('click', () => {
+            document.getElementById('logsModal').style.display = 'flex';
+            fetchLogs();
+        });
     </script>
 
 </body>
