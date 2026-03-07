@@ -1,5 +1,18 @@
 # Bitácora de Desarrollo: El Oído del Abuelo
 
+## 🚀 Maximización Vertical en Entornos Apaisados [v1.4.6] | 07/03/2026
+
+**📜 El Problema:**
+1. **Gravedad Vertical Fija:** Tras expandir satisfactoriamente el modal reproductor hacia los costados en modo apaisado (v1.4.5), un nuevo cuello de botella visual emergió en el eje Y. El contenedor principal `.modal` conservaba una propiedad histórica de `padding-top: 60px` concebida para evitar colapsar la barra superior (Top-Bar) cuando el teléfono se usa de pie. Al inclinar el teléfono, donde la pantalla pierde drásticamente su altura física total, esos 60px fijos representaban un desperdicio del 20% del área vertical útil, obligando a la interfaz a mostrarse comprimida y "caída" hacia el fondo.
+
+**🛠️ La Solución:**
+1. **Media Query Reactiva:** Se ha incrustado una regla nativa `@media screen and (orientation: landscape) and (max-height: 600px)` en la cabecera CSS del `index.html`.
+2. **Deflación de Márgenes:** Bajo esta condición de apaisamiento, el `padding-top` del lienzo oscuro (`.modal`) se colapsa instantáneamente de 60px a meramente `5px`. Adicionalmente, se constriñen los rellenos internos de la submáscara `#waveformModal .modal-content` a `10px`.
+3. **Efecto Visual:** Ahora, al rotar el equipo, no sólo el analizador espectrográfico abarca del extremo izquierdo al derecho, sino que salta como un resorte hacia el techo del teléfono, exprimiendo hasta el último píxel cristalino del terminal para visualizar las ondas de audio.
+
+**🎓 Lecciones Aprendidas:**
+- Cuando desarrollamos interfaces HTML/CSS enlazadas a un hardware nativo específico (Xiaomi Redmi 9C), las CSS *Media-Queries* por orientación (`landscape` vs `portrait`) son la única línea de defensa arquitectónica contra el constreñimiento matemático cuando los ejes XYZ del mundo real cambian drásticamente de polaridad.
+
 ## 🚀 Expansión Apaisada del Modal Forense [v1.4.5] | 07/03/2026
 
 **📜 El Problema:**

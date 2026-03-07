@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.6] - 2026-03-07
+### Changed
+- **Alineación Vertical Apaisada (Anti-Caída Modal)**: Implatada una nueva directiva CSS `@media (orientation: landscape)` que detecta la rotación física horizontal del móvil y anula los acolchados asimétricos y el padding superior de 60px del modal de reproduccion del Waveform. Esto fuerza a la caja principal a pegarse al borde superior de la pantalla, maximizando ferozmente los píxeles útiles verticales del visualizador forense.
+
 ## [v1.4.5] - 2026-03-07
 ### Changed
 - **Pantalla Completa Apaisada (Modal Waveform)**: La capa modal que alberga el visualizador espectrográfico y los controles reacciona ahora inteligentemente a la rotación horizontal del dispositivo (`landscape`). Se han desbloqueado los cerrojos CSS de `max-width`, expandiendo masivamente el campo visual y aprovechando todo el ancho de la pantalla del teléfono para explorar los fotogramas de audio sin ahogo.
