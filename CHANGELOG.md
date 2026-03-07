@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.5] - 2026-03-07
+### Changed
+- **Pantalla Completa Apaisada (Modal Waveform)**: La capa modal que alberga el visualizador espectrográfico y los controles reacciona ahora inteligentemente a la rotación horizontal del dispositivo (`landscape`). Se han desbloqueado los cerrojos CSS de `max-width`, expandiendo masivamente el campo visual y aprovechando todo el ancho de la pantalla del teléfono para explorar los fotogramas de audio sin ahogo.
+
 ## [v1.4.4] - 2026-03-07
 ### Fixed
 - **Responsividad Safari iOS**: Se han re-equilibrado las directivas CSS de Flexbox de los nuevos botones de desplazamiento extendido, forzando parámetros `nowrap`, constrictores de `flex: 1` y pad-reductions. Con esto se garantiza que los 6 controles quepen firmemente alineados sin saltos de línea (wrap) en las pantallas estrechas nativas de los dispositivos iPhone contemporáneos.

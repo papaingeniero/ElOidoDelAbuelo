@@ -1,5 +1,18 @@
 # Bitácora de Desarrollo: El Oído del Abuelo
 
+## 🚀 Expansión Apaisada del Modal Forense [v1.4.5] | 07/03/2026
+
+**📜 El Problema:**
+1. **Desperdicio de Espacio Lateral en Horizontal:** Al rotar el teléfono Xiaomi (o cualquier otro dispositivo moderno) a formato apaisado (Landscape), el modal que contiene el renderizador Canvas y el reproductor de ondas mantenía fijada herencia vertical antigua (`max-width: 400px`). Por consiguiente, la caja flotante quedaba estrangulada en el centro de la pantalla, dejando enormes márgenes negros vacíos a izquierda y derecha, obligando al usuario a desplazar un gráfico constreñido cuando tenía el triple de píxeles disponibles.
+
+**🛠️ La Solución:**
+1. **Desbloqueo de Geometría Relativa:** Se ha sobreescrito la política CSS en línea estructural de `#waveformModal .modal-content`. Ahora porta conscientemente la directiva `width: 95%; max-width: 1000px;`.
+   - **En Vertical (Portrait):** El 95% de un móvil es ~370px, por lo que sigue luciendo perfecto y proporcional.
+   - **En Apaisado (Landscape):** Al girar, el 95% del ancho nativo rebasa la penalización de los 400px, y el renderizador Canvas reacciona automáticamente estirando el espectrograma audio-forense a todo lo largo de la pantalla (ganando más de +450px extra de ondas visibles simultáneas).
+
+**🎓 Lecciones Aprendidas:**
+- Las ventanas modales diseñadas con enfoque "Mobile-First" vertical acostumbran a fosilizar parámetros de contención `max-width` que previenen su colapso en pantallas gigantes o de ordenador. No obstante, en un contexto forense (Canvas HTML5 / Gráficos), el eje `X` (Tiempo) es lo más valioso del mundo. Si el usuario gira el teléfono, su intención es clara: quiere *VER* más lejos. Romper la "zona segura" de 400px del modal cuando gira físicamente su pantalla es un mandamiento imperativo de UX (Experiencia de Usuario).
+
 ## 🚀 Ajuste de Responsividad (Botonera) [v1.4.4] | 07/03/2026
 
 **📜 El Problema:**
