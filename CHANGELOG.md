@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.31] - 2026-03-08
+### Fixed
+- **OOM Dual (Worker Persistente + Zero Cache)**: El Worker compila WASM una sola vez y persiste hasta cerrar el modal. PCM se decodifica fresco por scan y se libera al terminar (no compite con PLAY). Chunks se extraen directamente del AudioBuffer sin copia intermedia.
+
 ## [v1.4.30] - 2026-03-08
 ### Fixed
 - **OOM Definitivo (Chunk Streaming)**: `runVADScanner` ya no envía el Float32Array entero al Worker. El Main Thread fragmenta el audio en chunks de 15 segundos (~960KB) y los envía uno a uno. `cachedPcmData` nunca se transfiere ni se neutra. Memoria pico estable: `cachedPcmData + WASM + 1 chunk` (~431MB para 1 hora de audio).
