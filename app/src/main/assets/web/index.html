@@ -2199,9 +2199,9 @@
             let tempWorker = null;
             let workerUrl = null;
 
-            // 1. FREEZE Y DESCARGA NATIVA (Anti-Overlap)
+            // 1. FREEZE Y PURGA NATIVA (Aislamos a AVFoundation)
             if (forensicAudio) {
-                btn.innerHTML = '⏳ Liberando RAM Audio...';
+                btn.innerHTML = '⏳ Vaciando RAM...';
                 window.vadSavedTime = forensicAudio.currentTime || 0;
                 forensicAudio.pause();
                 forensicAudio.removeAttribute('src');
@@ -2211,35 +2211,32 @@
                 const playBtn = document.getElementById('wavePlayBtn');
                 if (playBtn) playBtn.innerHTML = '▶️ PLAY';
 
-                // Respiro ampliado a 1200ms para asegurar que iOS vacía la memoria nativa
-                await new Promise(resolve => setTimeout(resolve, 1200));
+                // Respiro preventivo para que el Recolector de Basura de Apple limpie el AVPlayer
+                await new Promise(resolve => setTimeout(resolve, 1000));
             } else if (!window.vadSavedTime) {
                 window.vadSavedTime = 0;
             }
 
             try {
-                // 2. EXTRACCIÓN ÚNICA CON COPIA SEGURA (Sin Zero-Copy para evitar bugs de WebKit)
-                if (currentVadAudioUrl !== forensicAudioUrl || !cachedPcmData) {
-                    btn.innerHTML = '⏳ Decodificando PCM...';
-                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                    let localCtx = new AudioContextClass({ sampleRate: 16000 });
+                // 2. EXTRACCIÓN EFÍMERA (Sin caché. Se ejecuta de cero y se transfiere sin retorno)
+                btn.innerHTML = '⏳ Preparando Motor...';
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                let localCtx = new AudioContextClass({ sampleRate: 16000 });
 
-                    const response = await fetch(forensicAudioUrl);
-                    let arrayBuffer = await response.arrayBuffer();
-                    let tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
+                const response = await fetch(forensicAudioUrl);
+                let arrayBuffer = await response.arrayBuffer();
+                let tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
 
-                    // Se crea un Float32Array limpio, independiente y permanente
-                    cachedPcmData = new Float32Array(tempAudioBuffer.getChannelData(0));
+                let pcmData = tempAudioBuffer.getChannelData(0).slice();
 
-                    await localCtx.close();
-                    localCtx = null;
-                    arrayBuffer = null;
-                    tempAudioBuffer = null;
-                    currentVadAudioUrl = forensicAudioUrl;
-                }
+                // Aniquilación inmediata del contexto multimedia
+                await localCtx.close();
+                localCtx = null;
+                arrayBuffer = null;
+                tempAudioBuffer = null;
 
-                // 3. WORKER KAMIKAZE DIRECTO (Delegación completa a ONNX)
-                btn.innerHTML = '🧠 Cargando Red Neuronal...';
+                // 3. WORKER KAMIKAZE
+                btn.innerHTML = '🧠 Arrancando Red...';
                 const workerCode = `
                     importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
                     importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
@@ -2257,7 +2254,6 @@
                                     negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
                                 });
                                 
-                                // Procesamiento nativo ONNX (más seguro que chunking manual en JS)
                                 const generator = myvad.run(e.data.pcmData, 16000);
                                 let segments = [];
                                 for await (const segment of generator) {
@@ -2276,7 +2272,7 @@
                 workerUrl = URL.createObjectURL(blob);
                 tempWorker = new Worker(workerUrl);
 
-                btn.innerHTML = '🧠 Procesando Inteligencia...';
+                btn.innerHTML = '🧠 Escaneando...';
 
                 await new Promise((resolve, reject) => {
                     tempWorker.onmessage = (e) => {
@@ -2287,19 +2283,19 @@
                             reject(new Error(e.data.error));
                         }
                     };
-                    tempWorker.onerror = (err) => reject(new Error("Worker Crash"));
+                    tempWorker.onerror = (err) => reject(new Error("Worker Crash por sobrecarga WASM"));
 
-                    // ⚠️ LA CLAVE: Pasamos el array por COPIA, sin la transferencia destructiva [buffer].
-                    // Así la caché principal nunca se corrompe en Safari.
-                    tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: cachedPcmData });
+                    // TRANSFERENCIA DESTRUCTIVA: El hilo principal pierde el control del ArrayBuffer.
+                    // Es la forma más limpia de inyectar datos en WASM sin duplicar RAM.
+                    tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: pcmData }, [pcmData.buffer]);
+                    pcmData = null; // Eliminación absoluta de referencias
                 });
 
             } catch (e) {
                 console.error("Error en VAD:", e);
-                alert("Error:\\n" + (e.message || String(e)));
-                cachedPcmData = null; // Purgar caché en caso de corrupción
+                alert("Error de Procesamiento:\\n" + (e.message || String(e)));
             } finally {
-                // ANIQUILACIÓN DEL WORKER
+                // ANIQUILACIÓN DEL WORKER Y LIBERACIÓN TOTAL DE RAM
                 if (tempWorker) { tempWorker.terminate(); tempWorker = null; }
                 if (workerUrl) { URL.revokeObjectURL(workerUrl); }
 

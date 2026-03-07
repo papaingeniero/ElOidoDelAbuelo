@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.4.26] - 2026-03-07
+### Fixed
+- **Jetsam OOM por Acumulación Dinámica (Stateless VAD)**: Erradicación absoluta de la caché PCM (Amnesia Total). El Hilo Principal delega destructivamente el array entero hacia el Worker y olvida su existencia para maximizar la bolsa global de RAM.
+- **Respirador Artificial Crítico**: Incrementada la pausa pre-WASM a `1000ms` asegurando que el *Garbage Collector* de iOS destruya inequívocamente el motor AVFoundation antes de la nueva inferencia.
+
 ## [v1.4.25] - 2026-03-07
 ### Fixed
 - **Jetsam OOM por Corrupción Zero-Copy**: Sustitución del destructivo `Transferable Object` por una Clonación Estructurada estricta del Float32Array madre hacia el Web Worker. Safari ya no crasheará al intentar recuperar buffers desreferenciados iterativamente.
