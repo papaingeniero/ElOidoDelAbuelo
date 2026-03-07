@@ -2276,3 +2276,18 @@ El crash después de pulsar PLAY (sin segundo escaneo) con archivos de 10 minuto
 ### 🎓 Lecciones Aprendidas
 - **`terminate()` No Es Inmediato en iOS**: La liberación de memoria WASM tras `terminate()` es asíncrona e impredecible. La única forma de evitar el solapamiento es no destruir el Worker entre escaneos.
 - **La Caché es un Lujo que iOS No Se Puede Permitir**: Retener 38MB+ de PCM decodificado ahorra 2 segundos de re-decode, pero cuesta la vida de la pestaña cuando AVFoundation necesita sus propios buffers. El re-decode es un precio aceptable por la estabilidad.
+
+## 🚀 Kamikaze Worker + Respiro WASM Agresivo v1.4.32 | 08/03/2026
+
+### 📜 El Problema
+Con archivos de 21 minutos (84 chunks), la memoria lineal WASM del Worker **crece progresivamente** durante la inferencia ONNX y **jamás decrece** (limitación inherente de WebAssembly 1.0). Al terminar el scan, el Worker Persistente retiene toda esa memoria inflada → crash inmediato.
+
+### 🛠️ La Solución
+1. **Worker Kamikaze**: Se destruye INMEDIATAMENTE al terminar el scan. No persiste.
+2. **Respiro Agresivo (1.5s)**: Tras `terminate()`, se espera 1.5 segundos antes de redibujar.
+3. **Zero Cache de PCM**: Audio fresco en cada invocación, liberado al terminar.
+4. **Limpieza de Workers Huérfanos**: Destrucción preventiva al inicio de cada scan.
+
+### 🎓 Lecciones Aprendidas
+- **WASM Linear Memory Solo Crece**: WebAssembly 1.0 no permite reducir la memoria. Cada inferencia ONNX puede solicitar más páginas vía `memory.grow()`, pero nunca las devuelve.
+- **`terminate()` Es Necesario Pero Insuficiente**: iOS necesita un respiro real (1.5s) antes de cualquier alocación posterior.

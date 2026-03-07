@@ -1,16 +1,14 @@
-## 🚀 Worker Persistente + Zero Cache (Dual Anti-OOM) v1.4.31 | 08/03/2026
+## 🚀 Kamikaze Worker + Respiro WASM Agresivo v1.4.32 | 08/03/2026
 
 ### 📜 El Problema
-El crash después de pulsar PLAY (sin segundo escaneo) con archivos de 10 minutos reveló que el enemigo no estaba en los Transferable Objects ni en el tamaño de los chunks. Estaba en la **acumulación de memoria residual**:
-1. **WASM Zombie**: `worker.terminate()` marca la memoria WASM para recolección, pero iOS no la libera inmediatamente. Al pulsar PLAY, AVFoundation intenta reservar buffers → la suma de WASM residual + cachedPcmData + AVFoundation excede el umbral Jetsam.
-2. **Doble Compilación WASM**: Al hacer el 2º escaneo, se creaba un NUEVO Worker que compilaba ONNX/WASM desde cero, duplicando la huella.
+Con archivos de 21 minutos (84 chunks), la memoria lineal WASM del Worker **crece progresivamente** durante la inferencia ONNX y **jamás decrece** (limitación inherente de WebAssembly 1.0). Al terminar el scan, el Worker Persistente retiene toda esa memoria inflada. El simple hecho de redibujar la forma de onda tras el scan empuja la memoria total por encima del umbral Jetsam de iOS → crash inmediato, sin necesidad de pulsar PLAY ni hacer un 2º escaneo.
 
-### 🛠️ La Solución: Worker Persistente + Zero Cache
-1. **Worker Persistente**: El Web Worker compila ONNX + Silero VAD una SOLA VEZ y permanece vivo hasta que el usuario cierra el modal (`closeWaveform()`). Cada escaneo reutiliza el motor WASM ya compilado.
-2. **Zero Cache de PCM**: `cachedPcmData` se libera al inicio de cada scan. El audio se decodifica fresco, se envían chunks desde el AudioBuffer del contexto, y al terminar el scan NO queda ningún Float32Array retenido. PLAY ya no compite con datos PCM.
-3. **Streaming desde AudioBuffer**: Los chunks se extraen directamente del AudioBuffer decodificado (`channelData.slice()`), sin crear una copia intermedia del array completo. El AudioContext se cierra ANTES de iniciar WASM.
-4. **Ciclo de Vida Limpio**: Worker Persistente se destruye únicamente en `closeWaveform()`, asegurando limpieza total al cerrar el modal.
+### 🛠️ La Solución
+1. **Worker Kamikaze (Vida = 1 Scan)**: El Worker se crea, procesa todos los chunks, y se destruye INMEDIATAMENTE al terminar. No persiste entre escaneos.
+2. **Respiro Agresivo (1.5 segundos)**: Tras `terminate()`, se espera 1.5 segundos antes de redibujar la forma de onda, dando a iOS tiempo real para liberar la memoria lineal WASM del Worker destruido.
+3. **Zero Cache de PCM**: El audio se decodifica fresco en cada invocación y se libera al terminar. No compite con PLAY ni con futuros scans.
+4. **Limpieza de Workers Anteriores**: Al inicio de cada scan, se destruye cualquier Worker huérfano de sesiones anteriores.
 
 ### 🎓 Lecciones Aprendidas
-- **`terminate()` No Es Inmediato en iOS**: La liberación de memoria WASM tras `terminate()` es asíncrona e impredecible. La única forma de evitar el solapamiento es no destruir el Worker entre escaneos.
-- **La Caché es un Lujo que iOS No Se Puede Permitir**: Retener 38MB+ de PCM decodificado ahorra 2 segundos de re-decode, pero cuesta la vida de la pestaña cuando AVFoundation necesita sus propios buffers. El re-decode es un precio aceptable por la estabilidad.
+- **WASM Linear Memory Solo Crece**: La especificación WebAssembly 1.0 no permite reducir la memoria. Cada inferencia ONNX dentro del Worker puede solicitar más páginas WASM vía `memory.grow()`, pero nunca las devuelve. Para archivos largos, esto es una bomba de relojería.
+- **`terminate()` Es Necesario Pero Insuficiente**: Matar el Worker libera la memoria WASM eventualmente, pero iOS necesita un respiro real (1.5s) antes de que el Main Thread intente cualquier operación que aloque memoria (como redibujar el canvas).

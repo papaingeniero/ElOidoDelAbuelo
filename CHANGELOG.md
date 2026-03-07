@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.32] - 2026-03-08
+### Fixed
+- **OOM WASM Linear Memory Leak**: Worker Kamikaze + 1.5s respiro post-terminate. WASM linear memory crece durante 84+ inferencias y nunca decrece, así que el Worker se destruye tras cada scan con un delay de 1.5s antes de redibujar, dando a iOS tiempo para liberar.
+
 ## [v1.4.31] - 2026-03-08
 ### Fixed
 - **OOM Dual (Worker Persistente + Zero Cache)**: El Worker compila WASM una sola vez y persiste hasta cerrar el modal. PCM se decodifica fresco por scan y se libera al terminar (no compite con PLAY). Chunks se extraen directamente del AudioBuffer sin copia intermedia.
