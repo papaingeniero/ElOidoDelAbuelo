@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.28] - 2026-03-07
+### Fixed
+- **Saturación del Decodificador iOS**: Restitución al patrón `Ping-Pong Zero-Copy` en `runVADScanner()`. Transferimos transitoriamente el array retenido (`cachedPcmData`) al Web Worker y este nos devuelve la propiedad finalizado el proceso de Inferencia `Chunking`, esquivando así el abrumador latido OOM de reinstanciar un `AudioContext` en cada ajuste.
+
 ## [v1.4.27] - 2026-03-07
 ### Fixed
 - **OOM Jetsam Constante (Zombies RAM y VRAM)**: Destruccción total de canvas Backing Store imponiendo explícitamente `waveCv.width = 0`. Erradicación de invocaciones `<script>` fantasma en el `index.html`. Y desactivación pura de auto-reproducción `AVFoundation` para evitar solapamiento concurrente en la matriz de memoria de Apple versus el GC del Thread WebAssembly.

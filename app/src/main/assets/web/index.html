@@ -2194,8 +2194,9 @@
             let tempWorker = null;
             let workerUrl = null;
 
+            // 1. FREEZE Y DESCARGA NATIVA (Anti-Overlap de Apple)
             if (forensicAudio) {
-                btn.innerHTML = '⏳ Vaciando RAM...';
+                btn.innerHTML = '⏳ Purgando RAM...';
                 window.vadSavedTime = forensicAudio.currentTime || 0;
                 forensicAudio.pause();
                 forensicAudio.removeAttribute('src');
@@ -2205,28 +2206,33 @@
                 const playBtn = document.getElementById('wavePlayBtn');
                 if (playBtn) playBtn.innerHTML = '▶️ PLAY';
 
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 800)); // Respiro para GC de iOS
             } else if (!window.vadSavedTime) {
                 window.vadSavedTime = 0;
             }
 
             try {
-                btn.innerHTML = '⏳ Preparando Motor...';
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                let localCtx = new AudioContextClass({ sampleRate: 16000 });
+                // 2. EXTRACCIÓN ÚNICA CON CACHÉ ZERO-COPY PING-PONG
+                if (currentVadAudioUrl !== forensicAudioUrl || !cachedPcmData || cachedPcmData.length === 0) {
+                    btn.innerHTML = '⏳ Decodificando Audio...';
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    let localCtx = new AudioContextClass({ sampleRate: 16000 });
 
-                const response = await fetch(forensicAudioUrl);
-                let arrayBuffer = await response.arrayBuffer();
-                let tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
+                    const response = await fetch(forensicAudioUrl);
+                    let arrayBuffer = await response.arrayBuffer();
+                    let tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
 
-                let pcmData = tempAudioBuffer.getChannelData(0).slice();
+                    cachedPcmData = tempAudioBuffer.getChannelData(0).slice();
 
-                await localCtx.close();
-                localCtx = null;
-                arrayBuffer = null;
-                tempAudioBuffer = null;
+                    await localCtx.close();
+                    localCtx = null;
+                    arrayBuffer = null;
+                    tempAudioBuffer = null;
+                    currentVadAudioUrl = forensicAudioUrl;
+                }
 
-                btn.innerHTML = '🧠 Arrancando Red...';
+                // 3. WORKER KAMIKAZEN + CHUNKING + PING PONG
+                btn.innerHTML = '🧠 Iniciando Motor WASM...';
                 const workerCode = `
                     importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
                     importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
@@ -2244,13 +2250,25 @@
                                     negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
                                 });
                                 
-                                const generator = myvad.run(e.data.pcmData, 16000);
-                                let segments = [];
-                                for await (const segment of generator) {
-                                    segments.push({ start: segment.start / 1000, end: segment.end / 1000 });
+                                const sampleRate = 16000;
+                                const chunkSize = sampleRate * 15; // Aplanar consumo en Safari
+                                let allSegments = [];
+                                const totalChunks = Math.ceil(e.data.pcmData.length / chunkSize);
+                                
+                                for (let i = 0; i < totalChunks; i++) {
+                                    const offset = i * chunkSize;
+                                    const chunk = e.data.pcmData.slice(offset, offset + chunkSize);
+                                    const generator = myvad.run(chunk, sampleRate);
+                                    for await (const segment of generator) {
+                                        const absStart = (offset / sampleRate) + (segment.start / 1000);
+                                        const absEnd = (offset / sampleRate) + (segment.end / 1000);
+                                        allSegments.push({ start: absStart, end: absEnd });
+                                    }
+                                    postMessage({ status: 'progress', percent: Math.round(((i + 1) / totalChunks) * 100) });
                                 }
                                 
-                                postMessage({ status: 'done', segments: segments });
+                                // 🏓 PING-PONG: Devolver la posesión de la RAM al hilo principal
+                                postMessage({ status: 'done', segments: allSegments, pcmData: e.data.pcmData }, [e.data.pcmData.buffer]);
                             }
                         } catch (err) {
                             postMessage({ status: 'error', error: err.message || String(err) });
@@ -2262,26 +2280,30 @@
                 workerUrl = URL.createObjectURL(blob);
                 tempWorker = new Worker(workerUrl);
 
-                btn.innerHTML = '🧠 Escaneando...';
+                btn.innerHTML = '🧠 Analizando (0%)...';
 
                 await new Promise((resolve, reject) => {
                     tempWorker.onmessage = (e) => {
-                        if (e.data.status === 'done') {
+                        if (e.data.status === 'progress') {
+                            btn.innerHTML = '🧠 Analizando (' + e.data.percent + '%)...';
+                        } else if (e.data.status === 'done') {
                             vadSegments = e.data.segments;
+                            cachedPcmData = e.data.pcmData; // 🏓 RECUPERAR LA CACHÉ
                             resolve();
                         } else if (e.data.status === 'error') {
                             reject(new Error(e.data.error));
                         }
                     };
-                    tempWorker.onerror = (err) => reject(new Error("Worker Crash"));
+                    tempWorker.onerror = (err) => reject(new Error("Worker Crash WebKit"));
 
-                    tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: pcmData }, [pcmData.buffer]);
-                    pcmData = null;
+                    // 🏓 PING-PONG: Prestar la memoria al Worker y desvincularla del hilo principal
+                    tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: cachedPcmData }, [cachedPcmData.buffer]);
                 });
 
             } catch (e) {
                 console.error("Error en VAD:", e);
-                alert("Error de Procesamiento:\\n" + (e.message || String(e)));
+                alert("Error Ejecutando Red Neuronal:\\n" + (e.message || String(e)));
+                cachedPcmData = null; // Purgar si hay fallo para no corromper la siguiente pasada
             } finally {
                 if (tempWorker) { tempWorker.terminate(); tempWorker = null; }
                 if (workerUrl) { URL.revokeObjectURL(workerUrl); }
