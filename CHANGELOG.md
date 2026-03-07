@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.4.20] - 2026-03-07
+### Changed
+- **Worker Kamikaze Pattern**: Solución definitiva al Memory Leak de WebAssembly (WASM Orphan) en iOS Safari al cambiar de sensibilidad VAD repetidamente.
+  1. El audio decodificado (`cachedPcmData`) persiste veloz en caché primaria.
+  2. El WebWorker (`vadWorker`) nace, ejecuta la red neuronal con el umbral deseado, y se aniquila irremediablemente en cada ciclo (`terminate()` y `revokeObjectURL()`).
+  3. Cero acumulación de Sandbox RAM entre escaneos sucesivos.
+
 ## [v1.4.19] - 2026-03-07
 ### Changed
 - **VAD Smart Cache (Anti-Jetsam)**: Arquitectura rediseñada para instanciar el Motor WASM y el AudioContext de Safari de forma inteligente y diferida.

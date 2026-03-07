@@ -1499,7 +1499,6 @@
         let forensicAudioUrl = ''; // URL para crear el Audio solo en PLAY
         let vadSegments = []; // Array para guardar los segmentos {start, end}
         let globalAudioCtx = null; // CACHE para evitar leak de AudioContext en WebKit
-        let vadWorker = null; // AISLAMIENTO WASM (OOM JETSam Fix)
         let cachedPcmData = null;
         let currentVadAudioUrl = null;
         let forensicPeaks = [];
@@ -1604,10 +1603,6 @@
             wavePlayBtn.innerHTML = "▶️ PLAY";
 
             // 🔥 ANIQUILACIÓN WASM (Safari iOS OOM Fix) 🔥
-            if (vadWorker) {
-                vadWorker.terminate();
-                vadWorker = null;
-            }
             cachedPcmData = null;
             currentVadAudioUrl = null;
 
@@ -2190,79 +2185,69 @@
             const threshold = parseFloat(document.getElementById('inpVadThresh').value);
             btn.disabled = true;
 
+            let tempWorker = null;
+            let workerUrl = null;
+
             try {
-                // 1. EXTRACCIÓN ÚNICA (Solo decodifica si es un archivo nuevo)
+                // 1. EXTRACCIÓN ÚNICA (Caché en RAM principal)
                 if (currentVadAudioUrl !== forensicAudioUrl || !cachedPcmData) {
                     btn.innerHTML = '⏳ Decodificando Audio...';
                     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
                     let localCtx = new AudioContextClass({ sampleRate: 16000 });
-                    
+
                     const response = await fetch(forensicAudioUrl);
                     let arrayBuffer = await response.arrayBuffer();
                     let tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
-                    
-                    // Guardar en caché y destruir tubería nativa pesada
+
                     cachedPcmData = tempAudioBuffer.getChannelData(0).slice();
-                    
+
                     await localCtx.close();
                     localCtx = null;
                     arrayBuffer = null;
                     tempAudioBuffer = null;
                     currentVadAudioUrl = forensicAudioUrl;
-
-                    // Limpieza preventiva si venimos de un estado anómalo
-                    if (vadWorker) { vadWorker.terminate(); vadWorker = null; }
                 }
 
-                // 2. CREACIÓN ÚNICA DEL WORKER (Reutiliza el entorno WASM)
-                if (!vadWorker) {
-                    btn.innerHTML = '🧠 Iniciando Motor WASM...';
-                    const workerCode = `
-                        importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
-                        importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
-                        
-                        let myvad = null;
-                        let lastThreshold = null;
-
-                        onmessage = async function(e) {
-                            try {
-                                if (e.data.action === 'run') {
-                                    ort.env.wasm.numThreads = 1;
-                                    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
-                                    
-                                    // Solo reconstruye la instancia ONNX si cambia el umbral
-                                    if (!myvad || lastThreshold !== e.data.threshold) {
-                                        myvad = await vad.NonRealTimeVAD.new({
-                                            modelURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/silero_vad.onnx',
-                                            workletURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/vad.worklet.bundle.min.js',
-                                            positiveSpeechThreshold: e.data.threshold,
-                                            negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
-                                        });
-                                        lastThreshold = e.data.threshold;
-                                    }
-                                    
-                                    const generator = myvad.run(e.data.pcmData, 16000);
-                                    let segments = [];
-                                    for await (const segment of generator) {
-                                        segments.push({ start: segment.start / 1000, end: segment.end / 1000 });
-                                    }
-                                    postMessage({ status: 'done', segments: segments });
+                // 2. WORKER KAMIKAZE (Nace, trabaja y se autodestruye)
+                btn.innerHTML = '🧠 Iniciando Motor WASM...';
+                const workerCode = `
+                    importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
+                    importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
+                    
+                    onmessage = async function(e) {
+                        try {
+                            if (e.data.action === 'run') {
+                                ort.env.wasm.numThreads = 1;
+                                ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
+                                
+                                const myvad = await vad.NonRealTimeVAD.new({
+                                    modelURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/silero_vad.onnx',
+                                    workletURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/vad.worklet.bundle.min.js',
+                                    positiveSpeechThreshold: e.data.threshold,
+                                    negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
+                                });
+                                
+                                const generator = myvad.run(e.data.pcmData, 16000);
+                                let segments = [];
+                                for await (const segment of generator) {
+                                    segments.push({ start: segment.start / 1000, end: segment.end / 1000 });
                                 }
-                            } catch (err) {
-                                postMessage({ status: 'error', error: err.message || String(err) });
+                                postMessage({ status: 'done', segments: segments });
                             }
-                        };
-                    `;
-                    const blob = new Blob([workerCode], { type: 'application/javascript' });
-                    const workerUrl = URL.createObjectURL(blob);
-                    vadWorker = new Worker(workerUrl);
-                    URL.revokeObjectURL(workerUrl); // Revocar el blob inmediatamente
-                }
+                        } catch (err) {
+                            postMessage({ status: 'error', error: err.message || String(err) });
+                        }
+                    };
+                `;
+
+                const blob = new Blob([workerCode], { type: 'application/javascript' });
+                workerUrl = URL.createObjectURL(blob);
+                tempWorker = new Worker(workerUrl);
 
                 btn.innerHTML = '🧠 Analizando Red Neuronal...';
 
                 await new Promise((resolve, reject) => {
-                    vadWorker.onmessage = (e) => {
+                    tempWorker.onmessage = (e) => {
                         if (e.data.status === 'done') {
                             vadSegments = e.data.segments;
                             resolve();
@@ -2270,21 +2255,26 @@
                             reject(new Error(e.data.error));
                         }
                     };
-                    vadWorker.onerror = (err) => reject(new Error("Worker Crash: WebKit ha abatido el sub-proceso."));
+                    tempWorker.onerror = (err) => reject(new Error("Worker Crash: WebKit ha abatido el sub-proceso."));
 
-                    // Pasamos los datos por copia (sin [pcmData.buffer]) para no destruir la caché original
-                    vadWorker.postMessage({ action: 'run', threshold: threshold, pcmData: cachedPcmData });
+                    tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: cachedPcmData });
                 });
 
                 drawForensicWaveform();
-                
+
             } catch (e) {
                 console.error("Error en VAD:", e);
                 alert("Error Ejecutando Red Neuronal:\\n" + (e.message || String(e)));
-                // Purgar sistema si la IA colapsa
-                if (vadWorker) { vadWorker.terminate(); vadWorker = null; }
                 cachedPcmData = null;
             } finally {
+                // 3. ANIQUILACIÓN TOTAL (Garantiza que la RAM de WASM se libera al 100%)
+                if (tempWorker) {
+                    tempWorker.terminate();
+                    tempWorker = null;
+                }
+                if (workerUrl) {
+                    URL.revokeObjectURL(workerUrl);
+                }
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             }
