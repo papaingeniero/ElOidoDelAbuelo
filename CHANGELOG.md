@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.4.21] - 2026-03-07
+### Changed
+- **Ping-Pong Zero-Copy & AVFoundation Freeze**: Cirugía de precisión contra los solapamientos de memoria de iOS.
+  1. Se purga activamente el buffer `<audio>` nativo (AVFoundation) antes de llamar al Sandbox.
+  2. Implementación de Transferable Objects bidireccional, cediendo y pidiendo la memoria del PCM al Worker (`[pcmData.buffer]`).
+  3. Resurrección matemática del reproductor original tras aniquilar WebAssembly.
+
 ## [v1.4.20] - 2026-03-07
 ### Changed
 - **Worker Kamikaze Pattern**: Solución definitiva al Memory Leak de WebAssembly (WASM Orphan) en iOS Safari al cambiar de sensibilidad VAD repetidamente.

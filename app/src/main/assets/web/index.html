@@ -2188,9 +2188,22 @@
             let tempWorker = null;
             let workerUrl = null;
 
+            // 1. FREEZE Y DESCARGA DEL MOTOR NATIVO (Libera AVFoundation en iOS)
+            let savedTime = 0;
+            if (forensicAudio) {
+                savedTime = forensicAudio.currentTime || 0;
+                forensicAudio.pause();
+                forensicAudio.removeAttribute('src');
+                forensicAudio.load();
+                forensicAudio = null;
+                isWavePlaying = false;
+                const playBtn = document.getElementById('wavePlayBtn');
+                if (playBtn) playBtn.innerHTML = '▶️ PLAY';
+            }
+
             try {
-                // 1. EXTRACCIÓN ÚNICA (Caché en RAM principal)
-                if (currentVadAudioUrl !== forensicAudioUrl || !cachedPcmData) {
+                // 2. EXTRACCIÓN ÚNICA (Caché en RAM principal)
+                if (currentVadAudioUrl !== forensicAudioUrl || !cachedPcmData || cachedPcmData.length === 0) {
                     btn.innerHTML = '⏳ Decodificando Audio...';
                     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
                     let localCtx = new AudioContextClass({ sampleRate: 16000 });
@@ -2208,7 +2221,7 @@
                     currentVadAudioUrl = forensicAudioUrl;
                 }
 
-                // 2. WORKER KAMIKAZE (Nace, trabaja y se autodestruye)
+                // 3. WORKER KAMIKAZE CON PING-PONG ZERO-COPY
                 btn.innerHTML = '🧠 Iniciando Motor WASM...';
                 const workerCode = `
                     importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
@@ -2232,7 +2245,9 @@
                                 for await (const segment of generator) {
                                     segments.push({ start: segment.start / 1000, end: segment.end / 1000 });
                                 }
-                                postMessage({ status: 'done', segments: segments });
+                                
+                                // Devolver la posesión de la RAM al hilo principal (Zero-Copy)
+                                postMessage({ status: 'done', segments: segments, pcmData: e.data.pcmData }, [e.data.pcmData.buffer]);
                             }
                         } catch (err) {
                             postMessage({ status: 'error', error: err.message || String(err) });
@@ -2250,6 +2265,7 @@
                     tempWorker.onmessage = (e) => {
                         if (e.data.status === 'done') {
                             vadSegments = e.data.segments;
+                            cachedPcmData = e.data.pcmData; // Recuperar la RAM intacta
                             resolve();
                         } else if (e.data.status === 'error') {
                             reject(new Error(e.data.error));
@@ -2257,17 +2273,15 @@
                     };
                     tempWorker.onerror = (err) => reject(new Error("Worker Crash: WebKit ha abatido el sub-proceso."));
 
-                    tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: cachedPcmData });
+                    // Transferir posesión de la memoria al Worker
+                    tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: cachedPcmData }, [cachedPcmData.buffer]);
                 });
-
-                drawForensicWaveform();
 
             } catch (e) {
                 console.error("Error en VAD:", e);
                 alert("Error Ejecutando Red Neuronal:\\n" + (e.message || String(e)));
-                cachedPcmData = null;
+                cachedPcmData = null; // Reset de seguridad en caso de fallo crítico
             } finally {
-                // 3. ANIQUILACIÓN TOTAL (Garantiza que la RAM de WASM se libera al 100%)
                 if (tempWorker) {
                     tempWorker.terminate();
                     tempWorker = null;
@@ -2275,8 +2289,16 @@
                 if (workerUrl) {
                     URL.revokeObjectURL(workerUrl);
                 }
+
+                // 4. RESUCITAR EL REPRODUCTOR NATIVO EN LA POSICIÓN EXACTA
+                initForensicAudio();
+                forensicAudio.addEventListener('loadedmetadata', () => {
+                    if (savedTime > 0) forensicAudio.currentTime = savedTime;
+                }, { once: true });
+
                 btn.innerHTML = originalText;
                 btn.disabled = false;
+                drawForensicWaveform();
             }
         }
     </script>
