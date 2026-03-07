@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.4.25] - 2026-03-07
+### Fixed
+- **Jetsam OOM por Corrupción Zero-Copy**: Sustitución del destructivo `Transferable Object` por una Clonación Estructurada estricta del Float32Array madre hacia el Web Worker. Safari ya no crasheará al intentar recuperar buffers desreferenciados iterativamente.
+- **Sobrecarga de RAM WASM (Chunking Muerte)**: Eliminada segmentación manual de Audios pesados en JavaScript. La delegación plena a las optimizaciones internas en C++ del parser ONNX reduce exponencialmente el pico colateral de GC.
+
 ## [v1.4.24] - 2026-03-07
 ### Fixed
 - **Jetsam OOM por VRAM Leak**: Eliminación agresiva del Backing Store del Canvas gráfico forzando su desasignación (`waveCv.width = 0`), previniendo caídas puras por falta de memoria de video al hacer scroll en iOS.
