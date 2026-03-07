@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.12] - 2026-03-07
+### Fixed
+- **WebKit Media Daemon Leak**: Subsanado un segundo vector de desbordamiento de RAM (Out Of Memory) en Safari iOS. Se descubrió que el recolector de basura no eliminaba los `Float32Array` PCM gigantes tras el análisis, ni el `<audio>` nativo al cerrar el archivo. Se forzó `pcmData = null` tras el pase de la IA, y se inyectaron directivas de WebKit (`removeAttribute('src')` y `.load()`) al cerrar el modal para aniquilar el buffer de medios retenido.
+
 ## [v1.4.11] - 2026-03-07
 ### Fixed
 - **WebKit Jetsam OOM Crash (Safari iOS)**: Subsanado un desbordamiento crítico de memoria RAM en el navegador tras encadenar múltiples análisis por IA. Se implementó un patrón Singleton para reciclar de manera global el Buffer WASM de `ONNXRuntime` y se acuchilló asíncronamente el hilo del `AudioContext.close()` tras la decodificación silenciando de raíz la proliferación de Daemons huérfanos de Audio.

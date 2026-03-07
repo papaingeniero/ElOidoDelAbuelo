@@ -1593,7 +1593,8 @@
             if (typeof jsonGenTimer !== 'undefined' && jsonGenTimer) clearInterval(jsonGenTimer);
             if (forensicAudio) {
                 forensicAudio.pause();
-                forensicAudio.src = '';
+                forensicAudio.removeAttribute('src'); // Critical for Safari iOS memory
+                forensicAudio.load(); // Forces WebKit to drop the audio buffer
                 forensicAudio = null;
             }
             forensicAudioUrl = '';
@@ -2184,14 +2185,18 @@
                 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
                 const audioCtx = new AudioContextClass({ sampleRate: 16000 });
                 const response = await fetch(forensicAudioUrl);
-                const arrayBuffer = await response.arrayBuffer();
-                const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-                const pcmData = audioBuffer.getChannelData(0); // Float32Array
+                let arrayBuffer = await response.arrayBuffer();
+                let audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                let pcmData = audioBuffer.getChannelData(0); // Float32Array
 
                 // CRITICAL FIX: Cerrar el thread de Audio para no apilar y colapsar Safari iOS
                 if (audioCtx.close) {
                     await audioCtx.close();
                 }
+
+                // Forzar liberación de memoria intermedia (ArrayBuffer ya no hace falta)
+                arrayBuffer = null;
+                audioBuffer = null;
 
                 // Configurar WebAssembly Paths explícitamente para evitar 404s en el NanoHTTPD
                 if (window.ort && window.ort.env && window.ort.env.wasm) {
@@ -2224,6 +2229,10 @@
                     // NOTA: Si es segundo, segment.start estará en rango. Si es MS, lo adaptamos luego si el usuario reporta.
                     vadSegments.push({ start: segment.start / 1000, end: segment.end / 1000 });
                 }
+
+                // Forzar liberación del array PCM gigante para evitar stack de basura
+                pcmData = null;
+
                 console.log("VAD Segments (segundos):", vadSegments);
                 drawForensicWaveform(); // Forzar repintado con los segmentos de IA
             } catch (e) {
