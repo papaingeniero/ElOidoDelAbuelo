@@ -259,6 +259,24 @@
             overflow-y: auto;
         }
 
+        @media screen and (orientation: landscape) and (max-height: 600px) {
+            .modal {
+                padding-top: 5px;
+                /* Ajustar ventana casi pegada al techo */
+            }
+
+            .modal-content {
+                padding: 10px 15px 30px 15px;
+                /* Comprimir paddings internos para ceder píxeles a la onda */
+                max-height: 95vh;
+            }
+
+            /* Subimos el max-height interior del canvas si lo hay */
+            #waveformModal .modal-content {
+                padding: 10px;
+            }
+        }
+
         .modal-content h2 {
             margin-top: 0;
             color: var(--status-green);
