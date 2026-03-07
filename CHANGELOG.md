@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.4] - 2026-03-07
+### Fixed
+- **Responsividad Safari iOS**: Se han re-equilibrado las directivas CSS de Flexbox de los nuevos botones de desplazamiento extendido, forzando parámetros `nowrap`, constrictores de `flex: 1` y pad-reductions. Con esto se garantiza que los 6 controles quepen firmemente alineados sin saltos de línea (wrap) en las pantallas estrechas nativas de los dispositivos iPhone contemporáneos.
+
 ## [v1.4.3] - 2026-03-07
 ### Added
 - **Controles de Salto Extendido (+/- 10s, 20s, 30s)**: Añadida en la vista web de escrutinio de grabaciones (`index.html`) una nueva sub-botonera de desplazamiento rápido, agilizando diametralmente la navegación y el `scrubbing` a lo largo de largas muestras de audio sin saturar el cliente de pulsaciones limitadas a 5s.
