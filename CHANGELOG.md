@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.29] - 2026-03-07
+### Fixed
+- **Crash Safari iOS en 2ª Invocación VAD (ArrayBuffer Neutered)**: Viaje asimétrico de datos: Transferable Objects solo en la ida (Main→Worker), Structured Clone en la vuelta (Worker→Main). Rehidratación del Float32Array con buffer virgen. Micro-delay de 100ms en `terminate()` para esquivar la carrera síncrona de WebKit.
+
 ## [v1.4.28] - 2026-03-07
 ### Fixed
 - **Saturación del Decodificador iOS**: Restitución al patrón `Ping-Pong Zero-Copy` en `runVADScanner()`. Transferimos transitoriamente el array retenido (`cachedPcmData`) al Web Worker y este nos devuelve la propiedad finalizado el proceso de Inferencia `Chunking`, esquivando así el abrumador latido OOM de reinstanciar un `AudioContext` en cada ajuste.

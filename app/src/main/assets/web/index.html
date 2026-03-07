@@ -2212,7 +2212,7 @@
             }
 
             try {
-                // 2. EXTRACCIÓN ÚNICA CON CACHÉ ZERO-COPY PING-PONG
+                // 2. EXTRACCIÓN ÚNICA CON CACHÉ
                 if (currentVadAudioUrl !== forensicAudioUrl || !cachedPcmData || cachedPcmData.length === 0) {
                     btn.innerHTML = '⏳ Decodificando Audio...';
                     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -2222,7 +2222,7 @@
                     let arrayBuffer = await response.arrayBuffer();
                     let tempAudioBuffer = await localCtx.decodeAudioData(arrayBuffer);
 
-                    cachedPcmData = tempAudioBuffer.getChannelData(0).slice();
+                    cachedPcmData = new Float32Array(tempAudioBuffer.getChannelData(0));
 
                     await localCtx.close();
                     localCtx = null;
@@ -2231,7 +2231,7 @@
                     currentVadAudioUrl = forensicAudioUrl;
                 }
 
-                // 3. WORKER KAMIKAZEN + CHUNKING + PING PONG
+                // 3. WORKER KAMIKAZE + CHUNKING + RETORNO SEGURO (Structured Clone)
                 btn.innerHTML = '🧠 Iniciando Motor WASM...';
                 const workerCode = `
                     importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
@@ -2251,7 +2251,7 @@
                                 });
                                 
                                 const sampleRate = 16000;
-                                const chunkSize = sampleRate * 15; // Aplanar consumo en Safari
+                                const chunkSize = sampleRate * 15;
                                 let allSegments = [];
                                 const totalChunks = Math.ceil(e.data.pcmData.length / chunkSize);
                                 
@@ -2267,8 +2267,9 @@
                                     postMessage({ status: 'progress', percent: Math.round(((i + 1) / totalChunks) * 100) });
                                 }
                                 
-                                // 🏓 PING-PONG: Devolver la posesión de la RAM al hilo principal
-                                postMessage({ status: 'done', segments: allSegments, pcmData: e.data.pcmData }, [e.data.pcmData.buffer]);
+                                // Viaje de vuelta: Structured Clone (SIN Transferable Objects)
+                                // WebKit/Safari corrompe el ArrayBuffer si se transfiere de vuelta y luego se hace terminate()
+                                postMessage({ status: 'done', segments: allSegments, pcmData: e.data.pcmData });
                             }
                         } catch (err) {
                             postMessage({ status: 'error', error: err.message || String(err) });
@@ -2288,7 +2289,8 @@
                             btn.innerHTML = '🧠 Analizando (' + e.data.percent + '%)...';
                         } else if (e.data.status === 'done') {
                             vadSegments = e.data.segments;
-                            cachedPcmData = e.data.pcmData; // 🏓 RECUPERAR LA CACHÉ
+                            // Rehidratar un Float32Array fresco con ArrayBuffer propio (Anti-Neutered)
+                            cachedPcmData = new Float32Array(e.data.pcmData);
                             resolve();
                         } else if (e.data.status === 'error') {
                             reject(new Error(e.data.error));
@@ -2296,16 +2298,21 @@
                     };
                     tempWorker.onerror = (err) => reject(new Error("Worker Crash WebKit"));
 
-                    // 🏓 PING-PONG: Prestar la memoria al Worker y desvincularla del hilo principal
+                    // Viaje de ida: SÍ destructivo (Transferable) para vaciar el Hilo Principal
                     tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: cachedPcmData }, [cachedPcmData.buffer]);
                 });
 
             } catch (e) {
                 console.error("Error en VAD:", e);
                 alert("Error Ejecutando Red Neuronal:\\n" + (e.message || String(e)));
-                cachedPcmData = null; // Purgar si hay fallo para no corromper la siguiente pasada
+                cachedPcmData = null;
             } finally {
-                if (tempWorker) { tempWorker.terminate(); tempWorker = null; }
+                // Micro-delay: dar margen a Safari para completar el postMessage de retorno
+                if (tempWorker) {
+                    const workerToKill = tempWorker;
+                    setTimeout(() => { workerToKill.terminate(); }, 100);
+                    tempWorker = null;
+                }
                 if (workerUrl) { URL.revokeObjectURL(workerUrl); }
 
                 btn.innerHTML = originalText;
