@@ -1,12 +1,11 @@
-## 🚀 Extreme WASM Sandbox & Termination v1.4.16 | 07/03/2026
+## 🚀 Blob Worker URL Fix v1.4.17 | 07/03/2026
 ### 📜 El Problema
-A pesar de las mejoras previas (v1.4.15), el "Jetsam Panic" (Out-Of-Memory) persistía en iOS Safari al terminar de escanear audios sucesivos con el analizador VAD. El origen radicaba en que el Web Worker y su motor interno WASM (ONNX Runtime) no liberaban su gigantesco *heap* de memoria tras enviar el mensaje de `done`, ni tampoco era suficiente rebotar un nuevo stream `pcmData`. 
+Tras la monumental hazaña de contener a Safari encapsulando todo el Motor VAD en un Sandbox Web Worker (v1.4.16), nos enfrentamos a las consecuencias de haber instanciado ese código nativo desde el vacío de un Objeto de Dominio Local (`new Blob`). Este objeto efímero no cuenta con una "Carpeta Raíz" (Base URL); por lo tanto, cuando el núcleo neuronal precompilado de `@ricky0123/vad-web` pretendía descargar su pesada matriz tensorial (`silero_vad.onnx`) llamando a `/` (su padre absoluto), colapsaba exclamando categóricamente `URL is not valid`.
 
 ### 🛠️ La Solución
-Se ha insertado la solución arquitectónica quirúrgica final en el entorno del `Web Worker` de `index.html`:
-1. **Destrucción Incondicional**: Tras concluir el análisis, y dentro del bloque `finally` de `runVADScanner`, la instrucción `vadWorker.terminate()` se dispara ciegamente. 
-2. **Purgado Radical de Objetos URL**: Liberación con `URL.revokeObjectURL(workerUrl)` impidiendo que iOS retenga los Blobs en caché, forzando la muerte del subproceso completo y su respectiva carga WebAssembly.
-3. **Restauración VAD API**: Regreso al flujo de inicialización correcto `vad.NonRealTimeVAD.new()` dentro de la estructura Web Worker.
+Intervención estructural y forzado directo de rutas. Se han inyectado en la API del Worker parámetros rigurosamente acotados dentro del generador principal de instanciación VAD:
+1. `modelURL` establecido apuntando tajantemente al dominio principal HTTPS de `jsdelivr`.
+2. `workletURL` redirigido para blindar posibles fugas al importar submódulos paralelos.
 
 ### 🎓 Lecciones Aprendidas
-- **WebKit Death Trap**: El navegador nativo de Apple requiere que se le mate el Sub-Proceso Worker sin piedad al acabar la tarea intensa. Las almas de los Workers (y las sesiones de red neuronal ONNX que habitan en ellos) nunca ceden voluntariamente la RAM al hilo principal por más `nulls` que se apliquen internamente.
+- **El Vacío Terapéutico del Blob**: Construir un Worker inyectándole Strings desde JavaScript salva vidas en entornos sin empaquetadores como WebPack o Node JS. Sin embargo, roba a las herramientas foráneas de todo rastro contextual. Proporcionar "Coordenadas UTM" (`modelURL`) es un deber inapelable al tratar con bibliotecas remotas estáticas a nivel Frontend.

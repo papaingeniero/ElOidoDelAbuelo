@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.4.17] - 2026-03-07
+### Fixed
+- **Blob Worker URL Crash**: Subsanado fallo `URL is not valid` originado debido a que los hilos WASM instanciados a partir de un Blob perdían el contexto base del servidor. 
+  1. Se inyectan pasaportes de acceso absoluto para el archivo `silero_vad.onnx`.
+  2. Resoluciones firmes e inapelables de Worklet sobre la ruta CND (`vad.worklet.bundle.min.js`).
+
 ## [v1.4.16] - 2026-03-07
 ### Fixed
 - **WebKit Jetsam & OOM Crash (Safari iOS)**: Prevención total y definitiva del Memory Leak en Safari al analizar audios sucesivos con VAD.

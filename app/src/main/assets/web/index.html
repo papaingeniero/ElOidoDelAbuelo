@@ -2216,11 +2216,13 @@
                     onmessage = async function(e) {
                         try {
                             if (e.data.action === 'run') {
-                                // Limitar a un hilo para evitar explosión de memoria en WebKit
                                 ort.env.wasm.numThreads = 1;
                                 ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
                                 
+                                // INYECCIÓN DE RUTAS ABSOLUTAS PARA EVITAR EL CRASHEO DEL BLOB
                                 const myvad = await vad.NonRealTimeVAD.new({
+                                    modelURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/silero_vad.onnx',
+                                    workletURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/vad.worklet.bundle.min.js',
                                     positiveSpeechThreshold: e.data.threshold,
                                     negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
                                 });
