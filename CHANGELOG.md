@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.27] - 2026-03-07
+### Fixed
+- **OOM Jetsam Constante (Zombies RAM y VRAM)**: Destruccción total de canvas Backing Store imponiendo explícitamente `waveCv.width = 0`. Erradicación de invocaciones `<script>` fantasma en el `index.html`. Y desactivación pura de auto-reproducción `AVFoundation` para evitar solapamiento concurrente en la matriz de memoria de Apple versus el GC del Thread WebAssembly.
+
 ## [v1.4.26] - 2026-03-07
 ### Fixed
 - **Jetsam OOM por Acumulación Dinámica (Stateless VAD)**: Erradicación absoluta de la caché PCM (Amnesia Total). El Hilo Principal delega destructivamente el array entero hacia el Worker y olvida su existencia para maximizar la bolsa global de RAM.

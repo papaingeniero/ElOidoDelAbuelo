@@ -1588,7 +1588,6 @@
         function closeWaveform() {
             vadSegments = [];
             if (typeof jsonGenTimer !== 'undefined' && jsonGenTimer) clearInterval(jsonGenTimer);
-
             if (forensicAudio) {
                 forensicAudio.pause();
                 forensicAudio.removeAttribute('src');
@@ -1599,16 +1598,14 @@
             isWavePlaying = false;
             wavePlayBtn.innerHTML = "▶️ PLAY";
 
-            // Purga extrema de RAM
             cachedPcmData = null;
             currentVadAudioUrl = null;
             window.vadSavedTime = 0;
 
-            // 🔥 TRUCO ANTI-JETSAM PARA SCROLL: Vaciar VRAM del Canvas
             const waveCv = document.getElementById('waveCanvas');
             if (waveCv) {
                 const w = waveCv.width;
-                waveCv.width = 0; // Obliga a WebKit a destruir el buffer de píxeles
+                waveCv.width = 0;
                 waveCv.width = w;
             }
 
@@ -1776,7 +1773,6 @@
         }
 
         function initForensicAudio() {
-            // Crear el <audio> con sus listeners (llamar SOLO dentro de gesto de usuario)
             forensicAudio = new Audio(forensicAudioUrl);
             forensicAudio.setAttribute('playsinline', '');
             forensicAudio.ontimeupdate = function () {
@@ -1794,10 +1790,9 @@
                 if (forensicDuration <= 1 || isNaN(forensicDuration) || forensicPeaks.length <= 1) {
                     forensicDuration = forensicAudio.duration;
                 }
-                // ⏳ RECUPERACIÓN DE POSICIÓN TRAS IA
                 if (window.vadSavedTime && window.vadSavedTime > 0) {
                     forensicAudio.currentTime = window.vadSavedTime;
-                    window.vadSavedTime = 0; // Consumido
+                    window.vadSavedTime = 0;
                 }
                 drawForensicWaveform();
                 updateWaveTimeDisplay();
@@ -2199,7 +2194,6 @@
             let tempWorker = null;
             let workerUrl = null;
 
-            // 1. FREEZE Y PURGA NATIVA (Aislamos a AVFoundation)
             if (forensicAudio) {
                 btn.innerHTML = '⏳ Vaciando RAM...';
                 window.vadSavedTime = forensicAudio.currentTime || 0;
@@ -2211,14 +2205,12 @@
                 const playBtn = document.getElementById('wavePlayBtn');
                 if (playBtn) playBtn.innerHTML = '▶️ PLAY';
 
-                // Respiro preventivo para que el Recolector de Basura de Apple limpie el AVPlayer
                 await new Promise(resolve => setTimeout(resolve, 1000));
             } else if (!window.vadSavedTime) {
                 window.vadSavedTime = 0;
             }
 
             try {
-                // 2. EXTRACCIÓN EFÍMERA (Sin caché. Se ejecuta de cero y se transfiere sin retorno)
                 btn.innerHTML = '⏳ Preparando Motor...';
                 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
                 let localCtx = new AudioContextClass({ sampleRate: 16000 });
@@ -2229,13 +2221,11 @@
 
                 let pcmData = tempAudioBuffer.getChannelData(0).slice();
 
-                // Aniquilación inmediata del contexto multimedia
                 await localCtx.close();
                 localCtx = null;
                 arrayBuffer = null;
                 tempAudioBuffer = null;
 
-                // 3. WORKER KAMIKAZE
                 btn.innerHTML = '🧠 Arrancando Red...';
                 const workerCode = `
                     importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
@@ -2283,19 +2273,16 @@
                             reject(new Error(e.data.error));
                         }
                     };
-                    tempWorker.onerror = (err) => reject(new Error("Worker Crash por sobrecarga WASM"));
+                    tempWorker.onerror = (err) => reject(new Error("Worker Crash"));
 
-                    // TRANSFERENCIA DESTRUCTIVA: El hilo principal pierde el control del ArrayBuffer.
-                    // Es la forma más limpia de inyectar datos en WASM sin duplicar RAM.
                     tempWorker.postMessage({ action: 'run', threshold: threshold, pcmData: pcmData }, [pcmData.buffer]);
-                    pcmData = null; // Eliminación absoluta de referencias
+                    pcmData = null;
                 });
 
             } catch (e) {
                 console.error("Error en VAD:", e);
                 alert("Error de Procesamiento:\\n" + (e.message || String(e)));
             } finally {
-                // ANIQUILACIÓN DEL WORKER Y LIBERACIÓN TOTAL DE RAM
                 if (tempWorker) { tempWorker.terminate(); tempWorker = null; }
                 if (workerUrl) { URL.revokeObjectURL(workerUrl); }
 
