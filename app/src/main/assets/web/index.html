@@ -1587,24 +1587,27 @@
             }
 
             // Consultar silenciosamente por la caché de VAD para Zero-Shot IA
-            const btnIA = document.getElementById('btnScanIA');
-            btnIA.innerHTML = '🧠 Analizar Voces (IA)';
-            btnIA.disabled = false;
+            window.vadCheckpointData = null;
+            vadSegments = [];
+            const btnScan = document.getElementById('btnScanIA');
+            if (btnScan) { btnScan.innerHTML = '🧠 Analizar Voces (IA)'; btnScan.disabled = false; }
+
             fetch('/api/vad_load?file=' + encodeURIComponent(fileName))
-                .then(r => r.json())
+                .then(res => res.json())
                 .then(data => {
-                    if (data.segments && data.segments.length > 0) {
-                        vadSegments = data.segments;
+                    if (data && data.exists !== false) {
                         window.vadCheckpointData = data;
-                        if (data.complete) {
-                            btnIA.innerHTML = '✅ Caché Instantánea';
-                        } else {
-                            const pct = Math.round((data.lastChunkProcessed / data.totalChunks) * 100);
-                            btnIA.innerHTML = '▶️ Continuar IA (' + pct + '%)';
+                        if (data.complete && data.segments) {
+                            vadSegments = data.segments;
+                            if (btnScan) {
+                                btnScan.innerHTML = '✨ Caché Instantánea Aplicada';
+                            }
+                            drawForensicWaveform(); // CRÍTICO: Repintar la onda roja
+                        } else if (data.lastChunkProcessed > 0) {
+                            if (btnScan) btnScan.innerHTML = '▶️ Continuar Análisis (' + data.lastChunkProcessed + ' chunks)';
                         }
-                        drawForensicWaveform();
                     }
-                }).catch(e => console.error("Cache check fallido", e));
+                }).catch(e => console.error("Error VAD cache", e));
         }
 
         function closeWaveform() {
@@ -2313,7 +2316,6 @@
                 let startChunk = 0;
                 if (window.vadCheckpointData && window.vadCheckpointData.lastChunkProcessed > 0) {
                     startChunk = window.vadCheckpointData.lastChunkProcessed;
-                    // Precargar resultados anteriores
                     if (window.vadCheckpointData.segments) {
                         results.push(...window.vadCheckpointData.segments);
                     }
@@ -2393,7 +2395,7 @@
 
                 remoteLog('[VAD-T0a] Loop completado, results: ' + results.length);
 
-                // FORZAR LIBERACIÓN DE MEMORIA DEL HILO PRINCIPAL
+                // FORZAR LIBERACIÓN DE MEMORIA DEL HILO PRINCIPAL ANTES DEL PLAY
                 if (typeof channelData !== 'undefined') channelData = null;
                 if (typeof decoded !== 'undefined') decoded = null;
 

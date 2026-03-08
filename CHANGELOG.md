@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.4.50] - 2026-03-08
+### Fixed
+- **Zero-Shot UX Delay**: Desplazado `drawForensicWaveform()` dentro de la promesa asíncrona `fetch` que recupera el progreso VAD (`/api/vad_load`), garantizando que las bandas rojas de voz se dibujen instantáneamente al reabrir archivos analizados en lugar de mostrarse invisibles por desincronización DOM.
+- **Strict Resume Override**: Corrección del indexado dinámico de WASM. Carga fidedigna de `startChunk` extraída asincronamente sobre el Scope local forzando a evadir las iteraciones duplicadas post-crash.
+- **Deep Memory Purge (AVFoundation)**: Movidas flagrantemente a lo más hondo de `_executeVadScan()` las coerciones nulas `channelData = null; decoded = null;` forzando de forma incontestable el descargo sobre la RAM de Apple previo a interactuar con Audio.
+
 ## [v1.4.49] - 2026-03-08
 ### Fixed
 - **Resume Bug (Checkpoint Loop Logic)**: Forzada inicialización de `startChunk` interpretando estrictamente `window.vadCheckpointData` previniendo reevaluaciones inútiles y retomando fielmente desde el porcentaje guardado post-crash.

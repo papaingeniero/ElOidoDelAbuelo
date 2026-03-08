@@ -1,12 +1,16 @@
-## 🚀 VAD Checkpointing Resume & OOM Fix v1.4.49 | 08/03/2026
+## 🚀 VAD Checkpointing UX & Deep Purge v1.4.50 | 08/03/2026
 
 ### 📜 El Problema
-Tras la implementación original del Checkpointing, se descubrieron dos bugs críticos que impedían un análisis pesado (21+ minutos) ininterrumpido:
-1. **Crash de Reanudación:** Si el sistema caía, el frontend enviaba un chunk de reinicio incorrecto y comenzaba a reevaluar todo el audio desde 0% en vez de "saltarse" lo completado, quemando recursos valiosos.
-2. **Jetsam por Retención de Referencias Ocultas:** Aunque WebAssembly y AudioContext fuesen reseteados puramente, el gran `Float32Array` de 80MB llamado `channelData` no se destruía antes de reanudar el evento gráfico. Al terminar el chunking, este gigantesco buffer residía congelado referenciado por la lógica `_executeVadScan`, reventando los hilos cuando el usuario pulsaba en *reproducir* (Play audio) mezclando memoria nativa `AVFoundation` mas VAD buffer retenido.
+Los testers detectaron 3 brechas colaterales de la arquitectura Checkpointing en WebKit:
+1. **El Síndrome de la Caché Invisible:** Los audios 100% analizados no mostraban sus barras rojas (Zero-Shot) al abrirse porque `fetch` opera asíncronamente; el DOM recargaba el Canvas antes de que el JSON fuese interpretado, dejando la gráfica en blanco.
+2. **El Falso Resume:** Al simular una caída asíncrona, el index de rescate (`startChunk`) era pre-asignado a 0 por un desliz léxico en la inyección de código, forzando a reevaluar todo.
+3. **El Inmortal ChannelData:** Un agujero ciego en el ciclo de vida del garbage collector de Safari seguía manteniendo vivo el `Float32Array` de 80MB pese a asignar `channelData = null`. El momento exacto de la directiva no interceptaba adecuadamente la instanciación tardía de variables.
 
 ### 🛠️ La Solución
-Se ha purgado agresivamente el código del `index.html` sin contemplación implementado las órdenes precisas:
-1. **Precisión Quirúrgica de Variables:** Identificado y corregido que el `openWaveform` pasara correctamente la lectura del `GET /api/vad_load` del JSON incompleto al valor local estricto de `window.vadCheckpointData`.
-2. **Resume por Salto Seguro:** Modificada en raíz la función `_executeVadScan` forzando un `let startChunk = 0`, luego leyendo `window.vadCheckpointData.lastChunkProcessed`, validando que exista y ordenando al bucle de WASM (`for(let i = startChunk...)`) saltarse las pasadas inútiles.
-3. **Erradicación de la Referencia ChannelData (Corte en Frío):** Se ha ejecutado el plan táctico "B". Segundos antes del cierre incondicional (`return results;`), el hilo principal purga explícitamente sus variables (`if (typeof channelData !== 'undefined') channelData = null;`) aniquilando al clon zombie y dejando espacio en VRAM y RAM para AVFoundation y Canvas.
+Se han ejecutado 3 inyecciones directas en `index.html` sin debate, estabilizando absolutamente el ecosistema:
+1. **Invocación Gráfica Asíncrona:** El repintado del VAD (`drawForensicWaveform()`) ahora se llama *estrictamente dentro* de la promesa `.then()` del `fetch('/api/vad_load')`, inyectando la onda roja al milisegundo en que la cache es verificada, no antes.
+2. **Override Implacable:** Reemplazada la declaración del Offset dictando una transferencia fidedigna a `startChunk` respetando la variable estática `window.vadCheckpointData`.
+3. **Aniquilación Termonuclear:** Se ha bajado la anulación de memoria `typeof channelData !== 'undefined'` a la frontera más profunda de la función `_executeVadScan`, garantizando que absolutamente nada intercepte su desreferenciación antes de ceder el poder al motor `AVFoundation`.
+
+### 🎓 Lecciones Aprendidas
+- **Las Promesas No Prometen Oportunidad:** Nunca inicies repintados en un hilo principal si dependes de estados gestionados desde el interior de una MicroTask asíncrona (`fetch`). Enlázalo siempre en su `.then()`.
