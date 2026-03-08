@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.4.48] - 2026-03-08
+### Added
+- **VAD Checkpointing (Caché Constante)**: El servidor NanoHTTPD de Android ahora expone endpoints `POST /api/vad_save` y `GET /api/vad_load` para persistir progresivamente en `/sdcard` las detecciones VAD de los archivos `.m4a`.
+### Changed
+- **Zero-Shot VAD**: La interfaz `openWaveform` lee silenciosamente el registro JSON del VAD al abrir un audio. Si está al 100%, pinta el análisis de IA de manera instántanea esquivando de raíz la compilación y ejecución de WebAssembly.
+- **Skip-Slicing Resiliente**: Ante caídas severas por Memory Leak (OOM Jetsam) de Safari a mitad de un archivo kilométrico (21+ min), al reabrir el archivo, el bucle procesador asimila el Checkpoint pre-cayida y arranca a partir del chunk exacto donde murió.
+
 ## [v1.4.33] - 2026-03-08
 ### Fixed
 - **OOM Root Cause (Ghost Reference)**: `const channelData` retenía ~80MB del AudioBuffer en scope impidiendo GC. Cambiado a `let` y anulado tras el streaming. `decoded` anulado antes de WASM. Pausa GC de 2s para Safari.

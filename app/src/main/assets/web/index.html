@@ -1494,6 +1494,7 @@
         let forensicAudio = null;
         let forensicAudioUrl = ''; // URL para crear el Audio solo en PLAY
         let vadSegments = []; // Array para guardar los segmentos {start, end}
+        let vadFileCache = null; // Guardará el estado de recuperación de VAD
         let globalAudioCtx = null; // CACHE para evitar leak de AudioContext en WebKit
         let cachedPcmData = null;
         let currentVadAudioUrl = null;
@@ -1585,10 +1586,31 @@
                 drawForensicWaveform();
                 updateWaveTimeDisplay();
             }
+
+            // Consultar silenciosamente por la caché de VAD para Zero-Shot IA
+            const btnIA = document.getElementById('btnScanIA');
+            btnIA.innerHTML = '🧠 Analizar Voces (IA)';
+            btnIA.disabled = false;
+            fetch('/api/vad_load?file=' + encodeURIComponent(fileName))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.segments && data.segments.length > 0) {
+                        vadSegments = data.segments;
+                        vadFileCache = data;
+                        if (data.complete) {
+                            btnIA.innerHTML = '✅ Caché Instantánea';
+                        } else {
+                            const pct = Math.round((data.lastChunkProcessed / data.totalChunks) * 100);
+                            btnIA.innerHTML = '▶️ Continuar IA (' + pct + '%)';
+                        }
+                        drawForensicWaveform();
+                    }
+                }).catch(e => console.error("Cache check fallido", e));
         }
 
         function closeWaveform() {
             vadSegments = [];
+            vadFileCache = null;
             if (typeof jsonGenTimer !== 'undefined' && jsonGenTimer) clearInterval(jsonGenTimer);
             if (forensicAudio) {
                 forensicAudio.pause();
@@ -2288,13 +2310,20 @@
             }
 
             try {
-                await instantiateWorker();
+                const results = (vadFileCache && vadFileCache.segments) ? [...vadFileCache.segments] : [];
+                let startChunkIndex = (vadFileCache && vadFileCache.lastChunkProcessed >= 0) ? vadFileCache.lastChunkProcessed + 1 : 0;
+                
+                // Si ya está completado en caché, saltamos todo (Zero-Shot VAD)
+                if (startChunkIndex >= totalChunks || (vadFileCache && vadFileCache.complete)) {
+                    remoteLog('[VAD-CACHE] Zero-Shot VAD activado. Retornando caché instantánea.');
+                    return results;
+                }
 
-                const results = [];
+                await instantiateWorker();
                 const WASM_ROTATION_LIMIT = 30; // ~7.5 minutos de audio por instancia WASM
                 let chunksProcessedInWorker = 0;
 
-                for (let i = 0; i < totalChunks; i++) {
+                for (let i = startChunkIndex; i < totalChunks; i++) {
                     const offsetSec = (i * chunkSize) / SAMPLE_RATE;
                     if (onProgress) onProgress(Math.round((i / totalChunks) * 100));
 
@@ -2303,13 +2332,11 @@
                         remoteLog('[VAD-ROTATION] Destruyendo Worker ' + chunksProcessedInWorker + '...');
                         worker.terminate();
                         worker = null; // Eliminamos la referencia estáticamente ANTES de la pausa
-
+                        
                         // GC PAUSA EXTREMA (3.5s): iOS Safari es extremadamente vago liberando RAM de Threads destruidos.
-                        // Si instanciamos el nuevo WASM mientras el viejo se está desmembrando, el pico sumado (200MB + 200MB)
-                        // detona el límite Jetsam de la pestaña y crashea. Así que le damos 3500ms enteros al OS para barrer.
                         remoteLog('[VAD-ROTATION] Esperando purga RAM iOS (3.5s)...');
-                        await new Promise(resolve => setTimeout(resolve, 3500));
-
+                        await new Promise(resolve => setTimeout(resolve, 3500)); 
+                        
                         remoteLog('[VAD-ROTATION] Levantando nuevo motor WASM...');
                         await instantiateWorker();
                         remoteLog('[VAD-ROTATION] Worker renacido listo para chunk ' + i);
@@ -2333,7 +2360,30 @@
                         );
                         preSlicedChunks[i] = null;
                     });
+
+                    // VAD CHECKPOINTING (Debounce Save cada 10 chunks)
+                    if (i > startChunkIndex && i % 10 === 0) {
+                        try {
+                            const payload = { file: waveFileName, complete: false, lastChunkProcessed: i, totalChunks: totalChunks, segments: results };
+                            const data = new URLSearchParams();
+                            data.append('postData', JSON.stringify(payload));
+                            navigator.sendBeacon('/api/vad_save', data);
+                            remoteLog('[VAD-CACHE] Checkpoint parcial guardado (Chunk ' + i + ')');
+                        } catch(e) {}
+                    }
                 }
+
+                // VAD FINAL SAVE
+                try {
+                    const payload = { file: waveFileName, complete: true, lastChunkProcessed: totalChunks - 1, totalChunks: totalChunks, segments: results };
+                    const data = new URLSearchParams();
+                    data.append('postData', JSON.stringify(payload));
+                    navigator.sendBeacon('/api/vad_save', data);
+                    remoteLog('[VAD-CACHE] Guardado final completado (100%)');
+                    
+                    // Actualizar caché en memoria para evadir re-procesados inmediatos
+                    vadFileCache = payload; 
+                } catch(e) {}
 
                 remoteLog('[VAD-T0a] Loop completado, results: ' + results.length);
                 return results;
@@ -2367,6 +2417,16 @@
             const originalText = btn.innerHTML;
             const threshold = parseFloat(document.getElementById('inpVadThresh').value);
             btn.disabled = true;
+
+            // Si ya tenemos cache completa, saltamos toda la parte gráfica destructiva de carga
+            if (vadFileCache && vadFileCache.complete) {
+                btn.innerHTML = '✅ Caché Instantánea Aplicada';
+                drawForensicWaveform();
+                await new Promise(resolve => setTimeout(resolve, 800));
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                return;
+            }
 
             // 1. FREEZE
             if (forensicAudio) {

@@ -653,6 +653,50 @@ public class WebServer extends NanoHTTPD {
                         "Error reproduciendo audio: " + e.getMessage());
             }
         }
+        if ("/api/vad_save".equals(uri) && Method.POST.equals(session.getMethod())) {
+            try {
+                Map<String, String> filesMap = new HashMap<>();
+                session.parseBody(filesMap);
+                String postData = filesMap.get("postData");
+                if (postData != null) {
+                    JSONObject json = new JSONObject(postData);
+                    String fileName = json.optString("file", "");
+                    if (!fileName.isEmpty()) {
+                        File dir = new File(Environment.getExternalStorageDirectory(), "ElOidoDelAbuelo");
+                        if (!dir.exists()) dir.mkdirs();
+                        File vadFile = new File(dir, fileName + ".vad.json");
+                        java.io.FileWriter fp = new java.io.FileWriter(vadFile);
+                        fp.write(postData);
+                        fp.close();
+                    }
+                }
+                return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\":\"ok\"}");
+            } catch (Exception e) {
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "Error vad_save");
+            }
+        }
+
+        if ("/api/vad_load".equals(uri) && Method.GET.equals(session.getMethod())) {
+            try {
+                Map<String, String> parms = session.getParms();
+                String fileName = parms.get("file");
+                if (fileName != null && !fileName.isEmpty()) {
+                    File dir = new File(Environment.getExternalStorageDirectory(), "ElOidoDelAbuelo");
+                    File vadFile = new File(dir, fileName + ".vad.json");
+                    if (vadFile.exists()) {
+                        FileInputStream fis = new FileInputStream(vadFile);
+                        byte[] data = new byte[(int) vadFile.length()];
+                        fis.read(data);
+                        fis.close();
+                        String jsonString = new String(data, "UTF-8");
+                        return newFixedLengthResponse(Response.Status.OK, "application/json", jsonString);
+                    }
+                }
+                return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"exists\":false}");
+            } catch (Exception e) {
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "Error vad_load");
+            }
+        }
 
         if ("/api/jslog".equals(uri)) {
             try {
