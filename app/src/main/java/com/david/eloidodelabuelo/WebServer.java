@@ -654,6 +654,22 @@ public class WebServer extends NanoHTTPD {
             }
         }
 
+        if ("/api/jslog".equals(uri) && Method.POST.equals(session.getMethod())) {
+            try {
+                Map<String, String> filesMap = new HashMap<>();
+                session.parseBody(filesMap);
+                String postData = filesMap.get("postData");
+                if (postData != null) {
+                    JSONObject json = new JSONObject(postData);
+                    String msg = json.optString("msg", "");
+                    WebServer.logToWeb("SAFARI-JS", msg);
+                }
+                return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\":\"ok\"}");
+            } catch (Exception e) {
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "Error jslog");
+            }
+        }
+
         if ("/api/stream".equals(uri)) {
             // Streaming en Vivo ADTS-AAC Directo (V28)
             java.io.PipedInputStream pipedInputStream = new java.io.PipedInputStream(16384);

@@ -2308,14 +2308,23 @@
                     });
                 }
 
-                console.error('[VAD-T0a] Loop completado, results:', results.length);
+                remoteLog('[VAD-T0a] Loop completado, results: ' + results.length);
                 return results;
             } finally {
-                console.error('[VAD-T0b] Finally: terminando Worker');
+                remoteLog('[VAD-T0b] Finally: terminando Worker');
                 worker.terminate();
                 URL.revokeObjectURL(wUrl);
-                console.error('[VAD-T0c] Worker terminado y URL revocada');
+                remoteLog('[VAD-T0c] Worker terminado y URL revocada');
             }
+        }
+
+        function remoteLog(msg) {
+            console.error(msg); // Mantener en consola local
+            fetch('/api/jslog', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'postData=' + encodeURIComponent(JSON.stringify({ msg: msg }))
+            }).catch(e => { }); // Fuego y olvido
         }
 
         async function runVADScanner() {
@@ -2355,33 +2364,33 @@
                     btn.innerHTML = '🧠 Analizando (' + pct + '%)...';
                 });
                 vadSegments = segments;
-                console.error('[VAD-T1] Scan completado. Segments:', vadSegments.length);
+                remoteLog('[VAD-T1] Scan completado. Segments: ' + vadSegments.length);
 
                 // 3. RESPIRO: _executeVadScan ya retornó, su scope está MUERTO.
                 btn.innerHTML = '🔬 T2: Worker muerto, esperando GC 5s...';
-                console.error('[VAD-T2] Iniciando GC pause 5s');
+                remoteLog('[VAD-T2] Iniciando GC pause 5s');
                 await new Promise(resolve => setTimeout(resolve, 5000));
 
-                console.error('[VAD-T3] GC pause terminada');
+                remoteLog('[VAD-T3] GC pause terminada');
                 btn.innerHTML = '🔬 T3: Re-inicializando audio...';
 
                 // Pre-inicializar audio DURANTE la pausa (no allocate al pulsar PLAY)
                 initForensicAudio();
-                console.error('[VAD-T4] initForensicAudio() completado');
+                remoteLog('[VAD-T4] initForensicAudio() completado');
                 btn.innerHTML = '🔬 T4: Audio listo';
 
             } catch (e) {
-                console.error("[VAD-ERROR]", e);
+                remoteLog("[VAD-ERROR] " + (e.message || String(e)));
                 alert("Error Ejecutando Red Neuronal:\\n" + (e.message || String(e)));
             } finally {
-                console.error('[VAD-T5] Entrando en finally');
+                remoteLog('[VAD-T5] Entrando en finally');
                 btn.innerHTML = '🔬 T5: Dibujando forma de onda...';
                 btn.disabled = false;
-                console.error('[VAD-T6] Llamando drawForensicWaveform()');
+                remoteLog('[VAD-T6] Llamando drawForensicWaveform()');
                 drawForensicWaveform();
-                console.error('[VAD-T7] drawForensicWaveform() completado');
+                remoteLog('[VAD-T7] drawForensicWaveform() completado');
                 btn.innerHTML = originalText;
-                console.error('[VAD-T8] TODO completado OK');
+                remoteLog('[VAD-T8] TODO completado OK');
             }
         }
     </script>
