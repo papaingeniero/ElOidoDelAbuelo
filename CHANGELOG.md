@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.56] - 2026-03-08
+### Fixed
+- **Controlled Suicide Reload Protocol**: El modelo de reseteo de Web Worker ha sido sustituido globalmente por una recarga física dura mitigadora para iOS (`window.location.reload()`). WebKit sumaba contadores ocultos de `Canvas/AudioBuffers` que terminaban en un "Anti-Crash Loop Banned" fatal por parte de Safari tras muchos sub-crashes. Ahora cada 20 chunks procesados, la web se suicida limpiamente e invoca el Protocolo Fénix, que ha elevado su paciencia pasiva a 2000ms previo a reanudar la batalla para enmascarar su naturaleza botística y blanquear contadores de Safari al 100%.
+
 ## [v1.4.55] - 2026-03-08
 ### Added
 - **Dynamic VAD Cache Invalidation**: Agregado un `addEventListener` reactivo al deslizador de umbral de IA (`inpVadThresh`). Si el usuario desliza la pieza ajustando la sensibilidad térmica militar sobre un archivo de caché persistente 100% completado (Zero-Shot), la IA activa inmediatamente una directiva de auto-aniquilación de Memoria WebKit para dicha previsualización antigua (`window.vadCheckpointData = null`), limpia la matriz gráfica canvas de rojo a gris puro y desbloquea el botón primario instando visualmente a recalcular la pista.

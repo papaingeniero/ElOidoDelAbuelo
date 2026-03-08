@@ -1621,14 +1621,14 @@
                             // 🔥 FÉNIX: Auto-Continuar si venimos de un crash
                             if (localStorage.getItem('activeVadScan') === fileName) {
                                 if (btnScan) btnScan.innerHTML = '🔄 Autorecuperando...';
-                                setTimeout(() => runVADScanner(), 800);
+                                setTimeout(() => runVADScanner(), 2000);
                             }
                         }
                     } else {
                         // FÉNIX: Crasheó antes del primer guardado
                         if (localStorage.getItem('activeVadScan') === fileName) {
                             if (btnScan) btnScan.innerHTML = '🔄 Autorecuperando...';
-                            setTimeout(() => runVADScanner(), 800);
+                            setTimeout(() => runVADScanner(), 2000);
                         }
                     }
                 }).catch(e => console.error("Error VAD cache", e));
@@ -2354,23 +2354,12 @@
                 if (startChunk >= totalChunks) return results;
 
                 await instantiateWorker();
-                const WASM_ROTATION_LIMIT = 25;
+                const WASM_ROTATION_LIMIT = 20;
                 let chunksProcessedInWorker = 0;
 
                 for (let i = startChunk; i < totalChunks; i++) {
                     const offsetSec = (i * chunkSize) / SAMPLE_RATE;
                     if (onProgress) onProgress(Math.round((i / totalChunks) * 100));
-
-                    if (chunksProcessedInWorker > 0 && chunksProcessedInWorker % WASM_ROTATION_LIMIT === 0) {
-                        remoteLog('[VAD-ROTATION] Destruyendo Worker...');
-                        worker.terminate();
-                        worker = null;
-                        remoteLog('[VAD-ROTATION] Esperando purga RAM iOS (5.0s)...');
-                        await new Promise(resolve => setTimeout(resolve, 5000));
-                        remoteLog('[VAD-ROTATION] Levantando nuevo motor...');
-                        await instantiateWorker();
-                        chunksProcessedInWorker = 0;
-                    }
 
                     await new Promise((resolve, reject) => {
                         worker.onmessage = (e) => {
@@ -2390,7 +2379,6 @@
                         preSlicedChunks[i] = null;
                     });
 
-                    // 🔥 EL FIX: USAR FETCH CON JSON EN VEZ DE SEND_BEACON
                     if (i > startChunk && i % 10 === 0) {
                         try {
                             const payload = { file: waveFileName, complete: false, lastChunkProcessed: i, totalChunks: totalChunks, segments: results };
@@ -2399,8 +2387,25 @@
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(payload)
                             }).catch(e => { });
-                            remoteLog('[VAD-CACHE] Checkpoint real guardado (Chunk ' + i + ')');
                         } catch (e) { }
+                    }
+
+                    // 🔥 EL SUICIDIO CONTROLADO: Recarga voluntaria para burlar a WebKit
+                    if (chunksProcessedInWorker >= WASM_ROTATION_LIMIT && i < totalChunks - 1) {
+                        if (onProgress) onProgress("♻️ Purgando RAM...");
+
+                        const payload = { file: waveFileName, complete: false, lastChunkProcessed: i, totalChunks: totalChunks, segments: results };
+                        await fetch('/api/vad_save', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (worker) { worker.terminate(); worker = null; }
+
+                        setTimeout(() => { window.location.reload(); }, 500);
+                        await new Promise(r => setTimeout(r, 10000)); // Bloquear hilo
+                        return results;
                     }
                 }
 
