@@ -2190,25 +2190,51 @@
             fetchLogs();
         });
 
-        // FUNCIÓN AISLADA: Todo el peso (AudioBuffer, Worker, WASM) vive AQUÍ.
-        // Cuando retorna, su scope ENTERO muere → GC puede liberar ~80MB+ de golpe.
-        async function _executeVadScan(audioUrl, threshold, onProgress) {
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            let localCtx = new AudioContextClass({ sampleRate: 16000 });
+// FUNCIÓN AISLADA con FASES SEPARADAS:
+// Fase 1: Decode + pre-slice → liberar AudioBuffer → GC pause
+// Fase 2: WASM processing (AudioBuffer ya no existe)
+async function _executeVadScan(audioUrl, threshold, onProgress) {
+    // ═══ FASE 1: DECODE + PRE-SLICE (AudioBuffer vivo, sin WASM) ═══
+    const CHUNK_SEC = 15;
+    const SAMPLE_RATE = 16000;
+    const chunkSize = SAMPLE_RATE * CHUNK_SEC;
+    const preSlicedChunks = [];
+    let totalChunks = 0;
 
-            const response = await fetch(audioUrl);
-            let arrayBuffer = await response.arrayBuffer();
-            let decoded = await localCtx.decodeAudioData(arrayBuffer);
-            arrayBuffer = null;
+    {
+        // Block scope: channelData y decoded MUEREN al cerrar la llave
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        let localCtx = new AudioContextClass({ sampleRate: 16000 });
 
-            const channelData = decoded.getChannelData(0);
-            const totalSamples = channelData.length;
+        const response = await fetch(audioUrl);
+        let arrayBuffer = await response.arrayBuffer();
+        let decoded = await localCtx.decodeAudioData(arrayBuffer);
+        arrayBuffer = null;
 
-            await localCtx.close();
-            localCtx = null;
+        const channelData = decoded.getChannelData(0);
+        const totalSamples = channelData.length;
+        totalChunks = Math.ceil(totalSamples / chunkSize);
 
-            // Worker Kamikaze
-            const workerCode = `
+        // Pre-slice: cada .slice() crea una COPIA independiente
+        for (let i = 0; i < totalChunks; i++) {
+            const offset = i * chunkSize;
+            const end = Math.min(offset + chunkSize, totalSamples);
+            preSlicedChunks.push(channelData.slice(offset, end));
+        }
+
+        // Cerrar AudioContext (libera motor nativo de Apple)
+        await localCtx.close();
+        localCtx = null;
+        decoded = null;
+        // channelData (const) muere al cerrar el block scope
+    }
+
+    // GC PAUSE: AudioBuffer (~80MB) ya es inalcanzable
+    if (onProgress) onProgress(0);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // ═══ FASE 2: WASM PROCESSING (solo chunks, sin AudioBuffer) ═══
+    const workerCode = `
                 importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
                 importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
 
@@ -2243,77 +2269,52 @@
                 };
             `;
 
-            // Helper: crear e inicializar un Worker fresco
-            async function spawnWorker() {
-                const b = new Blob([workerCode], { type: 'application/javascript' });
-                const u = URL.createObjectURL(b);
-                const w = new Worker(u);
-                await new Promise((resolve, reject) => {
-                    w.onmessage = (e) => {
-                        if (e.data.status === 'ready') resolve();
-                        else if (e.data.status === 'error') reject(new Error(e.data.error));
-                    };
-                    w.onerror = (err) => reject(new Error("Worker Init Crash"));
-                    w.postMessage({ action: 'init', threshold: threshold });
-                });
-                return { worker: w, url: u };
-            }
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const wUrl = URL.createObjectURL(blob);
+    const worker = new Worker(wUrl);
 
-            let currentWorker = null;
-            let currentUrl = null;
+    try {
+        await new Promise((resolve, reject) => {
+            worker.onmessage = (e) => {
+                if (e.data.status === 'ready') resolve();
+                else if (e.data.status === 'error') reject(new Error(e.data.error));
+            };
+            worker.onerror = (err) => reject(new Error("Worker Init Crash"));
+            worker.postMessage({ action: 'init', threshold: threshold });
+        });
 
-            try {
+        const results = [];
 
-                const CHUNK_SEC = 15;
-                const SAMPLE_RATE = 16000;
-                const chunkSize = SAMPLE_RATE * CHUNK_SEC;
-                const totalChunks = Math.ceil(totalSamples / chunkSize);
-                const BATCH_SIZE = 25; // Rotar Worker cada 25 chunks (~6 min) para resetear WASM
-                const results = [];
+        for (let i = 0; i < totalChunks; i++) {
+            const offsetSec = (i * chunkSize) / SAMPLE_RATE;
 
-                for (let i = 0; i < totalChunks; i++) {
-                    // ROTACIÓN: nuevo Worker cada BATCH_SIZE chunks para resetear WASM
-                    if (i % BATCH_SIZE === 0) {
-                        if (currentWorker) {
-                            currentWorker.terminate();
-                            URL.revokeObjectURL(currentUrl);
-                            await new Promise(resolve => setTimeout(resolve, 300));
-                        }
-                        const spawned = await spawnWorker();
-                        currentWorker = spawned.worker;
-                        currentUrl = spawned.url;
+            if (onProgress) onProgress(Math.round((i / totalChunks) * 100));
+
+            await new Promise((resolve, reject) => {
+                worker.onmessage = (e) => {
+                    if (e.data.status === 'chunkDone') {
+                        results.push(...e.data.segments);
+                        resolve();
+                    } else if (e.data.status === 'error') {
+                        reject(new Error(e.data.error));
                     }
-
-                    const offset = i * chunkSize;
-                    const end = Math.min(offset + chunkSize, totalSamples);
-                    const chunk = channelData.slice(offset, end);
-                    const offsetSec = offset / SAMPLE_RATE;
-
-                    if (onProgress) onProgress(Math.round((i / totalChunks) * 100));
-
-                    await new Promise((resolve, reject) => {
-                        currentWorker.onmessage = (e) => {
-                            if (e.data.status === 'chunkDone') {
-                                results.push(...e.data.segments);
-                                resolve();
-                            } else if (e.data.status === 'error') {
-                                reject(new Error(e.data.error));
-                            }
-                        };
-                        currentWorker.onerror = (err) => reject(new Error("Worker Chunk Crash"));
-                        currentWorker.postMessage(
-                            { action: 'chunk', pcmChunk: chunk, chunkIndex: i, offsetSec: offsetSec },
-                            [chunk.buffer]
-                        );
-                    });
-                }
-
-                return results; // Solo devolvemos los segmentos (~pocos KB)
-            } finally {
-                if (currentWorker) { currentWorker.terminate(); }
-                if (currentUrl) { URL.revokeObjectURL(currentUrl); }
-            }
+                };
+                worker.onerror = (err) => reject(new Error("Worker Chunk Crash"));
+                // Transferable: chunk es copia independiente, seguro destruir
+                worker.postMessage(
+                    { action: 'chunk', pcmChunk: preSlicedChunks[i], chunkIndex: i, offsetSec: offsetSec },
+                    [preSlicedChunks[i].buffer]
+                );
+                preSlicedChunks[i] = null; // Liberar referencia inmediatamente
+            });
         }
+
+        return results;
+    } finally {
+        worker.terminate();
+        URL.revokeObjectURL(wUrl);
+    }
+}
 
         async function runVADScanner() {
             if (!forensicAudioUrl) return;
