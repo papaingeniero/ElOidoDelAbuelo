@@ -2291,3 +2291,16 @@ Con archivos de 21 minutos (84 chunks), la memoria lineal WASM del Worker **crec
 ### 🎓 Lecciones Aprendidas
 - **WASM Linear Memory Solo Crece**: WebAssembly 1.0 no permite reducir la memoria. Cada inferencia ONNX puede solicitar más páginas vía `memory.grow()`, pero nunca las devuelve.
 - **`terminate()` Es Necesario Pero Insuficiente**: iOS necesita un respiro real (1.5s) antes de cualquier alocación posterior.
+
+## 🚀 Fase 1.5 Destrucción Sincrónica y Trazas Anti-Jetsam (Borrador v1.4.45)
+*(Pendiente de resolución)*
+
+**📜 Estado Actual del Problema (Crashes en el 2º Scan):**
+El usuario reporta que:
+1. El primer escaneo VAD de 21 minutos llega al 100% y permite interactuar (Play/Pause/Scrubbing) sin OOM. ¡Éxito de la arquitectura Phase-Split!
+2. El botón "VER LOGS DE DEBUG" no muestra ninguna traza `[SAFARI-JS]`, a pesar de haber intentado con XHR Sincrónico y `navigator.sendBeacon`. Existe un cuello de botella de red/CORS o el Watchdog de iOS es más veloz que el Beacon.
+3. Al invocar un **Segundo Escaneo** sobre el archivo de 21 minutos, la barra llega al 100% velozmente, y la pestaña de Safari crashea (Jetsam) al entrar en la fase `[VAD-T2]` (Worker Muerto, GC Pause).
+
+**🎯 Próximos pasos de investigación:**
+1. **El Enigma T2:** Si explota en T2 (durante el `setTimeout` de 5s inmediatamente posterior a revocar el objeto del Worker), Safari está colapsando al intentar recolectar `vadSegments` (84 fragmentos de array) sumado al `cachedPcmData` muerto, O bien la recolección asíncrona de los 200MB de WASM se solapa con el repintado del DOM.
+2. **Las trazas perdidas (`sendBeacon`):** Es probable que `sendBeacon` esté siendo bloqueado por alguna política de NanoHTTPD (CORS o falta de respuesta al Preflight OPTIONS) al hacer un POST rápido con Content-Type, siendo abortado silenciosamente en red por el navegador en la uña de segundo antes de morir. Se requerirá usar una imagen 1x1 estática (`new Image().src = '/api/jslog?msg=' + msg`) para puentear todos los controles HTTP en la siguiente sesión.

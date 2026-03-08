@@ -654,17 +654,29 @@ public class WebServer extends NanoHTTPD {
             }
         }
 
-        if ("/api/jslog".equals(uri) && Method.POST.equals(session.getMethod())) {
+        if ("/api/jslog".equals(uri)) {
             try {
-                Map<String, String> filesMap = new HashMap<>();
-                session.parseBody(filesMap);
-                String postData = filesMap.get("postData");
-                if (postData != null) {
-                    JSONObject json = new JSONObject(postData);
-                    String msg = json.optString("msg", "");
+                String msg = "";
+                if (Method.POST.equals(session.getMethod())) {
+                    Map<String, String> filesMap = new HashMap<>();
+                    session.parseBody(filesMap);
+                    String postData = filesMap.get("postData");
+                    if (postData != null) {
+                        JSONObject json = new JSONObject(postData);
+                        msg = json.optString("msg", "");
+                    }
+                } else if (Method.GET.equals(session.getMethod())) {
+                    Map<String, String> parms = session.getParms();
+                    msg = parms.get("msg");
+                }
+                
+                if (msg != null && !msg.isEmpty()) {
                     WebServer.logToWeb("SAFARI-JS", msg);
                 }
-                return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\":\"ok\"}");
+                
+                // Retornar un GIF transparente 1x1 para satisfacer al DOM Image y evitar warnings en consola
+                byte[] gif = new byte[] { 71, 73, 70, 56, 57, 97, 1, 0, 1, 0, (byte)128, 0, 0, 0, 0, 0, (byte)255, (byte)255, (byte)255, 33, (byte)249, 4, 1, 0, 0, 0, 0, 44, 0, 0, 0, 0, 1, 0, 1, 0, 0, 2, 1, 68, 0, 59 };
+                return newFixedLengthResponse(Response.Status.OK, "image/gif", new java.io.ByteArrayInputStream(gif), gif.length);
             } catch (Exception e) {
                 return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "Error jslog");
             }

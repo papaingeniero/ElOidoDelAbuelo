@@ -2321,12 +2321,12 @@
         function remoteLog(msg) {
             console.error(msg); // Mantener en consola local
             try {
-                // sendBeacon no bloquea el hilo principal (evita el watchdog de Safari iOS).
-                // Delega la petición POST nativamente al navegador que asegura su entrega
-                // incluso si el tab crashea o la página se recarga violentamente en milisegundos.
-                let data = new URLSearchParams();
-                data.append('postData', JSON.stringify({ msg: msg }));
-                navigator.sendBeacon('/api/jslog', data);
+                // Image Beacon (Tracking Pixel): La técnica de telemetría web más antigua e indestructible.
+                // A diferencia de fetch, XHR o sendBeacon (que sufren por CORS o Watchdogs de cierre),
+                // Safari iOS JAMÁS bloquea o interrumpe la carga de un recurso <img>. 
+                // Esto garantiza 100% que la petición GET llegue a Android incluso si el Tab crashea 1 nanosegundo después.
+                const img = new Image();
+                img.src = '/api/jslog?msg=' + encodeURIComponent(msg) + '&t=' + Date.now();
             } catch (e) { }
         }
         async function runVADScanner() {
