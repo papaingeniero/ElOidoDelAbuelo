@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.4.52] - 2026-03-08
+### Fixed
+- **Network Save Crash**: Transición absoluta de arquitecturas de telemetría de `sendBeacon` url-encoded hacia persistencias formales `fetch` JSON, asegurando que el backend Java recibe y serializa el archivo físico Checkpoint en `/sdcard` en lugar de retornarlo nulo.
+- **RAM Overflow (Phase 1 Slice)**: Agregada compuerta condicional al bucle principal de Pre-slicing matricial de Float32s en el canal decodificado para ignorar e inyectar *null* en todos los offsets cronológicamente anteriores al Checkpoint `startChunk`. Reduce dramáticamente la saturación térmica y linear RAM inicial antes del Play.
+
 ## [v1.4.51] - 2026-03-08
 ### Fixed
 - **Resume Duplicate Index**: Sumado un ineludible `+ 1` a la variable `startChunk` durante el proceso de rescate de VAD. Ahora el motor WASM reanuda verdaderamente en el fragmento siguiente al crasheo y no repite el trabajo redundante anterior.

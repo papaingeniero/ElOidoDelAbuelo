@@ -2218,15 +2218,29 @@
         // Fase 1: Decode + pre-slice → liberar AudioBuffer → GC pause
         // Fase 2: WASM processing (AudioBuffer ya no existe)
         async function _executeVadScan(audioUrl, threshold, onProgress) {
-            // ═══ FASE 1: DECODE + PRE-SLICE (AudioBuffer vivo, sin WASM) ═══
+            // 1. ZERO-SHOT VAD PURO: Si ya tenemos el 100%, ni siquiera tocamos la RAM
+            if (window.vadCheckpointData && window.vadCheckpointData.complete) {
+                remoteLog('[VAD-CACHE] Zero-Shot activado. Saltando IA por completo.');
+                return window.vadCheckpointData.segments || [];
+            }
+
             const CHUNK_SEC = 15;
             const SAMPLE_RATE = 16000;
             const chunkSize = SAMPLE_RATE * CHUNK_SEC;
             const preSlicedChunks = [];
             let totalChunks = 0;
 
+            let startChunk = 0;
+            const results = [];
+            if (window.vadCheckpointData && window.vadCheckpointData.lastChunkProcessed > 0) {
+                startChunk = window.vadCheckpointData.lastChunkProcessed + 1;
+                if (window.vadCheckpointData.segments) {
+                    results.push(...window.vadCheckpointData.segments);
+                }
+            }
+
+            // ═══ FASE 1: DECODE + PRE-SLICE INTELIGENTE ═══
             {
-                // Block scope: channelData y decoded MUEREN al cerrar la llave
                 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
                 let localCtx = new AudioContextClass({ sampleRate: 16000 });
 
@@ -2239,25 +2253,27 @@
                 const totalSamples = channelData.length;
                 totalChunks = Math.ceil(totalSamples / chunkSize);
 
-                // Pre-slice: cada .slice() crea una COPIA independiente
+                // Ahorro brutal de RAM: Solo clonamos los chunks que aún NO han sido procesados
                 for (let i = 0; i < totalChunks; i++) {
-                    const offset = i * chunkSize;
-                    const end = Math.min(offset + chunkSize, totalSamples);
-                    preSlicedChunks.push(channelData.slice(offset, end));
+                    if (i >= startChunk) {
+                        const offset = i * chunkSize;
+                        const end = Math.min(offset + chunkSize, totalSamples);
+                        preSlicedChunks.push(channelData.slice(offset, end));
+                    } else {
+                        preSlicedChunks.push(null); // Ocupa 0 bytes
+                    }
                 }
 
-                // Cerrar AudioContext (libera motor nativo de Apple)
                 await localCtx.close();
                 localCtx = null;
                 decoded = null;
-                // channelData (const) muere al cerrar el block scope
             }
 
-            // GC PAUSE: AudioBuffer (~80MB) ya es inalcanzable
-            if (onProgress) onProgress(0);
+            // GC PAUSE
+            if (onProgress) onProgress(startChunk > 0 ? Math.round((startChunk / totalChunks) * 100) : 0);
             await new Promise(resolve => setTimeout(resolve, 2000));
 
-            // ═══ FASE 2: WASM PROCESSING (solo chunks, sin AudioBuffer) ═══
+            // ═══ FASE 2: WASM PROCESSING ═══
             const workerCode = `
                 importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
                 importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
@@ -2285,6 +2301,7 @@
                                     end: e.data.offsetSec + (seg.end / 1000)
                                 });
                             }
+                            e.data.pcmChunk = null; 
                             postMessage({ status: 'chunkDone', segments: segments, chunkIndex: e.data.chunkIndex });
                         }
                     } catch (err) {
@@ -2293,13 +2310,11 @@
                 };
             `;
 
-            // Worker Rebirth: Destruimos y recreamos el worker cada 30 chunks para acotar la Linear Memory (OOM)
             const blob = new Blob([workerCode], { type: 'application/javascript' });
             const wUrl = URL.createObjectURL(blob);
             let worker = null;
 
             async function instantiateWorker() {
-                // Instanciación Pura (la destrucción se hará manualmente fuera para separar ciclos de RAM)
                 worker = new Worker(wUrl);
                 await new Promise((resolve, reject) => {
                     worker.onmessage = (e) => {
@@ -2312,43 +2327,25 @@
             }
 
             try {
-                const results = [];
-                let startChunk = 0;
-                if (window.vadCheckpointData && window.vadCheckpointData.lastChunkProcessed > 0) {
-                    startChunk = window.vadCheckpointData.lastChunkProcessed + 1;
-                    if (window.vadCheckpointData.segments) {
-                        results.push(...window.vadCheckpointData.segments);
-                    }
-                }
-
-                // Si ya está completado en caché, saltamos todo (Zero-Shot VAD)
-                if (startChunk >= totalChunks || (window.vadCheckpointData && window.vadCheckpointData.complete)) {
-                    remoteLog('[VAD-CACHE] Zero-Shot VAD activado. Retornando caché instantánea.');
-                    return results;
-                }
+                if (startChunk >= totalChunks) return results;
 
                 await instantiateWorker();
-                const WASM_ROTATION_LIMIT = 30; // ~7.5 minutos de audio por instancia WASM
+                const WASM_ROTATION_LIMIT = 25; 
                 let chunksProcessedInWorker = 0;
 
                 for (let i = startChunk; i < totalChunks; i++) {
                     const offsetSec = (i * chunkSize) / SAMPLE_RATE;
                     if (onProgress) onProgress(Math.round((i / totalChunks) * 100));
 
-                    // REBIRTH LOGIC (Anti-Jetsam Overlap)
                     if (chunksProcessedInWorker > 0 && chunksProcessedInWorker % WASM_ROTATION_LIMIT === 0) {
-                        remoteLog('[VAD-ROTATION] Destruyendo Worker ' + chunksProcessedInWorker + '...');
+                        remoteLog('[VAD-ROTATION] Destruyendo Worker...');
                         worker.terminate();
-                        worker = null; // Eliminamos la referencia estáticamente ANTES de la pausa
-
-                        // GC PAUSA EXTREMA (3.5s): iOS Safari es extremadamente vago liberando RAM de Threads destruidos.
-                        remoteLog('[VAD-ROTATION] Esperando purga RAM iOS (3.5s)...');
-                        await new Promise(resolve => setTimeout(resolve, 3500));
-
-                        remoteLog('[VAD-ROTATION] Levantando nuevo motor WASM...');
+                        worker = null; 
+                        remoteLog('[VAD-ROTATION] Esperando purga RAM iOS (5.0s)...');
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+                        remoteLog('[VAD-ROTATION] Levantando nuevo motor...');
                         await instantiateWorker();
-                        remoteLog('[VAD-ROTATION] Worker renacido listo para chunk ' + i);
-                        chunksProcessedInWorker = 0; // Reset
+                        chunksProcessedInWorker = 0; 
                     }
 
                     await new Promise((resolve, reject) => {
@@ -2369,44 +2366,36 @@
                         preSlicedChunks[i] = null;
                     });
 
-                    // VAD CHECKPOINTING (Debounce Save cada 10 chunks)
+                    // 🔥 EL FIX: USAR FETCH CON JSON EN VEZ DE SEND_BEACON
                     if (i > startChunk && i % 10 === 0) {
                         try {
                             const payload = { file: waveFileName, complete: false, lastChunkProcessed: i, totalChunks: totalChunks, segments: results };
-                            const data = new URLSearchParams();
-                            data.append('postData', JSON.stringify(payload));
-                            navigator.sendBeacon('/api/vad_save', data);
-                            remoteLog('[VAD-CACHE] Checkpoint parcial guardado (Chunk ' + i + ')');
+                            fetch('/api/vad_save', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            }).catch(e => {});
+                            remoteLog('[VAD-CACHE] Checkpoint real guardado (Chunk ' + i + ')');
                         } catch (e) { }
                     }
                 }
 
-                // VAD FINAL SAVE
+                // FINAL SAVE
                 try {
                     const payload = { file: waveFileName, complete: true, lastChunkProcessed: totalChunks - 1, totalChunks: totalChunks, segments: results };
-                    const data = new URLSearchParams();
-                    data.append('postData', JSON.stringify(payload));
-                    navigator.sendBeacon('/api/vad_save', data);
+                    await fetch('/api/vad_save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
                     remoteLog('[VAD-CACHE] Guardado final completado (100%)');
-
-                    // Actualizar caché en memoria para evadir re-procesados inmediatos
                     window.vadCheckpointData = payload;
                 } catch (e) { }
 
-                remoteLog('[VAD-T0a] Loop completado, results: ' + results.length);
-
-                // FORZAR LIBERACIÓN DE MEMORIA DEL HILO PRINCIPAL ANTES DEL PLAY
-                if (typeof channelData !== 'undefined') channelData = null;
-                if (typeof decoded !== 'undefined') decoded = null;
-
                 return results;
             } finally {
-                remoteLog('[VAD-T0b] Finally: terminando Worker');
-                if (worker) {
-                    worker.terminate();
-                }
+                if (worker) worker.terminate();
                 URL.revokeObjectURL(wUrl);
-                remoteLog('[VAD-T0c] Worker terminado y URL revocada');
             }
         }
 
