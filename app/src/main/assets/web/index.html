@@ -2190,6 +2190,109 @@
             fetchLogs();
         });
 
+        // FUNCIÓN AISLADA: Todo el peso (AudioBuffer, Worker, WASM) vive AQUÍ.
+        // Cuando retorna, su scope ENTERO muere → GC puede liberar ~80MB+ de golpe.
+        async function _executeVadScan(audioUrl, threshold, onProgress) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            let localCtx = new AudioContextClass({ sampleRate: 16000 });
+
+            const response = await fetch(audioUrl);
+            let arrayBuffer = await response.arrayBuffer();
+            let decoded = await localCtx.decodeAudioData(arrayBuffer);
+            arrayBuffer = null;
+
+            const channelData = decoded.getChannelData(0);
+            const totalSamples = channelData.length;
+
+            await localCtx.close();
+            localCtx = null;
+
+            // Worker Kamikaze
+            const workerCode = `
+                importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
+                importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
+
+                let myvad = null;
+
+                onmessage = async function(e) {
+                    try {
+                        if (e.data.action === 'init') {
+                            ort.env.wasm.numThreads = 1;
+                            ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
+                            myvad = await vad.NonRealTimeVAD.new({
+                                modelURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/silero_vad.onnx',
+                                workletURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/vad.worklet.bundle.min.js',
+                                positiveSpeechThreshold: e.data.threshold,
+                                negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
+                            });
+                            postMessage({ status: 'ready' });
+                        } else if (e.data.action === 'chunk') {
+                            const generator = myvad.run(e.data.pcmChunk, 16000);
+                            let segments = [];
+                            for await (const seg of generator) {
+                                segments.push({
+                                    start: e.data.offsetSec + (seg.start / 1000),
+                                    end: e.data.offsetSec + (seg.end / 1000)
+                                });
+                            }
+                            postMessage({ status: 'chunkDone', segments: segments, chunkIndex: e.data.chunkIndex });
+                        }
+                    } catch (err) {
+                        postMessage({ status: 'error', error: err.message || String(err) });
+                    }
+                };
+            `;
+
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            const wUrl = URL.createObjectURL(blob);
+            const worker = new Worker(wUrl);
+
+            try {
+                await new Promise((resolve, reject) => {
+                    worker.onmessage = (e) => {
+                        if (e.data.status === 'ready') resolve();
+                        else if (e.data.status === 'error') reject(new Error(e.data.error));
+                    };
+                    worker.onerror = (err) => reject(new Error("Worker Init Crash"));
+                    worker.postMessage({ action: 'init', threshold: threshold });
+                });
+
+                const CHUNK_SEC = 15;
+                const SAMPLE_RATE = 16000;
+                const chunkSize = SAMPLE_RATE * CHUNK_SEC;
+                const totalChunks = Math.ceil(totalSamples / chunkSize);
+                const results = [];
+
+                for (let i = 0; i < totalChunks; i++) {
+                    const offset = i * chunkSize;
+                    const end = Math.min(offset + chunkSize, totalSamples);
+                    const chunk = channelData.slice(offset, end);
+                    const offsetSec = offset / SAMPLE_RATE;
+
+                    if (onProgress) onProgress(Math.round((i / totalChunks) * 100));
+
+                    await new Promise((resolve, reject) => {
+                        worker.onmessage = (e) => {
+                            if (e.data.status === 'chunkDone') {
+                                results.push(...e.data.segments);
+                                resolve();
+                            } else if (e.data.status === 'error') {
+                                reject(new Error(e.data.error));
+                            }
+                        };
+                        worker.onerror = (err) => reject(new Error("Worker Chunk Crash"));
+                        worker.postMessage({ action: 'chunk', pcmChunk: chunk, chunkIndex: i, offsetSec: offsetSec });
+                    });
+                }
+
+                return results; // Solo devolvemos los segmentos (~pocos KB)
+            } finally {
+                worker.terminate();
+                URL.revokeObjectURL(wUrl);
+                // decoded, channelData, blob, worker, wUrl → TODO muere al salir de esta función
+            }
+        }
+
         async function runVADScanner() {
             if (!forensicAudioUrl) return;
             const btn = document.getElementById('btnScanIA');
@@ -2197,10 +2300,7 @@
             const threshold = parseFloat(document.getElementById('inpVadThresh').value);
             btn.disabled = true;
 
-            let tempWorker = null;
-            let tempWorkerUrl = null;
-
-            // 1. FREEZE Y DESCARGA NATIVA (Anti-Overlap de Apple)
+            // 1. FREEZE
             if (forensicAudio) {
                 btn.innerHTML = '⏳ Purgando RAM...';
                 window.vadSavedTime = forensicAudio.currentTime || 0;
@@ -2211,138 +2311,35 @@
                 isWavePlaying = false;
                 const playBtn = document.getElementById('wavePlayBtn');
                 if (playBtn) playBtn.innerHTML = '▶️ PLAY';
-
                 await new Promise(resolve => setTimeout(resolve, 800));
             } else if (!window.vadSavedTime) {
                 window.vadSavedTime = 0;
             }
 
-            // Destruir Worker anterior si quedó vivo
+            // Limpiar estado residual
             if (vadPersistentWorker) { vadPersistentWorker.terminate(); vadPersistentWorker = null; }
             if (vadPersistentWorkerUrl) { URL.revokeObjectURL(vadPersistentWorkerUrl); vadPersistentWorkerUrl = null; }
-
-            // Purgar caché PCM residual
             cachedPcmData = null;
             currentVadAudioUrl = null;
 
             try {
-                // 2. DECODIFICAR AUDIO FRESCO (sin caché, se libera al terminar)
                 btn.innerHTML = '⏳ Decodificando Audio...';
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                let localCtx = new AudioContextClass({ sampleRate: 16000 });
 
-                const response = await fetch(forensicAudioUrl);
-                let arrayBuffer = await response.arrayBuffer();
-                let decoded = await localCtx.decodeAudioData(arrayBuffer);
-                arrayBuffer = null; // Liberar comprimido
-
-                let channelData = decoded.getChannelData(0);
-                const totalSamples = channelData.length;
-
-                // Cerrar AudioContext ANTES de iniciar WASM (libera motor nativo de Apple)
-                // El AudioBuffer y su channelData sobreviven al cierre del contexto
-                await localCtx.close();
-                localCtx = null;
-
-                // 3. WORKER KAMIKAZE (se destruye al terminar el scan)
-                btn.innerHTML = '🧠 Compilando Motor WASM...';
-                const workerCode = `
-                    importScripts("https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js");
-                    importScripts("https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js");
-
-                    let myvad = null;
-
-                    onmessage = async function(e) {
-                        try {
-                            if (e.data.action === 'init') {
-                                ort.env.wasm.numThreads = 1;
-                                ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
-                                myvad = await vad.NonRealTimeVAD.new({
-                                    modelURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/silero_vad.onnx',
-                                    workletURL: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/vad.worklet.bundle.min.js',
-                                    positiveSpeechThreshold: e.data.threshold,
-                                    negativeSpeechThreshold: Math.max(0.1, e.data.threshold - 0.1)
-                                });
-                                postMessage({ status: 'ready' });
-                            } else if (e.data.action === 'chunk') {
-                                const generator = myvad.run(e.data.pcmChunk, 16000);
-                                let segments = [];
-                                for await (const seg of generator) {
-                                    segments.push({
-                                        start: e.data.offsetSec + (seg.start / 1000),
-                                        end: e.data.offsetSec + (seg.end / 1000)
-                                    });
-                                }
-                                postMessage({ status: 'chunkDone', segments: segments, chunkIndex: e.data.chunkIndex });
-                            }
-                        } catch (err) {
-                            postMessage({ status: 'error', error: err.message || String(err) });
-                        }
-                    };
-                `;
-
-                const blob = new Blob([workerCode], { type: 'application/javascript' });
-                tempWorkerUrl = URL.createObjectURL(blob);
-                tempWorker = new Worker(tempWorkerUrl);
-
-                await new Promise((resolve, reject) => {
-                    tempWorker.onmessage = (e) => {
-                        if (e.data.status === 'ready') resolve();
-                        else if (e.data.status === 'error') reject(new Error(e.data.error));
-                    };
-                    tempWorker.onerror = (err) => reject(new Error("Worker Init Crash"));
-                    tempWorker.postMessage({ action: 'init', threshold: threshold });
+                // 2. EJECUTAR EN SCOPE AISLADO (toda la RAM pesada muere al retornar)
+                const segments = await _executeVadScan(forensicAudioUrl, threshold, (pct) => {
+                    btn.innerHTML = '🧠 Analizando (' + pct + '%)...';
                 });
+                vadSegments = segments;
 
-                // 4. CHUNK STREAMING desde el AudioBuffer decodificado
-                const CHUNK_SEC = 15;
-                const SAMPLE_RATE = 16000;
-                const chunkSize = SAMPLE_RATE * CHUNK_SEC;
-                const totalChunks = Math.ceil(totalSamples / chunkSize);
-                let allSegments = [];
-
-                for (let i = 0; i < totalChunks; i++) {
-                    const offset = i * chunkSize;
-                    const end = Math.min(offset + chunkSize, totalSamples);
-                    const chunk = channelData.slice(offset, end);
-                    const offsetSec = offset / SAMPLE_RATE;
-
-                    btn.innerHTML = '🧠 Analizando (' + Math.round((i / totalChunks) * 100) + '%)...';
-
-                    await new Promise((resolve, reject) => {
-                        tempWorker.onmessage = (e) => {
-                            if (e.data.status === 'chunkDone') {
-                                allSegments.push(...e.data.segments);
-                                resolve();
-                            } else if (e.data.status === 'error') {
-                                reject(new Error(e.data.error));
-                            }
-                        };
-                        tempWorker.onerror = (err) => reject(new Error("Worker Chunk Crash"));
-                        tempWorker.postMessage({ action: 'chunk', pcmChunk: chunk, chunkIndex: i, offsetSec: offsetSec });
-                    });
-                }
-
-                vadSegments = allSegments;
-
-                // PURGA TOTAL: Cortar TODAS las referencias al AudioBuffer decodificado
-                // channelData es un view del AudioBuffer — si no se anula, el GC no puede liberar los ~80MB
-                decoded = null;
-                channelData = null;
-                allSegments = null;
+                // 3. RESPIRO: _executeVadScan ya retornó, su scope está MUERTO.
+                // Damos 3 segundos para que el GC de Safari libere los ~80MB del AudioBuffer.
+                btn.innerHTML = '⏳ Liberando RAM...';
+                await new Promise(resolve => setTimeout(resolve, 3000));
 
             } catch (e) {
                 console.error("Error en VAD:", e);
                 alert("Error Ejecutando Red Neuronal:\\n" + (e.message || String(e)));
             } finally {
-                // ANIQUILAR Worker + esperar a que iOS libere la memoria lineal WASM
-                btn.innerHTML = '⏳ Liberando WASM...';
-                if (tempWorker) { tempWorker.terminate(); tempWorker = null; }
-                if (tempWorkerUrl) { URL.revokeObjectURL(tempWorkerUrl); tempWorkerUrl = null; }
-
-                // Respiro agresivo: Safari necesita tiempo para GC de los ~80MB del AudioBuffer
-                await new Promise(resolve => setTimeout(resolve, 2000));
-
                 btn.innerHTML = originalText;
                 btn.disabled = false;
                 drawForensicWaveform();
