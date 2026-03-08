@@ -2243,27 +2243,47 @@
                 };
             `;
 
-            const blob = new Blob([workerCode], { type: 'application/javascript' });
-            const wUrl = URL.createObjectURL(blob);
-            const worker = new Worker(wUrl);
-
-            try {
+            // Helper: crear e inicializar un Worker fresco
+            async function spawnWorker() {
+                const b = new Blob([workerCode], { type: 'application/javascript' });
+                const u = URL.createObjectURL(b);
+                const w = new Worker(u);
                 await new Promise((resolve, reject) => {
-                    worker.onmessage = (e) => {
+                    w.onmessage = (e) => {
                         if (e.data.status === 'ready') resolve();
                         else if (e.data.status === 'error') reject(new Error(e.data.error));
                     };
-                    worker.onerror = (err) => reject(new Error("Worker Init Crash"));
-                    worker.postMessage({ action: 'init', threshold: threshold });
+                    w.onerror = (err) => reject(new Error("Worker Init Crash"));
+                    w.postMessage({ action: 'init', threshold: threshold });
                 });
+                return { worker: w, url: u };
+            }
+
+            let currentWorker = null;
+            let currentUrl = null;
+
+            try {
 
                 const CHUNK_SEC = 15;
                 const SAMPLE_RATE = 16000;
                 const chunkSize = SAMPLE_RATE * CHUNK_SEC;
                 const totalChunks = Math.ceil(totalSamples / chunkSize);
+                const BATCH_SIZE = 25; // Rotar Worker cada 25 chunks (~6 min) para resetear WASM
                 const results = [];
 
                 for (let i = 0; i < totalChunks; i++) {
+                    // ROTACIÓN: nuevo Worker cada BATCH_SIZE chunks para resetear WASM
+                    if (i % BATCH_SIZE === 0) {
+                        if (currentWorker) {
+                            currentWorker.terminate();
+                            URL.revokeObjectURL(currentUrl);
+                            await new Promise(resolve => setTimeout(resolve, 300));
+                        }
+                        const spawned = await spawnWorker();
+                        currentWorker = spawned.worker;
+                        currentUrl = spawned.url;
+                    }
+
                     const offset = i * chunkSize;
                     const end = Math.min(offset + chunkSize, totalSamples);
                     const chunk = channelData.slice(offset, end);
@@ -2272,7 +2292,7 @@
                     if (onProgress) onProgress(Math.round((i / totalChunks) * 100));
 
                     await new Promise((resolve, reject) => {
-                        worker.onmessage = (e) => {
+                        currentWorker.onmessage = (e) => {
                             if (e.data.status === 'chunkDone') {
                                 results.push(...e.data.segments);
                                 resolve();
@@ -2280,16 +2300,18 @@
                                 reject(new Error(e.data.error));
                             }
                         };
-                        worker.onerror = (err) => reject(new Error("Worker Chunk Crash"));
-                        worker.postMessage({ action: 'chunk', pcmChunk: chunk, chunkIndex: i, offsetSec: offsetSec });
+                        currentWorker.onerror = (err) => reject(new Error("Worker Chunk Crash"));
+                        currentWorker.postMessage(
+                            { action: 'chunk', pcmChunk: chunk, chunkIndex: i, offsetSec: offsetSec },
+                            [chunk.buffer]
+                        );
                     });
                 }
 
                 return results; // Solo devolvemos los segmentos (~pocos KB)
             } finally {
-                worker.terminate();
-                URL.revokeObjectURL(wUrl);
-                // decoded, channelData, blob, worker, wUrl → TODO muere al salir de esta función
+                if (currentWorker) { currentWorker.terminate(); }
+                if (currentUrl) { URL.revokeObjectURL(currentUrl); }
             }
         }
 
