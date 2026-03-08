@@ -2269,47 +2269,29 @@ async function _executeVadScan(audioUrl, threshold, onProgress) {
                 };
             `;
 
-// Helper: crear e inicializar Worker fresco
-async function spawnWorker() {
-    const b = new Blob([workerCode], { type: 'application/javascript' });
-    const u = URL.createObjectURL(b);
-    const w = new Worker(u);
+// Single Worker (sin rotación — la rotación causa solapamiento de WASM)
+const blob = new Blob([workerCode], { type: 'application/javascript' });
+const wUrl = URL.createObjectURL(blob);
+const worker = new Worker(wUrl);
+
+try {
     await new Promise((resolve, reject) => {
-        w.onmessage = (e) => {
+        worker.onmessage = (e) => {
             if (e.data.status === 'ready') resolve();
             else if (e.data.status === 'error') reject(new Error(e.data.error));
         };
-        w.onerror = (err) => reject(new Error("Worker Init Crash"));
-        w.postMessage({ action: 'init', threshold: threshold });
+        worker.onerror = (err) => reject(new Error("Worker Init Crash"));
+        worker.postMessage({ action: 'init', threshold: threshold });
     });
-    return { worker: w, url: u };
-}
 
-const BATCH_SIZE = 25;
-let curW = null, curU = null;
-
-try {
     const results = [];
 
     for (let i = 0; i < totalChunks; i++) {
-        // ROTACIÓN: nuevo Worker cada BATCH_SIZE chunks
-        if (i % BATCH_SIZE === 0) {
-            if (curW) {
-                curW.terminate();
-                URL.revokeObjectURL(curU);
-                // Pausa LARGA: sin AudioBuffer compitiendo, iOS puede liberar WASM
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-            const spawned = await spawnWorker();
-            curW = spawned.worker;
-            curU = spawned.url;
-        }
-
         const offsetSec = (i * chunkSize) / SAMPLE_RATE;
         if (onProgress) onProgress(Math.round((i / totalChunks) * 100));
 
         await new Promise((resolve, reject) => {
-            curW.onmessage = (e) => {
+            worker.onmessage = (e) => {
                 if (e.data.status === 'chunkDone') {
                     results.push(...e.data.segments);
                     resolve();
@@ -2317,8 +2299,8 @@ try {
                     reject(new Error(e.data.error));
                 }
             };
-            curW.onerror = (err) => reject(new Error("Worker Chunk Crash"));
-            curW.postMessage(
+            worker.onerror = (err) => reject(new Error("Worker Chunk Crash"));
+            worker.postMessage(
                 { action: 'chunk', pcmChunk: preSlicedChunks[i], chunkIndex: i, offsetSec: offsetSec },
                 [preSlicedChunks[i].buffer]
             );
@@ -2328,8 +2310,8 @@ try {
 
     return results;
 } finally {
-    if (curW) { curW.terminate(); }
-    if (curU) { URL.revokeObjectURL(curU); }
+    worker.terminate();
+    URL.revokeObjectURL(wUrl);
 }
 }
 
@@ -2372,9 +2354,12 @@ try {
                 vadSegments = segments;
 
                 // 3. RESPIRO: _executeVadScan ya retornó, su scope está MUERTO.
-                // Damos 3 segundos para que el GC de Safari libere los ~80MB del AudioBuffer.
+                // Damos 5 segundos para que el GC de Safari libere WASM + chunks.
                 btn.innerHTML = '⏳ Liberando RAM...';
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                await new Promise(resolve => setTimeout(resolve, 5000));
+
+                // Pre-inicializar audio DURANTE la pausa (no allocate al pulsar PLAY)
+                initForensicAudio();
 
             } catch (e) {
                 console.error("Error en VAD:", e);
