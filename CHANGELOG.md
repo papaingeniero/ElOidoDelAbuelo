@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.4.49] - 2026-03-08
+### Fixed
+- **Resume Bug (Checkpoint Loop Logic)**: Forzada inicialización de `startChunk` interpretando estrictamente `window.vadCheckpointData` previniendo reevaluaciones inútiles y retomando fielmente desde el porcentaje guardado post-crash.
+- **AVFoundation OOM Crash (Zombie Buffer)**: Purgadas a mano `channelData` y `decoded` antes del `finally` en el VAD Scanner, esquivando corrupciones masivas de memoria cuando el usuario pulsa en el botón de Play.
+
 ## [v1.4.48] - 2026-03-08
 ### Added
 - **VAD Checkpointing (Caché Constante)**: El servidor NanoHTTPD de Android ahora expone endpoints `POST /api/vad_save` y `GET /api/vad_load` para persistir progresivamente en `/sdcard` las detecciones VAD de los archivos `.m4a`.
