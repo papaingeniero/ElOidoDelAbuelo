@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.51] - 2026-03-08
+### Fixed
+- **Resume Duplicate Index**: Sumado un ineludible `+ 1` a la variable `startChunk` durante el proceso de rescate de VAD. Ahora el motor WASM reanuda verdaderamente en el fragmento siguiente al crasheo y no repite el trabajo redundante anterior.
+
 ## [v1.4.50] - 2026-03-08
 ### Fixed
 - **Zero-Shot UX Delay**: Desplazado `drawForensicWaveform()` dentro de la promesa asíncrona `fetch` que recupera el progreso VAD (`/api/vad_load`), garantizando que las bandas rojas de voz se dibujen instantáneamente al reabrir archivos analizados en lugar de mostrarse invisibles por desincronización DOM.
