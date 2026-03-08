@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.55] - 2026-03-08
+### Added
+- **Dynamic VAD Cache Invalidation**: Agregado un `addEventListener` reactivo al deslizador de umbral de IA (`inpVadThresh`). Si el usuario desliza la pieza ajustando la sensibilidad térmica militar sobre un archivo de caché persistente 100% completado (Zero-Shot), la IA activa inmediatamente una directiva de auto-aniquilación de Memoria WebKit para dicha previsualización antigua (`window.vadCheckpointData = null`), limpia la matriz gráfica canvas de rojo a gris puro y desbloquea el botón primario instando visualmente a recalcular la pista.
+
 ## [v1.4.54] - 2026-03-08
 ### Fixed
 - **Memory Leak Backend**: Añadida condicional matricial `.endsWith(".json")` a la purga asíncrona EndPoint Delete (`/api/recordings`) en NanoHTTPD. Soluciona un grave fallo catastrófico eMMC donde el vaciado maestro del panel ignoraba los cachés de metadatos (Zero-Shot VAD y Picos de compresión), dejándolos retenidos crónicamente en el sistema de archivos del Androide provocando pérdida de espacio en disco irrevocable e indetectable.

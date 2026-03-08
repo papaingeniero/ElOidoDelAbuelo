@@ -2533,6 +2533,28 @@
                 remoteLog('[VAD-T8] TODO completado OK');
             }
         }
+
+        // 🔥 INVALIDACIÓN DE CACHÉ POR CAMBIO DE SENSIBILIDAD
+        const threshSlider = document.getElementById('inpVadThresh');
+        if (threshSlider) {
+            threshSlider.addEventListener('input', function () {
+                if (window.vadCheckpointData) {
+                    // El usuario quiere un análisis con nueva sensibilidad. Purgamos el estado.
+                    window.vadCheckpointData = null;
+                    vadSegments = []; // Borramos las marcas rojas actuales
+                    drawForensicWaveform(); // Repintamos el lienzo en gris
+
+                    const btnScan = document.getElementById('btnScanIA');
+                    if (btnScan) {
+                        btnScan.innerHTML = '🧠 Re-Analizar (Nueva Sensibilidad)';
+                        btnScan.disabled = false;
+                    }
+
+                    // Borramos también la marca del piloto automático por si acaso
+                    localStorage.removeItem('activeVadScan');
+                }
+            });
+        }
     </script>
 
 </body>

@@ -1,12 +1,13 @@
-## 🚀 Memory Leak Fix: Caché Huérfano en Purgado v1.4.54 | 08/03/2026
+## 🚀 Invalidación de Caché VAD Dinámica v1.4.55 | 08/03/2026
 
 ### 📜 El Problema
-El sistema de purgado de historial ubicado en NanoHTTPD (`DELETE /api/recordings`) estaba configurado originalmente para destruir puramente contenedores de audio base (`.wav`, `.m4a`, `.aac`). Tras la reciente integración del sistema de Caché VAD Zero-Shot y del autogenerador de picos de audio, se introdujo en la arquitectura un subsistema intensivo de metadatos guardados como extensiones adyacentes de disco (`.json`, `.vad.json`).
-Un borrado masivo invocaba la aniquilación de los audiorrompecabezas madre, pero **no listaba ni purgaba los archvos de telemetría IA**, creando un inmenso agujero negro en la memoria caché del dispositivo con miles de archivos JSON huérfanos eternos que colapsaban silenciosamente los recursos del explorador de Archivos eMMC del Xiaomi.
+Con la arquitectura del Zero-Shot VAD operando a pleno rendimiento, se descubrió un fallo en el flujo de Trabajo de UX: si un usuario abría un audio 100% analizado y decidía que el umbral de detección (threshold) no era el adecuado (demasiado sensible o muy restrictivo), y movía el control deslizante, el sistema de caché persistente de Android bloqueaba cualquier intento humano de análisis. Safari simplemente recargaba al instante el lienzo rojo antiguo cacheado de esa pista que se cargó con la orden `window.vadCheckpointData.complete`. El usuario quedaba imposibilitado de recalcular el audio.
 
 ### 🛠️ La Solución
-Corrección matemática literal a nivel de directiva sobre EndPoint Native Java:
-- El filtro condicional asíncrono `.listFiles()` ha sido complementado añadiendo un bloque lógico de tipo inclusivo `|| name.endsWith(".json")`. Ahora el proceso recursivo identificará implícita y expresamente todos los artefactos de telemetría de Picos (.json) y Caché Resumption VAD (.vad.json) como cómplices mortales cuando el frontend exige la supresión de la base de datos matriz.
+Inyectado un mecanismo de purga nativa asociado al hardware de la interfaz web (`inpVadThresh`):
+- Se ha encadenado un `addEventListener('input')` directamente al Slider de Umbral VAD.
+- A la mínima detección de alteración en el input por parte del dedo del usuario, la lógica interviene aniquilando forzosamente el objeto `window.vadCheckpointData` en el Runtime de WebKit. 
+- La matriz local de dibujos rojos (`vadSegments = []`) es purgada en memoria y el render del lienzo Canvas (`drawForensicWaveform`) es llamado al instante para resetear visualmente a la pista base gris. El botón transmuta visualmente del "Caché Instantánea" estático al texto vital "Re-Analizar (Nueva Sensibilidad)", quedando desbloqueado y re-habilitando el `runVADScanner` limpio para escupir un nuevo dataset.
 
 ### 🎓 Lecciones Aprendidas
-- **Desincronización Arquitectural Backend-Frontend:** Las innovaciones visuales complejas que escalen el disco en fronted (como el VAD) y requieran almacenamiento estructurado en backend deben auditar sistemáticamente sus rutinas de Destrucción de Memoria (`DELETE / Purgado`). En sistemas integrados hostiles perennemente expuestos como este Xiaomi, dejar un archivo flotando equivale a devorar la estabilidad general.
+- **Los Cachés Totales son Prisiones Inflexibles:** Evita bloquear las intenciones del panel de control si intervienen cachés predictivas. Si introduces una caché de autocompletado rígido (Zero-Shot), tu primera prioridad es dotar al humano de un botón o gatillo explícito para profanarlo e invalidarlo a voluntad. Un caché ciego es UX Hostil.
