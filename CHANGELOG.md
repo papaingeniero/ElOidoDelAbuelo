@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.54] - 2026-03-08
+### Fixed
+- **Memory Leak Backend**: Añadida condicional matricial `.endsWith(".json")` a la purga asíncrona EndPoint Delete (`/api/recordings`) en NanoHTTPD. Soluciona un grave fallo catastrófico eMMC donde el vaciado maestro del panel ignoraba los cachés de metadatos (Zero-Shot VAD y Picos de compresión), dejándolos retenidos crónicamente en el sistema de archivos del Androide provocando pérdida de espacio en disco irrevocable e indetectable.
+
 ## [v1.4.53] - 2026-03-08
 ### Added
 - **Protocolo Fénix (Auto-Resume UI)**: Arquitectura implementada usando `localStorage` ('activeVadScan') e intercepciones nativas (`scrollIntoView()`) para inyectar automatismo puro a un Crash de Webworker iOS. El navegador Safari recarga la página, scrollea directamente hasta el audio interceptado, expande la gráfica e inicia el escaneo Inteligente (continuando el % guardado) de manera completamente transparente y autónoma para el usuario.

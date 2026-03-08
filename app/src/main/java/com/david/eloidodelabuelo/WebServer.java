@@ -405,7 +405,10 @@ public class WebServer extends NanoHTTPD {
                 try {
                     File dir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
                     File[] files = dir != null ? dir.listFiles(
-                            (dir1, name) -> name.endsWith(".wav") || name.endsWith(".m4a") || name.endsWith(".aac"))
+                            (dir1, name) -> name.endsWith(".wav") || 
+                                            name.endsWith(".m4a") || 
+                                            name.endsWith(".aac") || 
+                                            name.endsWith(".json"))
                             : new File[0];
                     int deletedCount = 0;
                     if (files != null) {
