@@ -2275,10 +2275,7 @@
             let worker = null;
 
             async function instantiateWorker() {
-                if (worker) {
-                    worker.terminate();
-                    worker = null;
-                }
+                // Instanciación Pura (la destrucción se hará manualmente fuera para separar ciclos de RAM)
                 worker = new Worker(wUrl);
                 await new Promise((resolve, reject) => {
                     worker.onmessage = (e) => {
@@ -2301,13 +2298,21 @@
                     const offsetSec = (i * chunkSize) / SAMPLE_RATE;
                     if (onProgress) onProgress(Math.round((i / totalChunks) * 100));
 
-                    // REBIRTH LOGIC
+                    // REBIRTH LOGIC (Anti-Jetsam Overlap)
                     if (chunksProcessedInWorker > 0 && chunksProcessedInWorker % WASM_ROTATION_LIMIT === 0) {
-                        remoteLog('[VAD-ROTATION] Purgando WASM RAM (Chunk ' + i + '/' + totalChunks + ')...');
+                        remoteLog('[VAD-ROTATION] Destruyendo Worker ' + chunksProcessedInWorker + '...');
                         worker.terminate();
-                        await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5s GC Pause
+                        worker = null; // Eliminamos la referencia estáticamente ANTES de la pausa
+
+                        // GC PAUSA EXTREMA (3.5s): iOS Safari es extremadamente vago liberando RAM de Threads destruidos.
+                        // Si instanciamos el nuevo WASM mientras el viejo se está desmembrando, el pico sumado (200MB + 200MB)
+                        // detona el límite Jetsam de la pestaña y crashea. Así que le damos 3500ms enteros al OS para barrer.
+                        remoteLog('[VAD-ROTATION] Esperando purga RAM iOS (3.5s)...');
+                        await new Promise(resolve => setTimeout(resolve, 3500));
+
+                        remoteLog('[VAD-ROTATION] Levantando nuevo motor WASM...');
                         await instantiateWorker();
-                        remoteLog('[VAD-ROTATION] Worker renacido.');
+                        remoteLog('[VAD-ROTATION] Worker renacido listo para chunk ' + i);
                         chunksProcessedInWorker = 0; // Reset
                     }
 
