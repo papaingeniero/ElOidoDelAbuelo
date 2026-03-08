@@ -2352,6 +2352,22 @@
                 window.vadSavedTime = 0;
             }
 
+            // --- 1.5 DESTRUCCIÓN DE ESCANEO ANTERIOR (Si existe) ---
+            if (vadSegments && vadSegments.length > 0) {
+                btn.innerHTML = '🧹 Limpiando scan anterior...';
+                vadSegments = []; // Liberar array de segmentos
+                // Limpiar Canvas para liberar el buffer gráfico de Safari
+                const cvs = document.getElementById('forensicWaveform');
+                if (cvs) {
+                    const ctx = cvs.getContext('2d');
+                    ctx.clearRect(0, 0, cvs.width, cvs.height);
+                    cvs.width = cvs.width; // Hack hardcore para forzar drop del buffer de Safari
+                }
+                // Pausa brutal de 2.5s para que Safari recoja la basura del primer scan ANTES
+                // de que _executeVadScan reviente la memoria con un nuevo AudioBuffer.
+                await new Promise(resolve => setTimeout(resolve, 2500));
+            }
+
             // Limpiar estado residual
             if (vadPersistentWorker) { vadPersistentWorker.terminate(); vadPersistentWorker = null; }
             if (vadPersistentWorkerUrl) { URL.revokeObjectURL(vadPersistentWorkerUrl); vadPersistentWorkerUrl = null; }
