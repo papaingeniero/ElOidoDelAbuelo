@@ -1,14 +1,13 @@
-## 🚀 VAD Checkpointing Fetch Override & Pre-slice RAM Fix v1.4.52 | 08/03/2026
+## 🚀 Protocolo Fénix (Auto-Resume UI) v1.4.53 | 08/03/2026
 
 ### 📜 El Problema
-Los logs revelaron que tras implementar Checkpointing persistente, NanoHTTPD estaba retornando `null` para la lectura en memoria de los archivos grabados:
-1. **El Bug de SendBeacon:** `navigator.sendBeacon` por diseño transmite diccionarios `URLSearchParams` codificados en formato MIME `application/x-www-form-urlencoded`. En el lado del servidor Java, la lectura `filesMap.get("postData")` perdía sistemáticamente los fragmentos del JSON, lo que provocaba que el archivo `.vad.json` jamás llegara a materializarse físicamente en disco. Todo se quedaba flotando en un pseudo-caché en vivo.
-2. **Saturación Crítica en Pre-Slice:** La "Fase 1" pre-cortaba de manera imperativa cada bloque de 15 segundos del `channelData` de todo el audio, copiándolo a memoria, incluso si el "Resume" indicaba que el audio ya había sido completado al 60%. Operar el `slice()` al 100% de la pista multiplicaba innecesariamente la ocupación temporal en RAM, desafiando innecesariamente el frágil límite de Safari iOS.
+La arquitectura de Checkpointing salvaba los datos matemáticos a la perfección tras un Jetsam Crash de iOS Safari. Sin embargo, la Experiencia de Usuario (UX) quedaba herida: el usuario volvía a una página estática, perdía el scroll de la pista que estaba analizando y tenía que reabrir manualmente el cajón de gráficas para pulsar laboriosamente el botón "Continuar Análisis". 
 
 ### 🛠️ La Solución
-Sustitución completa del corazón de enrutado asíncrono `_executeVadScan`:
-1. **API Fetch EndPoint JSON (`application/json`):** Fue amputado el `sendBeacon` url-encoded para los debounces e inyectada una directiva nativa `fetch /api/vad_save` configurada explícitamente por cabecera y cuerpo `JSON.stringify()`. Por vez primera las tramas Checkpoint llegan a Java con estructura, asegurando una escritura blindada del texto en eMMC.
-2. **Pre-Slice Nulo:** Implementado un ahorro brutal en recursos con un salto matricial `if (i >= startChunk)`. El array de Float32s que empujan al WASM se niega ahora a llenar la RAM con las secciones ya analizadas en el pasado, depositando directamente `null` (coste: 0 bytes) como *placeholder* de las viejas matrices y resbalando limpiamente sin desbordar el Scope temporal del bloque de Decode.
+Implementación formal del **"Protocolo Fénix"**:
+1. **Intención de Escaneo (`localStorage`):** Al latir `runVADScanner()`, se graba en caché profunda el nombre del archivo activo bajo la llave `activeVadScan`. Esta llave actúa como un contrato de promesa de análisis. Se elimina sólo cuando la función cruza la línea final de éxito `vadSegments = segments;`.
+2. **Auto-Navegación Táctil (`loadHistory`):** Tras reconstruir el DOM en un Reload, la lista lee la llave huérfana. Con un `setTimeout(..., 500)`, ejecuta un `scrollIntoView` certero que localiza la tarjeta magnética en la lista y lanza remotamente `openWaveform(activeScan)` replicando el toque del usuario humano.
+3. **Auto-Ignición (Zero-Click Resumption):** El brazo asíncrono `fetch('/api/vad_load')` intercepta la carga de la pista fantasma. Si el protocolo Fénix chivata que ese archivo reventó en mitad del scan anterior, el botón cambia a *🔄 Autorecuperando...* y acciona el escote WASM automáticamente mediante `setTimeout(() => runVADScanner(), 800)`.
 
 ### 🎓 Lecciones Aprendidas
-- **Desprecio Oculto al Payload Form:** `sendBeacon` es implacable mutando Cargas Útiles a URL Paramétrica, desconfigurando JSON Stringifieds nativos si el servidor Java espera un String crudo en un mapa Multipart. Usa siempre Fetch POST `application/json` si el otro extremo de la tubería requiere serialización pura y dependes de `Object/JSON.parse()`.
+- **La Persistencia Frontend Completa el Backend:** De nada sirve que un Servidor Java retenga un archivo de Checkpointing si la UI obliga al usuario a operar manualmente el rescate tras una catástrofe cíclica de memoria. Un Auto-Resume transparente fusiona ambas caras del VAD inyectándole magia al proceso crudo.

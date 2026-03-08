@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.53] - 2026-03-08
+### Added
+- **Protocolo Fénix (Auto-Resume UI)**: Arquitectura implementada usando `localStorage` ('activeVadScan') e intercepciones nativas (`scrollIntoView()`) para inyectar automatismo puro a un Crash de Webworker iOS. El navegador Safari recarga la página, scrollea directamente hasta el audio interceptado, expande la gráfica e inicia el escaneo Inteligente (continuando el % guardado) de manera completamente transparente y autónoma para el usuario.
+
 ## [v1.4.52] - 2026-03-08
 ### Fixed
 - **Network Save Crash**: Transición absoluta de arquitecturas de telemetría de `sendBeacon` url-encoded hacia persistencias formales `fetch` JSON, asegurando que el backend Java recibe y serializa el archivo físico Checkpoint en `/sdcard` en lugar de retornarlo nulo.

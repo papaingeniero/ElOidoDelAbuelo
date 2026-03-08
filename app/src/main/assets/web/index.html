@@ -1430,6 +1430,20 @@
                             drawMiniWaveform(canvasId, f.peaks);
                         }
                     });
+
+                    // 🔥 FÉNIX: Auto-navegación tras un reload por crash
+                    const activeScan = localStorage.getItem('activeVadScan');
+                    if (activeScan) {
+                        setTimeout(() => {
+                            const card = document.querySelector('.history-card[data-filename="' + activeScan + '"]');
+                            if (card) {
+                                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                openWaveform(activeScan);
+                            } else {
+                                localStorage.removeItem('activeVadScan');
+                            }
+                        }, 500);
+                    }
                 })
                 .catch(err => {
                     console.error("Error cargando historial:", err);
@@ -1599,12 +1613,22 @@
                         window.vadCheckpointData = data;
                         if (data.complete && data.segments) {
                             vadSegments = data.segments;
-                            if (btnScan) {
-                                btnScan.innerHTML = '✨ Caché Instantánea Aplicada';
-                            }
-                            drawForensicWaveform(); // CRÍTICO: Repintar la onda roja
+                            if (btnScan) btnScan.innerHTML = '✨ Caché Instantánea Aplicada';
+                            drawForensicWaveform();
+                            localStorage.removeItem('activeVadScan');
                         } else if (data.lastChunkProcessed > 0) {
                             if (btnScan) btnScan.innerHTML = '▶️ Continuar Análisis (' + data.lastChunkProcessed + ' chunks)';
+                            // 🔥 FÉNIX: Auto-Continuar si venimos de un crash
+                            if (localStorage.getItem('activeVadScan') === fileName) {
+                                if (btnScan) btnScan.innerHTML = '🔄 Autorecuperando...';
+                                setTimeout(() => runVADScanner(), 800);
+                            }
+                        }
+                    } else {
+                        // FÉNIX: Crasheó antes del primer guardado
+                        if (localStorage.getItem('activeVadScan') === fileName) {
+                            if (btnScan) btnScan.innerHTML = '🔄 Autorecuperando...';
+                            setTimeout(() => runVADScanner(), 800);
                         }
                     }
                 }).catch(e => console.error("Error VAD cache", e));
@@ -2330,7 +2354,7 @@
                 if (startChunk >= totalChunks) return results;
 
                 await instantiateWorker();
-                const WASM_ROTATION_LIMIT = 25; 
+                const WASM_ROTATION_LIMIT = 25;
                 let chunksProcessedInWorker = 0;
 
                 for (let i = startChunk; i < totalChunks; i++) {
@@ -2340,12 +2364,12 @@
                     if (chunksProcessedInWorker > 0 && chunksProcessedInWorker % WASM_ROTATION_LIMIT === 0) {
                         remoteLog('[VAD-ROTATION] Destruyendo Worker...');
                         worker.terminate();
-                        worker = null; 
+                        worker = null;
                         remoteLog('[VAD-ROTATION] Esperando purga RAM iOS (5.0s)...');
                         await new Promise(resolve => setTimeout(resolve, 5000));
                         remoteLog('[VAD-ROTATION] Levantando nuevo motor...');
                         await instantiateWorker();
-                        chunksProcessedInWorker = 0; 
+                        chunksProcessedInWorker = 0;
                     }
 
                     await new Promise((resolve, reject) => {
@@ -2374,7 +2398,7 @@
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(payload)
-                            }).catch(e => {});
+                            }).catch(e => { });
                             remoteLog('[VAD-CACHE] Checkpoint real guardado (Chunk ' + i + ')');
                         } catch (e) { }
                     }
@@ -2419,6 +2443,9 @@
             const originalText = btn.innerHTML;
             const threshold = parseFloat(document.getElementById('inpVadThresh').value);
             btn.disabled = true;
+
+            // FÉNIX: Registrar la intención de escaneo
+            localStorage.setItem('activeVadScan', waveFileName);
 
             // Si ya tenemos cache completa, saltamos toda la parte gráfica destructiva de carga
             if (window.vadCheckpointData && window.vadCheckpointData.complete) {
@@ -2476,6 +2503,7 @@
                     btn.innerHTML = '🧠 Analizando (' + pct + '%)...';
                 });
                 vadSegments = segments;
+                localStorage.removeItem('activeVadScan'); // FÉNIX: Completado con éxito
                 remoteLog('[VAD-T1] Scan completado. Segments: ' + vadSegments.length);
 
                 // 3. RESPIRO: _executeVadScan ya retornó, su scope está MUERTO.
