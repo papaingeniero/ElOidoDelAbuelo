@@ -2320,13 +2320,15 @@
 
         function remoteLog(msg) {
             console.error(msg); // Mantener en consola local
-            fetch('/api/jslog', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'postData=' + encodeURIComponent(JSON.stringify({ msg: msg }))
-            }).catch(e => { }); // Fuego y olvido
+            try {
+                // XHR Sincrónico: BLOQUEA el hilo principal hasta que el móvil responda.
+                // Garantiza que la traza llega al servidor ANTES de que Safari crashee.
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "/api/jslog", false);
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                xhr.send('postData=' + encodeURIComponent(JSON.stringify({ msg: msg })));
+            } catch (e) { }
         }
-
         async function runVADScanner() {
             if (!forensicAudioUrl) return;
             const btn = document.getElementById('btnScanIA');
