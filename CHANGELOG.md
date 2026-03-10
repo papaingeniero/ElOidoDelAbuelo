@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.57] - 2026-03-10
+### Added
+- **Smart Detection Isolation for CriOS**: Implementada una bifurcación de User-Agent en el Patrón de Suicidio Controlado excluyendo explícitamente a Google Chrome `isChromeIOS` (`CriOS`) en iOS del reseteo por hardware de JS `LIMIT = 20`. Safari Nativo `isIOS` mantendrá los ciclos de limpieza suicida cada 20 chunks para eludir crashes Jetsam, pero Google Chrome podrá procesar del tirón sin interrupciones ni recargas la carga visual completa en Web Worker sobre el lienzo Canvas gracias a su gestión nativa optimizada de la RAM en la versión 134+.
+
 ## [v1.4.56] - 2026-03-08
 ### Fixed
 - **Controlled Suicide Reload Protocol**: El modelo de reseteo de Web Worker ha sido sustituido globalmente por una recarga física dura mitigadora para iOS (`window.location.reload()`). WebKit sumaba contadores ocultos de `Canvas/AudioBuffers` que terminaban en un "Anti-Crash Loop Banned" fatal por parte de Safari tras muchos sub-crashes. Ahora cada 20 chunks procesados, la web se suicida limpiamente e invoca el Protocolo Fénix, que ha elevado su paciencia pasiva a 2000ms previo a reanudar la batalla para enmascarar su naturaleza botística y blanquear contadores de Safari al 100%.

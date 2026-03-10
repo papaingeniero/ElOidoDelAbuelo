@@ -1,14 +1,14 @@
-## 🚀 Patrón de Suicidio Controlado (VAD Reload) v1.4.56 | 08/03/2026
+## 🚀 Detección Inteligente: Aislamiento Chrome iOS (CriOS) v1.4.57 | 10/03/2026
 
 ### 📜 El Problema
-Apple iOS Safari incorpora un daemon hiper-agresivo (Jetsam) que monitorea los ciclos crasheicos de la RAM en sus pestañas WebKit ("A problem repeatedly occurred with this webpage"). La estrategia previa de "destruir y recrear el Web Worker en Runtime" (`worker.terminate()` + `new Worker()`) mitigaba la huella de memoria estática, pero seguía inflando ciertos buffers ocultos de Canvas y AudioContext ajenos al scope del hilo del Worker provocando irremediablemente un crasheo WebKit fatal de "Pantalla Amarilla" en archivos de una hora. Peor aún, un auto-resurgimiento mediado por el Protocolo Fénix levantaba tan rápido el DOM que Safari lo etiquetaba como 'Crash Loop' banneando temporalmente la URL.
+El "Patrón de Suicidio Controlado" (recarga dura de WebKit cada 20 Chunks) fue diseñado drásticamente para doblegar al guardián de Memoria de Safari (Jetsam). Sin embargo, pruebas de estrés empíricas sobre el terreno demostraron que Google Chrome para iOS (`CriOS`), a pesar de utilizar por debajo el mismo motor WebKit obligado por Apple, gestiona sus rutinas de Garbage Collection o buffers internos de manera diferente, logrando procesar archivos inmensos sin asfixiarse y sin requerir amputaciones tácticas de recarga forzada en la UX del usuario.
 
 ### 🛠️ La Solución
-Implementación del Patrón Arquitectónico **Suicidio Controlado**:
-- Sustitución masiva del bloque de rotación de RAM virtual dentro de `_executeVadScan`. 
-- Cada 20 Chunks de inferencia IA (límite vital empírico `WASM_ROTATION_LIMIT`), en lugar de reciclar Workers, la app inyecta el `payload` crudo final en`/api/vad_save` y acto seguido, voluntariamente, invoca la guillotina con `window.location.reload()`.
-- Al morir *limpiamente* por una recarga ordenada del DOM orquestada por Javascript y no por un Evento de Muerte Súbita OOM (Out of Memory) del SO iOS, el contador interno de Crashes Loop de Safari se resetea por siempre.
-- Al recargar la página sana, el Protocolo Fénix `activeVadScan` toma el volante de nuevo tras un umbral táctico ampliado a **2000ms** (2 segundos) para dejar respirar a la pintura de los Canvas, auto-bajando la mirilla y reanudando la guerra cíclica del chunk 21 hasta el infinito.
+Se ha bifurcado sutilmente la arquitectura de evasión táctica dentro del core `_executeVadScan`:
+- Se introdujo una `DETECCIÓN INTELIGENTE AVANZADA` basada en análisis cruzado de `navigator.userAgent`.
+- Si el cliente reporta ser la plataforma genérica `isIOS` pero simultáneamente incluye la rúbrica `CriOS` de Google, el sistema le concede libertad absoluta.
+- La matemática dictamina: `const WASM_ROTATION_LIMIT = (isIOS && !isChromeIOS) ? 20 : Infinity;`.
+- De este modo, Safari nativo se sigue sometiendo al reseteo y "Suicidio" al chunk 20, mientras que el usuario avanzado que accede vía Google Chrome en iPhone/iPad no sufrirá parpadeos visuales ni auto-recargas asíncronas, procesando todo del tirón hasta el final del audio.
 
 ### 🎓 Lecciones Aprendidas
-- **Abraza el Crash Voluntario en Entornos Hostiles:** A veces intentar simular ciclos de Garbage Collector en ecosistemas cerrados y cajas negras como iOS WebKit es inútil e ineficiente. Si el recargo completo de página sanea toda la memoria al 100% y dejas balizas en `localStorage` (Checkpointing) que te permiten auto-restaurar tu estatus Zero-Click, fuérzate a ti mismo a "morir orgánicamente" por un Reload para ganar la guerra a largo plazo.
+- **WebKit no es Universal bajo iOS:** Un viejo dogma asume que "Todo navegador en iOS es un clon exacto atado de manos de Safari". Aunque Apple imponga su motor de renderizado, las capas superiores de Google (o Firefox) introducen gestores de recursos independientes o flags que mutan sustancialmente el límite de tolerancia de la App. Mide en campo el umbral de cada actor individual antes de aplicar medidas de contención suicida a gran escala.

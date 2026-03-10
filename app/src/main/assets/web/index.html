@@ -2354,7 +2354,10 @@
                 if (startChunk >= totalChunks) return results;
 
                 await instantiateWorker();
-                const WASM_ROTATION_LIMIT = 20;
+                // 🔥 DETECCIÓN INTELIGENTE AVANZADA: Aislar Safari nativo de Chrome iOS (CriOS)
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                const isChromeIOS = /CriOS/.test(navigator.userAgent);
+                const WASM_ROTATION_LIMIT = (isIOS && !isChromeIOS) ? 20 : Infinity;
                 let chunksProcessedInWorker = 0;
 
                 for (let i = startChunk; i < totalChunks; i++) {
