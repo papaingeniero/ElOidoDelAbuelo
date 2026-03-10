@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.59] - 2026-03-11
+### Changed
+- **ADB Watchdog Telemetry & 5-Min Eco Mode**: Refactorización profunda del `adbWatchdogThread`. Transformado radicalmente su núcleo reduciendo drásticamente el desgaste térmico de CPU aumentando de forma segura su latido de perforación anti-Doze a un ciclo vital dilatado de 5 minutos (300.000 ms). Paralelamente se le despojó de su naturaleza en modo ciego (*caja negra*) inyectando en su lugar una variable interna de vida (`pingCount`). Ahora emite al panel de control (`logToWeb`) ruidos explícitos vitales únicamente al inicializar, o de forma metódica tras haber amasado exitosamente en serie 12 pings en sus entrañas TCP equivalentes a un latido limpio exacto cada hora táctica; desenmascarando además sus catches silenciados, vomitando directamente alertas de conexión rechazada a la consola ante muertes inminentes inyectadas por MIUI.
+
 ## [v1.4.58] - 2026-03-11
 ### Added
 - **ADB Watchdog Deep Ping**: Desplegado en el corazón del `OidoService` un nuevo hilo perro-guardián. Cada 60 segundos abre una cuña TCP a nivel kernel sobre el puerto local del demonio ADB (5555) e inyecta un stream de bytes basura (`"HELO"`) seguido de una retención dura del socket. Esto fuerza un pico microscópico obligatorio en la CPU de un proceso root (`adbd`) induciendo artificialmente latidos que impiden a MIUI asentar las fases superiores de congelación criogénica del Doze Mode.
