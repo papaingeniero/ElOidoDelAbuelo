@@ -1,14 +1,15 @@
-## 🚀 Detección Inteligente: Aislamiento Chrome iOS (CriOS) v1.4.57 | 10/03/2026
+## 🚀 ADB Watchdog: Deep Ping (Data Spoofing) v1.4.58 | 11/03/2026
 
 ### 📜 El Problema
-El "Patrón de Suicidio Controlado" (recarga dura de WebKit cada 20 Chunks) fue diseñado drásticamente para doblegar al guardián de Memoria de Safari (Jetsam). Sin embargo, pruebas de estrés empíricas sobre el terreno demostraron que Google Chrome para iOS (`CriOS`), a pesar de utilizar por debajo el mismo motor WebKit obligado por Apple, gestiona sus rutinas de Garbage Collection o buffers internos de manera diferente, logrando procesar archivos inmensos sin asfixiarse y sin requerir amputaciones tácticas de recarga forzada en la UX del usuario.
+El "Doze Mode" de MIUI en Xiaomi es legendariamente agresivo. Se ha descubierto que el demonio `adbd` (ADB Daemon) de Android es lo suficientemente astuto (o vago) como para ignorar conexiones TCP vacías (`Socket.connect` sin datos). Un mero "TCP Handshake" al puerto 5555 no obliga al demonio a consumir tiempo de CPU procesando el buffer de entrada, permitiendo con el tiempo que las optimizaciones de batería de Xiaomi congelen el proceso por inactividad.
 
 ### 🛠️ La Solución
-Se ha bifurcado sutilmente la arquitectura de evasión táctica dentro del core `_executeVadScan`:
-- Se introdujo una `DETECCIÓN INTELIGENTE AVANZADA` basada en análisis cruzado de `navigator.userAgent`.
-- Si el cliente reporta ser la plataforma genérica `isIOS` pero simultáneamente incluye la rúbrica `CriOS` de Google, el sistema le concede libertad absoluta.
-- La matemática dictamina: `const WASM_ROTATION_LIMIT = (isIOS && !isChromeIOS) ? 20 : Infinity;`.
-- De este modo, Safari nativo se sigue sometiendo al reseteo y "Suicidio" al chunk 20, mientras que el usuario avanzado que accede vía Google Chrome en iPhone/iPad no sufrirá parpadeos visuales ni auto-recargas asíncronas, procesando todo del tirón hasta el final del audio.
+Implementación de un **Auto-Desfibrilador Local Profundo (Data Spoofing)** en el corazón de `OidoService`.
+- Se ha inyectado un hilo de muy baja prioridad `adbWatchdogThread` directamente en el latido del servicio.
+- Cada 60 segundos, el hilo abre un socket hacia `127.0.0.1:5555`.
+- **El Cubo de Agua Fría**: Inmediatamente tras conectar, escribe por el `OutputStream` los bytes basura `"HELO".getBytes("UTF-8")` y ejecuta un `flush()`.
+- Se mantiene la conexión abierta artificialmente durante `500ms` antes de cerrarla. Esta retención combinada con el volcado de datos falsos de protocolo ("spoofing") fuerza físicamente al demonio ADB a despertar, asignar CPU, tragarse la trama, darse cuenta de que no es un paquete ADB válido y rechazarla. 
+- Este esfuerzo termodinámico inútil por parte de `adbd` garantiza que el sistema operativo registre picos de consumo de CPU por parte de un proceso del sistema (ADB), rompiendo microscópicamente el Deep Sleep del Doze Mode cada minuto y manteniendo vivo indirectamente al `OidoService`.
 
 ### 🎓 Lecciones Aprendidas
-- **WebKit no es Universal bajo iOS:** Un viejo dogma asume que "Todo navegador en iOS es un clon exacto atado de manos de Safari". Aunque Apple imponga su motor de renderizado, las capas superiores de Google (o Firefox) introducen gestores de recursos independientes o flags que mutan sustancialmente el límite de tolerancia de la App. Mide en campo el umbral de cada actor individual antes de aplicar medidas de contención suicida a gran escala.
+- **Un toque en la puerta no basta si no gritas:** Para despertar a un demonio de sistema (como ADB) desde un servicio local y evadir los asesinos de RAM, no basta con hacer ping a su puerto TCP. Debes forzarlo a procesar información corrupta ("Data Spoofing") reteniendo el socket. El coste de CPU de parsear el error es exactamente la chispa eléctrica que necesitamos para mantener los corazones latiendo en Android 10.

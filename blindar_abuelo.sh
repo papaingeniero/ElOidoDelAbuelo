@@ -4,9 +4,9 @@ echo "=========================================="
 echo "🚀 CI/CD Y SUPER-BLINDAJE ADB: EL ABUELO 🛡️"
 echo "=========================================="
 
-echo "📡 IP del Abuelo (ENTER para 192.168.1.130):"
+echo "📡 IP del Abuelo (ENTER para 192.168.1.136):"
 read input_ip
-ABUELO_IP=${input_ip:-"192.168.1.130"}
+ABUELO_IP=${input_ip:-"192.168.1.136"}
 
 echo "🔌 Conectando a $ABUELO_IP:5555..."
 adb connect $ABUELO_IP:5555

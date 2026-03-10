@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4.58] - 2026-03-11
+### Added
+- **ADB Watchdog Deep Ping**: Desplegado en el corazón del `OidoService` un nuevo hilo perro-guardián. Cada 60 segundos abre una cuña TCP a nivel kernel sobre el puerto local del demonio ADB (5555) e inyecta un stream de bytes basura (`"HELO"`) seguido de una retención dura del socket. Esto fuerza un pico microscópico obligatorio en la CPU de un proceso root (`adbd`) induciendo artificialmente latidos que impiden a MIUI asentar las fases superiores de congelación criogénica del Doze Mode.
+
 ## [v1.4.57] - 2026-03-10
 ### Added
 - **Smart Detection Isolation for CriOS**: Implementada una bifurcación de User-Agent en el Patrón de Suicidio Controlado excluyendo explícitamente a Google Chrome `isChromeIOS` (`CriOS`) en iOS del reseteo por hardware de JS `LIMIT = 20`. Safari Nativo `isIOS` mantendrá los ciclos de limpieza suicida cada 20 chunks para eludir crashes Jetsam, pero Google Chrome podrá procesar del tirón sin interrupciones ni recargas la carga visual completa en Web Worker sobre el lienzo Canvas gracias a su gestión nativa optimizada de la RAM en la versión 134+.
