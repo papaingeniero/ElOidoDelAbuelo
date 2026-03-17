@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.5.0] - 2026-03-17
+### Changed
+- **Reset Core y Purgado Operacional**: Regreso de la aplicación a su estado base `v1.4.8` erradicando definitivamente la Inteligencia Artificial Local (Silero VAD), WebWorkers Asíncronos, Zero-Copy Pointers y transferencias de Arrays PCM en el FrontEnd Web.
+- **Transplante Vital de Sistema**: Portado y reconstituido manualmente el componente `adbWatchdogThread` desde la `v1.4.59` a esta iteración prístina. MIUI seguirá respetando la conexión al puerto `5555` a pesar del borrado de los módulos VAD de la misma revisión temporal.
+
 ## [v1.4.8] - 2026-03-07
 ### Fixed
 - **Scroll iOS Safari Bloqueado (Terminal Web)**: Resuelto un _scroll trap_ crónico en dispositivos Apple donde el modal de Logs (Terminal) se congelaba e impedía deslizar el texto con el dedo. Se inyectó `-webkit-overflow-scrolling: touch` y se bloqueó programáticamente el desbordamiento fantasma de su contenedor padre (`overflow: hidden;`).

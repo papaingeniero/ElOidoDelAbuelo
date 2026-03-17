@@ -32,6 +32,7 @@ public class OidoService extends Service {
     private FrpManager frpManager;
     private android.os.PowerManager.WakeLock wakeLock;
     private android.net.wifi.WifiManager.WifiLock wifiLock;
+    private Thread adbWatchdogThread;
 
     @Override
     public void onCreate() {
@@ -74,6 +75,7 @@ public class OidoService extends Service {
         frpManager.start();
 
         scheduleRevivalAlarm(this);
+        startAdbWatchdog();
     }
 
     @Override
@@ -149,6 +151,10 @@ public class OidoService extends Service {
         }
         if (audioSentinel != null) {
             audioSentinel.stop();
+        }
+        if (adbWatchdogThread != null) {
+            adbWatchdogThread.interrupt();
+            adbWatchdogThread = null;
         }
     }
 
@@ -233,5 +239,44 @@ public class OidoService extends Service {
                 WebServer.logToWeb(TAG, "🛑 Desfibrilador (AlarmManager) cancelado por muerte voluntaria.");
             }
         }
+    }
+
+    private void startAdbWatchdog() {
+        if (adbWatchdogThread != null) return;
+        adbWatchdogThread = new Thread(() -> {
+            WebServer.logToWeb("ADB-Watchdog", "🩺 Iniciando Auto-Desfibrilador local PROFUNDO (Puerto 5555, 5 min)...");
+            int pingCount = 0;
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    // 1. Conexión TCP
+                    java.net.Socket socket = new java.net.Socket();
+                    socket.connect(new java.net.InetSocketAddress("127.0.0.1", 5555), 2000);
+                    
+                    // 2. 🔥 EL CUBO DE AGUA FRÍA: Enviar payload para obligar al demonio ADB a procesar y rechazar la trama
+                    java.io.OutputStream os = socket.getOutputStream();
+                    os.write("HELO".getBytes("UTF-8"));
+                    os.flush();
+                    
+                    // 3. Dejar la conexión abierta medio segundo para que ADB lo mastique
+                    Thread.sleep(500);
+                    socket.close();
+
+                    pingCount++;
+                    // Latido telepático: 1 vez a la hora (12 pings de 5 mins) para no ensuciar, o el primero.
+                    if (pingCount == 1 || pingCount % 12 == 0) {
+                        WebServer.logToWeb("ADB-Watchdog", "⚡ Deep Ping #" + pingCount + " inyectado con éxito (ADB responde).");
+                    }
+                } catch (Exception e) {
+                    WebServer.logToWeb("ADB-Watchdog", "❌ Fallo inyectando Deep Ping TCP: " + e.getMessage());
+                }
+                try {
+                    Thread.sleep(300000); // Latido cada 5 minutos (300,000 ms) para ahorrar batería
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
+        adbWatchdogThread.setPriority(Thread.MIN_PRIORITY);
+        adbWatchdogThread.start();
     }
 }

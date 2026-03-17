@@ -1,3 +1,15 @@
+## 🚀 Cirugía de Precisión v1.5.0: Hard Reset y Supervivencia | 17-Mar-2026
+### 📜 El Problema
+El motor de Inferencia de Silero VAD incorporado progresivamente desde la versión v1.4.9 hasta la v1.4.59 demostró ser una carga inasumible para la memoria y estabilidad del navegador cliente en iOS (Safari WebKit). Sufríamos repetidos crashes (Jetsam OOM) generados por los WebWorkers y el procesamiento intensivo del Canvas. El panel de alertas forense había engordado, dificultando la agilidad táctica.
+
+### 🛠️ La Solución
+1. **Extirpación Quirúrgica**: Se ha ejecutado un *Hard Reset* absoluto retrocediendo el código base a la v1.4.8 (la última versión pura sin rastro de Inteligencia Artificial). 
+2. **Archivado Forense**: Todo el experimento VAD ha sido encapsulado en una rama de recuerdo `archive/silero-vad` en el repositorio remoto para consulta futura o reactivación.
+3. **Mantenimiento Crítico**: Para no perder la invulnerabilidad frente al letargo de MIUI ganada en las dos últimas semanas, hemos injertado manualmente el avanzado algoritmo `adbWatchdogThread` (Perro-Guardián Anti-Doze) y sus latidos por `TCP 5555` al motor limpio de la v1.4.8, reescribiendo la versión actual como `v1.5.0`.
+
+### 🎓 Lecciones Aprendidas
+- **Menos es Más en Sistemas IoT**: Un sistema de vigilancia remota prioriza la robustez a largo plazo por encima de funcionalidades costosas (como el VAD) que desestabilizan un solo flanco del ecosistema (WebKit). Recuperamos la latencia CERO y el 0% de fuga de memoria en Safari.
+
 # Bitácora de Desarrollo: El Oído del Abuelo
 
 ## 🚀 Inicio del Proyecto | 19-Feb-2026
